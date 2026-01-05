@@ -2,6 +2,7 @@
  * WebSocket hook for real-time game connection
  *
  * Manages WebSocket connection lifecycle, message handling, and reconnection.
+ * Uses refs for stable callbacks to prevent infinite re-render loops.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -107,51 +108,61 @@ interface ServerMessage {
   payload: unknown;
 }
 
+// ============ Initial State ============
+
+const initialConnection: GameConnection = {
+  status: "disconnected",
+  gameId: null,
+  playerIndex: null,
+  gameState: null,
+  latency: 0,
+  error: null,
+};
+
 // ============ Hook ============
 
 export function useWebSocket(): UseWebSocketReturn {
-  const [connection, setConnection] = useState<GameConnection>({
-    status: "disconnected",
-    gameId: null,
-    playerIndex: null,
-    gameState: null,
-    latency: 0,
-    error: null,
-  });
+  const [connection, setConnection] = useState<GameConnection>(initialConnection);
 
+  // Refs for stable references (don't cause re-renders)
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+  const isConnectingRef = useRef(false);
 
-  // Clean up WebSocket connection
-  const cleanup = useCallback(() => {
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current);
-      pingIntervalRef.current = null;
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+  // Helper: Safe setState that checks if mounted
+  const safeSetConnection = useCallback((
+    updater: GameConnection | ((prev: GameConnection) => GameConnection)
+  ) => {
+    if (isMountedRef.current) {
+      setConnection(updater);
     }
   }, []);
 
-  // Send message to server
+  // Helper: Send message to server
   const send = useCallback((message: ClientMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     }
   }, []);
 
-  // Start ping interval for latency measurement
+  // Helper: Start ping interval
   const startPing = useCallback(() => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+    }
     pingIntervalRef.current = setInterval(() => {
       send({ type: "ping", timestamp: Date.now() });
     }, 2000);
   }, [send]);
+
+  // Helper: Stop ping interval
+  const stopPing = useCallback(() => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+  }, []);
 
   // Handle incoming messages
   const handleMessage = useCallback((event: MessageEvent) => {
@@ -168,7 +179,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case "joined": {
           const payload = message.payload as JoinedPayload;
-          setConnection(prev => ({
+          safeSetConnection(prev => ({
             ...prev,
             gameId: payload.gameId,
             playerIndex: payload.playerIndex,
@@ -178,7 +189,7 @@ export function useWebSocket(): UseWebSocketReturn {
         }
 
         case "left": {
-          setConnection(prev => ({
+          safeSetConnection(prev => ({
             ...prev,
             gameId: null,
             playerIndex: null,
@@ -189,7 +200,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case "player_joined": {
           const payload = message.payload as PlayerJoinedPayload;
-          setConnection(prev => {
+          safeSetConnection(prev => {
             if (!prev.gameState) return prev;
             const newPlayers = [...prev.gameState.players] as [typeof prev.gameState.players[0], typeof prev.gameState.players[1]];
             newPlayers[payload.playerIndex] = payload.player;
@@ -206,7 +217,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case "player_left": {
           const payload = message.payload as PlayerLeftPayload;
-          setConnection(prev => {
+          safeSetConnection(prev => {
             if (!prev.gameState) return prev;
             const newPlayers = [...prev.gameState.players] as [typeof prev.gameState.players[0], typeof prev.gameState.players[1]];
             newPlayers[payload.playerIndex] = null;
@@ -224,7 +235,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case "player_ready": {
           const payload = message.payload as PlayerReadyPayload;
-          setConnection(prev => {
+          safeSetConnection(prev => {
             if (!prev.gameState) return prev;
             const player = prev.gameState.players[payload.playerIndex];
             if (!player) return prev;
@@ -243,7 +254,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case "countdown": {
           const payload = message.payload as CountdownPayload;
-          setConnection(prev => {
+          safeSetConnection(prev => {
             if (!prev.gameState) return prev;
             return {
               ...prev,
@@ -259,7 +270,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case "state_update": {
           const payload = message.payload as StateUpdatePayload;
-          setConnection(prev => {
+          safeSetConnection(prev => {
             if (!prev.gameState) return prev;
             const [p1, p2] = prev.gameState.players;
             if (!p1 || !p2) return prev;
@@ -281,7 +292,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case "score": {
           const payload = message.payload as ScorePayload;
-          setConnection(prev => {
+          safeSetConnection(prev => {
             if (!prev.gameState) return prev;
             const [p1, p2] = prev.gameState.players;
             if (!p1 || !p2) return prev;
@@ -301,7 +312,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case "game_over": {
           const payload = message.payload as GameOverPayload;
-          setConnection(prev => {
+          safeSetConnection(prev => {
             if (!prev.gameState) return prev;
             return {
               ...prev,
@@ -318,7 +329,7 @@ export function useWebSocket(): UseWebSocketReturn {
         case "error": {
           const payload = message.payload as ErrorPayload;
           console.error(`WebSocket error: ${payload.code} - ${payload.message}`);
-          setConnection(prev => ({
+          safeSetConnection(prev => ({
             ...prev,
             error: payload.message,
           }));
@@ -328,7 +339,7 @@ export function useWebSocket(): UseWebSocketReturn {
         case "pong": {
           const payload = message.payload as PongPayload;
           const latency = Date.now() - payload.clientTimestamp;
-          setConnection(prev => ({
+          safeSetConnection(prev => ({
             ...prev,
             latency,
           }));
@@ -338,13 +349,19 @@ export function useWebSocket(): UseWebSocketReturn {
     } catch (error) {
       console.error("Failed to parse WebSocket message:", error);
     }
-  }, [startPing]);
+  }, [safeSetConnection, startPing]);
 
   // Connect to WebSocket server
   const connect = useCallback(() => {
-    cleanup();
+    // Prevent duplicate connections
+    if (isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log("WebSocket: Already connected or connecting");
+      return;
+    }
 
-    setConnection(prev => ({
+    isConnectingRef.current = true;
+
+    safeSetConnection(prev => ({
       ...prev,
       status: "connecting",
       error: null,
@@ -355,7 +372,8 @@ export function useWebSocket(): UseWebSocketReturn {
 
     ws.onopen = () => {
       console.log("WebSocket connected");
-      setConnection(prev => ({
+      isConnectingRef.current = false;
+      safeSetConnection(prev => ({
         ...prev,
         status: "connected",
         error: null,
@@ -366,7 +384,8 @@ export function useWebSocket(): UseWebSocketReturn {
 
     ws.onerror = () => {
       console.error("WebSocket error");
-      setConnection(prev => ({
+      isConnectingRef.current = false;
+      safeSetConnection(prev => ({
         ...prev,
         status: "error",
         error: "Connection error",
@@ -375,31 +394,29 @@ export function useWebSocket(): UseWebSocketReturn {
 
     ws.onclose = () => {
       console.log("WebSocket closed");
-      cleanup();
-      setConnection(prev => ({
+      isConnectingRef.current = false;
+      stopPing();
+      wsRef.current = null;
+      // Don't reset connection state here - let the component decide
+      safeSetConnection(prev => ({
         ...prev,
         status: "disconnected",
-        gameId: null,
-        playerIndex: null,
-        gameState: null,
       }));
     };
 
     wsRef.current = ws;
-  }, [cleanup, handleMessage]);
+  }, [handleMessage, safeSetConnection, stopPing]);
 
   // Disconnect from WebSocket server
   const disconnect = useCallback(() => {
-    cleanup();
-    setConnection({
-      status: "disconnected",
-      gameId: null,
-      playerIndex: null,
-      gameState: null,
-      latency: 0,
-      error: null,
-    });
-  }, [cleanup]);
+    stopPing();
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    isConnectingRef.current = false;
+    safeSetConnection(initialConnection);
+  }, [safeSetConnection, stopPing]);
 
   // Join a game room
   const joinGame = useCallback((gameId: string) => {
@@ -423,8 +440,17 @@ export function useWebSocket(): UseWebSocketReturn {
 
   // Cleanup on unmount
   useEffect(() => {
-    return cleanup;
-  }, [cleanup]);
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      stopPing();
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [stopPing]);
 
   return {
     connection,

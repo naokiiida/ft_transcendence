@@ -143,29 +143,40 @@ export function GamePage() {
   } = useWebSocket();
 
   const [error, setError] = useState<string | null>(null);
+  const hasConnectedRef = useRef(false);
+  const hasJoinedRef = useRef(false);
 
-  // Connect to WebSocket when component mounts
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate("/login");
-      return;
     }
+  }, [isLoading, isAuthenticated, navigate]);
 
-    if (isAuthenticated && connection.status === "disconnected") {
+  // Connect to WebSocket when authenticated (only once)
+  useEffect(() => {
+    if (isAuthenticated && !hasConnectedRef.current) {
+      hasConnectedRef.current = true;
       connect();
     }
 
+    // Cleanup on unmount only
     return () => {
-      disconnect();
+      if (hasConnectedRef.current) {
+        disconnect();
+        hasConnectedRef.current = false;
+        hasJoinedRef.current = false;
+      }
     };
-  }, [isAuthenticated, isLoading, navigate, connect, disconnect, connection.status]);
+  }, [isAuthenticated, connect, disconnect]);
 
-  // Join game when connected and have gameId
+  // Join game when connected and have gameId (only once)
   useEffect(() => {
-    if (connection.status === "connected" && urlGameId && !connection.gameId) {
+    if (connection.status === "connected" && urlGameId && !hasJoinedRef.current) {
+      hasJoinedRef.current = true;
       joinGame(urlGameId);
     }
-  }, [connection.status, connection.gameId, urlGameId, joinGame]);
+  }, [connection.status, urlGameId, joinGame]);
 
   // Handle keyboard input
   useEffect(() => {
