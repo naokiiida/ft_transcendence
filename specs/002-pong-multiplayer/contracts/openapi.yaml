@@ -1,0 +1,987 @@
+openapi: 3.1.0
+info:
+  title: ft_transcendence API
+  description: |
+    REST API for the ft_transcendence multiplayer Pong platform.
+    All endpoints except /api/auth/* and /api/health require authentication via session cookie.
+  version: 1.0.0
+  contact:
+    name: ft_transcendence Team
+
+servers:
+  - url: https://pong.taiida.com
+    description: Production server
+
+tags:
+  - name: Auth
+    description: Authentication via 42 OAuth
+  - name: Users
+    description: User profile management
+  - name: Friends
+    description: Friend relationships
+  - name: Games
+    description: Game history and creation
+  - name: Tournaments
+    description: Tournament management
+  - name: System
+    description: Health checks and metrics
+
+paths:
+  # ============================================================================
+  # AUTH ENDPOINTS
+  # ============================================================================
+  /api/auth/login:
+    get:
+      tags: [Auth]
+      summary: Initiate 42 OAuth login
+      description: Redirects to 42 OAuth authorization page
+      responses:
+        '302':
+          description: Redirect to 42 OAuth
+          headers:
+            Location:
+              schema:
+                type: string
+                example: https://api.intra.42.fr/oauth/authorize?client_id=...
+
+  /api/auth/callback:
+    get:
+      tags: [Auth]
+      summary: OAuth callback handler
+      description: Handles 42 OAuth callback, creates session, redirects to app
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Authorization code from 42 OAuth
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: CSRF state token
+      responses:
+        '302':
+          description: Redirect to profile page
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: session=abc123; HttpOnly; Secure; SameSite=Strict
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current user
+      description: Invalidates session and clears cookie
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Successfully logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+
+  # ============================================================================
+  # USER ENDPOINTS
+  # ============================================================================
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Current user data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      tags: [Users]
+      summary: Update current user profile
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                  pattern: '^[a-zA-Z0-9_ ]+$'
+      responses:
+        '200':
+          description: Updated user data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/users/me/avatar:
+    post:
+      tags: [Users]
+      summary: Upload avatar image
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+                  description: Image file (PNG, JPG, GIF), max 2MB
+      responses:
+        '200':
+          description: Avatar uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avatar_url:
+                    type: string
+                    example: /static/avatars/abc123.png
+        '400':
+          description: Invalid file (too large or wrong type)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/users/{id}/stats:
+    get:
+      tags: [Users]
+      summary: Get user game statistics
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/users/{id}/games:
+    get:
+      tags: [Users]
+      summary: Get user match history
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of games
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  games:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # FRIENDS ENDPOINTS
+  # ============================================================================
+  /api/friends:
+    get:
+      tags: [Friends]
+      summary: Get friends list
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted]
+          description: Filter by friendship status
+      responses:
+        '200':
+          description: List of friends/requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  friends:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FriendEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Friends]
+      summary: Send friend request
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Friend request sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+        '400':
+          description: Invalid request (self-friend, duplicate)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/friends/{id}:
+    patch:
+      tags: [Friends]
+      summary: Accept or decline friend request
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Friendship ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [accept, decline]
+      responses:
+        '200':
+          description: Request processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not the addressee of this request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Friends]
+      summary: Remove friend
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Friendship ID
+      responses:
+        '204':
+          description: Friend removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # GAMES ENDPOINTS
+  # ============================================================================
+  /api/games:
+    get:
+      tags: [Games]
+      summary: List recent games
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [waiting, playing, completed]
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [quick, tournament, ai]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: List of games
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  games:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Games]
+      summary: Create new game (AI only)
+      description: Creates a new AI game. For quick match, use WebSocket matchmaking.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [game_type]
+              properties:
+                game_type:
+                  type: string
+                  enum: [ai]
+                ai_difficulty:
+                  type: string
+                  enum: [easy, medium, hard]
+                  default: medium
+      responses:
+        '201':
+          description: Game created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/games/{id}:
+    get:
+      tags: [Games]
+      summary: Get game details
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Game details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # TOURNAMENTS ENDPOINTS
+  # ============================================================================
+  /api/tournaments:
+    get:
+      tags: [Tournaments]
+      summary: List tournaments
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, ready, in_progress, completed]
+      responses:
+        '200':
+          description: List of tournaments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tournaments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TournamentSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Tournaments]
+      summary: Create tournament
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, max_players]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                max_players:
+                  type: integer
+                  enum: [4, 8, 16]
+      responses:
+        '201':
+          description: Tournament created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/tournaments/{id}:
+    get:
+      tags: [Tournaments]
+      summary: Get tournament details
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tournament with bracket
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/tournaments/{id}/join:
+    post:
+      tags: [Tournaments]
+      summary: Join tournament
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Joined successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+        '400':
+          description: Tournament full or not open
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/tournaments/{id}/start:
+    post:
+      tags: [Tournaments]
+      summary: Start tournament (creator only)
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tournament started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+        '400':
+          description: Tournament not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not tournament creator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # SYSTEM ENDPOINTS
+  # ============================================================================
+  /api/health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Returns service health for Docker/Kubernetes
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy]
+                  database:
+                    type: string
+                    enum: [connected]
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/metrics:
+    get:
+      tags: [System]
+      summary: Prometheus metrics
+      description: Returns metrics in Prometheus text format
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP active_games_count Number of active games
+                  # TYPE active_games_count gauge
+                  active_games_count 5
+
+# ==============================================================================
+# COMPONENTS
+# ==============================================================================
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        intra_username:
+          type: string
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        wins:
+          type: integer
+        losses:
+          type: integer
+        elo_rating:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+
+    UserPublic:
+      type: object
+      description: Public user profile (excludes email)
+      properties:
+        id:
+          type: string
+          format: uuid
+        intra_username:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        wins:
+          type: integer
+        losses:
+          type: integer
+        elo_rating:
+          type: integer
+        is_online:
+          type: boolean
+
+    UserStats:
+      type: object
+      properties:
+        wins:
+          type: integer
+        losses:
+          type: integer
+        elo_rating:
+          type: integer
+        games_played:
+          type: integer
+        win_rate:
+          type: number
+          format: float
+        longest_win_streak:
+          type: integer
+        tournaments_won:
+          type: integer
+
+    Friendship:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        requester:
+          $ref: '#/components/schemas/UserPublic'
+        addressee:
+          $ref: '#/components/schemas/UserPublic'
+        status:
+          type: string
+          enum: [pending, accepted, declined]
+        created_at:
+          type: string
+          format: date-time
+
+    FriendEntry:
+      type: object
+      properties:
+        friendship_id:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/UserPublic'
+        status:
+          type: string
+          enum: [pending, accepted]
+        is_requester:
+          type: boolean
+          description: True if current user sent the request
+
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        player1:
+          $ref: '#/components/schemas/UserPublic'
+        player2:
+          $ref: '#/components/schemas/UserPublic'
+          nullable: true
+        winner:
+          $ref: '#/components/schemas/UserPublic'
+          nullable: true
+        player1_score:
+          type: integer
+        player2_score:
+          type: integer
+        game_type:
+          type: string
+          enum: [quick, tournament, ai]
+        ai_difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          nullable: true
+        status:
+          type: string
+          enum: [waiting, playing, completed, forfeit]
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    GameSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        opponent:
+          $ref: '#/components/schemas/UserPublic'
+          nullable: true
+        result:
+          type: string
+          enum: [win, loss, draw]
+        score:
+          type: string
+          example: "11-7"
+        game_type:
+          type: string
+          enum: [quick, tournament, ai]
+        played_at:
+          type: string
+          format: date-time
+
+    Tournament:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        creator:
+          $ref: '#/components/schemas/UserPublic'
+        max_players:
+          type: integer
+        current_players:
+          type: integer
+        status:
+          type: string
+          enum: [open, ready, in_progress, completed]
+        winner:
+          $ref: '#/components/schemas/UserPublic'
+          nullable: true
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserPublic'
+        bracket:
+          type: array
+          items:
+            $ref: '#/components/schemas/TournamentRound'
+        created_at:
+          type: string
+          format: date-time
+
+    TournamentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        creator:
+          $ref: '#/components/schemas/UserPublic'
+        max_players:
+          type: integer
+        current_players:
+          type: integer
+        status:
+          type: string
+          enum: [open, ready, in_progress, completed]
+
+    TournamentRound:
+      type: object
+      properties:
+        round:
+          type: integer
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/TournamentMatch'
+
+    TournamentMatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        match_index:
+          type: integer
+        player1:
+          $ref: '#/components/schemas/UserPublic'
+          nullable: true
+        player2:
+          $ref: '#/components/schemas/UserPublic'
+          nullable: true
+        winner:
+          $ref: '#/components/schemas/UserPublic'
+          nullable: true
+        game_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [pending, scheduled, playing, completed]
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
