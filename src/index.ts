@@ -1,7 +1,16 @@
 import { serve } from "bun";
 import index from "./index.html";
-import { initiateOAuthFlow, handleOAuthCallback, refreshAccessToken, fetchUserProfile } from "./lib/auth";
-import type { SessionData } from "./lib/auth";
+import {
+  initiateOAuthFlow,
+  handleOAuthCallback,
+  refreshAccessToken,
+  hashPassword,
+  verifyPassword,
+  validatePassword,
+  validateEmail,
+  validateUsername,
+} from "./lib/auth";
+import type { SessionData, RegisterRequest, LoginRequest } from "./lib/auth";
 import { db } from "./lib/db";
 import { websocketHandlers, findOrCreateQuickMatch, getGameRoomsInfo, type WebSocketData } from "./lib/game";
 
@@ -11,7 +20,7 @@ const sessions = new Map<string, SessionData>();
 /**
  * Create or update user in database from 42 profile
  */
-async function upsertUser(user42: {
+async function upsertUser42(user42: {
   id: number;
   login: string;
   email: string;
@@ -26,6 +35,7 @@ async function upsertUser(user42: {
       email: user42.email,
       displayName: user42.displayname,
       imageUrl: user42.image.link,
+      authMethod: "oauth42",
     },
     update: {
       email: user42.email,
@@ -33,6 +43,26 @@ async function upsertUser(user42: {
       imageUrl: user42.image.link,
       isOnline: true,
       lastSeen: new Date(),
+    },
+  });
+}
+
+/**
+ * Create local user with email/password
+ */
+async function createLocalUser(data: {
+  email: string;
+  username: string;
+  passwordHash: string;
+  displayName: string;
+}) {
+  return db.user.create({
+    data: {
+      email: data.email,
+      login: data.username,
+      displayName: data.displayName,
+      passwordHash: data.passwordHash,
+      authMethod: "local",
     },
   });
 }
@@ -91,7 +121,7 @@ const server = serve({
           const { tokens, user: user42 } = await handleOAuthCallback(code, state);
 
           // Create or update user in database
-          const dbUser = await upsertUser(user42);
+          const dbUser = await upsertUser42(user42);
 
           // Create session with database user ID
           const sessionId = generateSessionId();
@@ -101,6 +131,7 @@ const server = serve({
             displayName: dbUser.displayName,
             email: dbUser.email,
             imageUrl: dbUser.imageUrl ?? "",
+            authMethod: "oauth42",
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
             expiresAt: Date.now() + tokens.expires_in * 1000,
@@ -141,8 +172,13 @@ const server = serve({
           return Response.json({ user: null }, { status: 401 });
         }
 
-        // Check if token needs refresh
-        if (Date.now() > session.expiresAt - 5 * 60 * 1000) {
+        // Check if OAuth token needs refresh (only for OAuth users)
+        if (
+          session.authMethod === "oauth42" &&
+          session.expiresAt &&
+          session.refreshToken &&
+          Date.now() > session.expiresAt - 5 * 60 * 1000
+        ) {
           try {
             const tokens = await refreshAccessToken(session.refreshToken);
             session.accessToken = tokens.access_token;
@@ -162,6 +198,7 @@ const server = serve({
             displayName: session.displayName,
             email: session.email,
             imageUrl: session.imageUrl,
+            authMethod: session.authMethod,
           },
         });
       },
@@ -187,6 +224,191 @@ const server = serve({
             "Set-Cookie": "session=; Path=/; HttpOnly; Max-Age=0",
           },
         });
+      },
+    },
+
+    // ============ Local Auth Routes (Email/Password) ============
+
+    // Register new user with email/password
+    "/auth/register": {
+      async POST(req) {
+        try {
+          const body = (await req.json()) as RegisterRequest;
+          const { email, username, password, displayName } = body;
+
+          // Validate inputs
+          const emailError = validateEmail(email);
+          if (emailError) {
+            return Response.json({ error: emailError }, { status: 400 });
+          }
+
+          const usernameError = validateUsername(username);
+          if (usernameError) {
+            return Response.json({ error: usernameError }, { status: 400 });
+          }
+
+          const passwordError = validatePassword(password);
+          if (passwordError) {
+            return Response.json({ error: passwordError }, { status: 400 });
+          }
+
+          // Check if email already exists
+          const existingEmail = await db.user.findUnique({
+            where: { email },
+            select: { id: true },
+          });
+          if (existingEmail) {
+            return Response.json({ error: "Email already registered" }, { status: 409 });
+          }
+
+          // Check if username already exists
+          const existingUsername = await db.user.findUnique({
+            where: { login: username },
+            select: { id: true },
+          });
+          if (existingUsername) {
+            return Response.json({ error: "Username already taken" }, { status: 409 });
+          }
+
+          // Hash password with bcrypt (salt included in hash)
+          const passwordHash = await hashPassword(password);
+
+          // Create user
+          const dbUser = await createLocalUser({
+            email,
+            username,
+            passwordHash,
+            displayName: displayName || username,
+          });
+
+          // Create session
+          const sessionId = generateSessionId();
+          const session: SessionData = {
+            userId: dbUser.id,
+            login: dbUser.login,
+            displayName: dbUser.displayName,
+            email: dbUser.email,
+            imageUrl: dbUser.imageUrl ?? "",
+            authMethod: "local",
+          };
+
+          sessions.set(sessionId, session);
+
+          // Return success with session cookie
+          return new Response(
+            JSON.stringify({
+              success: true,
+              user: {
+                id: dbUser.id,
+                login: dbUser.login,
+                displayName: dbUser.displayName,
+                email: dbUser.email,
+                imageUrl: dbUser.imageUrl,
+                authMethod: "local",
+              },
+            }),
+            {
+              status: 201,
+              headers: {
+                "Content-Type": "application/json",
+                "Set-Cookie": `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`,
+              },
+            }
+          );
+        } catch (error) {
+          console.error("Registration failed:", error);
+          return Response.json({ error: "Registration failed" }, { status: 500 });
+        }
+      },
+    },
+
+    // Login with email/password
+    "/auth/local/login": {
+      async POST(req) {
+        try {
+          const body = (await req.json()) as LoginRequest;
+          const { email, password } = body;
+
+          if (!email || !password) {
+            return Response.json({ error: "Email and password required" }, { status: 400 });
+          }
+
+          // Find user by email
+          const dbUser = await db.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              login: true,
+              displayName: true,
+              email: true,
+              imageUrl: true,
+              passwordHash: true,
+              authMethod: true,
+            },
+          });
+
+          if (!dbUser) {
+            // Use generic error to prevent user enumeration
+            return Response.json({ error: "Invalid email or password" }, { status: 401 });
+          }
+
+          // Check if user has local auth
+          if (dbUser.authMethod !== "local" || !dbUser.passwordHash) {
+            return Response.json(
+              { error: "This account uses 42 OAuth login. Please use 42 login instead." },
+              { status: 400 }
+            );
+          }
+
+          // Verify password (constant-time comparison via bcrypt)
+          const isValid = await verifyPassword(password, dbUser.passwordHash);
+          if (!isValid) {
+            return Response.json({ error: "Invalid email or password" }, { status: 401 });
+          }
+
+          // Update last seen
+          await db.user.update({
+            where: { id: dbUser.id },
+            data: { isOnline: true, lastSeen: new Date() },
+          });
+
+          // Create session
+          const sessionId = generateSessionId();
+          const session: SessionData = {
+            userId: dbUser.id,
+            login: dbUser.login,
+            displayName: dbUser.displayName,
+            email: dbUser.email,
+            imageUrl: dbUser.imageUrl ?? "",
+            authMethod: "local",
+          };
+
+          sessions.set(sessionId, session);
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              user: {
+                id: dbUser.id,
+                login: dbUser.login,
+                displayName: dbUser.displayName,
+                email: dbUser.email,
+                imageUrl: dbUser.imageUrl,
+                authMethod: "local",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "Set-Cookie": `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`,
+              },
+            }
+          );
+        } catch (error) {
+          console.error("Login failed:", error);
+          return Response.json({ error: "Login failed" }, { status: 500 });
+        }
       },
     },
 
