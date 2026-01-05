@@ -16,11 +16,22 @@ datasource db {
 
 model User {
   id          Int      @id @default(autoincrement())
-  id42        Int      @unique // 42 intra user ID
-  login       String   @unique // 42 login (e.g., "niida")
   email       String   @unique
+  login       String   @unique // Username for display
   displayName String
   imageUrl    String?
+
+  // Authentication method
+  // - "oauth42": 42 School OAuth (id42 is set)
+  // - "local": Email/password auth (passwordHash is set)
+  authMethod  String   @default("oauth42")
+
+  // 42 OAuth fields (only for authMethod="oauth42")
+  id42        Int?     @unique // 42 intra user ID
+
+  // Local auth fields (only for authMethod="local")
+  // Password hash includes salt (bcrypt format)
+  passwordHash String?
 
   // Game stats
   wins        Int      @default(0)
