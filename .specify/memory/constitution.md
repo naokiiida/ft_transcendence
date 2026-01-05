@@ -2,26 +2,32 @@
 ================================================================================
 SYNC IMPACT REPORT
 ================================================================================
-Version change: 1.1.0 → 1.2.0 (MINOR - Add UI stack, domain architecture)
+Version change: 1.0.0 → 2.0.0 (MAJOR - Architecture pivot from microservices to monolith)
 
 Modified principles:
-  - III. Type Safety First: Updated data layer from Drizzle to Prisma TypedSQL
-  - V. Security by Default: Added email/password auth requirement per 42 spec
-  - Technology Stack: Added shadcn/ui, Lucide icons, domain architecture
+  - "Microservices Architecture" → REMOVED (replaced with Fresh-First Monolith)
+  - "Web-First Development" → Updated for Fresh Islands architecture (not SPA)
+  - "Type Safety First" → Updated for Deno native TypeScript
+  - "Docker-First Development" → Simplified to "Container-Based Development"
+  - "Test-Driven Development" → Relaxed to "Test-Supported Development"
 
 Added sections:
-  - 42 Project Requirements (mandatory compliance section)
-  - Module Point Tracking
-  - Domain Architecture (pong.taiida.com)
+  - 42 Project Modules (19 points tracking)
+  - Security Layers (defense-in-depth table)
 
-Removed sections: None
+Removed sections:
+  - Microservices service list (api-gateway, auth-service, etc.)
+  - Bun/Hono/React stack details
+  - Drizzle ORM
 
 Templates requiring updates:
-  - .specify/templates/plan-template.md: ✅ Compatible (Constitution Check section exists)
+  - .specify/templates/plan-template.md: ✅ Compatible (monolith structure option exists)
   - .specify/templates/spec-template.md: ✅ Compatible (User Stories structure aligns)
   - .specify/templates/tasks-template.md: ✅ Compatible (Phase structure aligns)
 
-Follow-up TODOs: None
+Follow-up TODOs:
+  - Create git hook to prevent raw db.query() usage (enforce db.prepare())
+  - Create Claude Code hook for same SQL injection prevention
 ================================================================================
 -->
 
@@ -29,376 +35,302 @@ Follow-up TODOs: None
 
 ## Core Principles
 
-### I. Web-First Development
+### I. Fresh-First Monolithic Architecture
 
-All features MUST be designed for browser-native execution with real-time capabilities.
+The application MUST be built as a single deployable unit using Deno Fresh.
 
-- **Single Page Application (SPA)**: The frontend MUST operate as an SPA with client-side routing;
-  full page reloads are prohibited except for initial load and authentication redirects
-- **Real-Time First**: Game state, chat, and presence MUST use WebSocket connections;
-  HTTP polling is prohibited for real-time features
-- **Responsive Design**: UI MUST function on viewport widths from 320px to 2560px;
-  breakpoints MUST be defined in a central theme configuration
-- **Browser APIs**: MUST leverage native APIs (Canvas 2D for game rendering,
-  Notification API for alerts, Web Audio for sound) before third-party alternatives
+- **Single Codebase**: All application code (routes, islands, APIs, game logic)
+  MUST reside in one Fresh project; microservices are prohibited
+- **Islands Architecture**: Interactive components MUST use Fresh Islands for selective hydration;
+  full-page client-side hydration is prohibited
+- **Server-Side Rendering**: All pages MUST render on the server first (SSR module = 1pt);
+  client-only routes are prohibited except for WebSocket endpoints
+- **File-Based Routing**: Routes MUST follow Fresh conventions (`routes/`, `islands/`);
+  custom routing abstractions are prohibited
 
-**Rationale**: ft_transcendence is a browser-based multiplayer game;
-performance and user experience depend on minimizing network round-trips
-and maximizing browser-native capabilities.
+**Rationale**: A monolithic Fresh app reduces deployment complexity, eliminates
+inter-service communication overhead, and allows a 4-5 person team to iterate faster.
+Fresh's Islands architecture provides SPA-like interactivity without the complexity.
 
-### II. Microservices Architecture
+### II. Type Safety First
 
-The system MUST be decomposed into independently deployable services with clear boundaries.
+Deno's native TypeScript MUST be leveraged with strict settings and runtime validation.
 
-- **Service Boundaries**: Each microservice MUST own its data and expose a REST API;
-  direct database access across service boundaries is prohibited
-- **Services Required**:
-  - `api-gateway`: Request routing, rate limiting, CORS
-  - `auth-service`: OAuth 2.0, JWT issuance, session management
-  - `user-service`: Registration, profiles, avatars, friends, stats
-  - `game-service`: Match orchestration, game state, history
-  - `chat-service`: Real-time messaging, channels, DMs
-- **Communication**: Services MUST communicate via HTTP REST for synchronous operations
-  and WebSocket/events for real-time state propagation
-- **Independence**: Each service MUST be startable, testable, and deployable in isolation
-
-**Rationale**: Microservices enable independent scaling, fault isolation,
-and team parallelization—critical for a real-time multiplayer system.
-
-### III. Type Safety First
-
-TypeScript strict mode MUST be enforced across all codebases with runtime validation at boundaries.
-
-- **Compiler Configuration**: `strict: true`, `noImplicitAny: true`, `strictNullChecks: true`
-  MUST be enabled in all `tsconfig.json` files
+- **Strict Mode**: `"strict": true` in `deno.json`; implicit `any` is prohibited
 - **No `any` Type**: Usage of `any` is prohibited; `unknown` with type guards
   or explicit generics MUST be used instead
-- **Runtime Validation**: All external inputs (API requests, WebSocket messages, environment variables)
-  MUST be validated using Zod schemas; unvalidated data MUST NOT propagate beyond service boundaries
-- **Shared Types**: Common types (API contracts, game state, user models)
-  MUST be defined in a shared `types` package imported by all services
+- **Runtime Validation**: All external inputs (form data, WebSocket messages, URL params)
+  MUST be validated using Zod schemas before processing
+- **Shared Types**: Game state, user models, and API contracts MUST be defined
+  in a `shared/` directory imported by both server and client code
 
-**Rationale**: Type safety eliminates entire categories of runtime errors;
-runtime validation ensures malformed data cannot corrupt system state.
+**Rationale**: Deno runs TypeScript natively without transpilation;
+strict typing catches errors at development time rather than production.
 
-### IV. Test-Driven Development (NON-NEGOTIABLE)
+### III. Security by Default
 
-Tests MUST be written before implementation; no feature code without failing tests first.
+Security MUST be built into every layer; the 42 evaluation will test for vulnerabilities.
 
-- **Red-Green-Refactor**: Write failing test → implement minimal code to pass → refactor;
-  this cycle is mandatory for all new functionality
-- **Test Categories**:
-  - **Contract Tests**: API endpoint request/response schemas MUST have contract tests
-  - **Integration Tests**: Cross-service flows (auth → game, user → chat) MUST have integration tests
-  - **Unit Tests**: Business logic with branching MUST have unit tests
-- **Coverage Thresholds**: Services MUST maintain ≥80% line coverage;
-  critical paths (auth, game logic) MUST have ≥95% coverage
-- **Test Naming**: Tests MUST follow `[unit|integration|contract]_[feature]_[scenario]_[expected]` pattern
+- **SQL Injection Prevention**: All database queries MUST use `db.prepare()` with
+  parameterized statements; raw string interpolation in SQL is PROHIBITED
+  and MUST be enforced by git hooks and Claude Code hooks
+- **XSS Protection**: Preact's auto-escaping MUST be relied upon;
+  `dangerouslySetInnerHTML` is prohibited without explicit security review
+- **CSRF Protection**: Fresh middleware MUST validate CSRF tokens on all
+  state-changing requests (POST, PUT, DELETE)
+- **Authentication**: OAuth 2.0 via 42 API for login; session tokens stored
+  in HTTP-only secure cookies
+- **Password Hashing**: Local passwords (if any) MUST use bcrypt with cost factor ≥10
+- **Input Validation**: Zod schemas MUST validate all user inputs on both
+  client (UX) and server (security) sides
+- **HTTPS Only**: Traefik MUST terminate TLS; all HTTP traffic redirects to HTTPS
 
-**Rationale**: TDD produces more maintainable code, serves as living documentation,
-and catches regressions before they reach production.
+**Rationale**: The 42 project requires security; failing security checks fails the project.
+Defense-in-depth with multiple layers prevents single points of failure.
 
-### V. Security by Default
+### IV. Real-Time Game Architecture
 
-Security MUST be built into every layer; vulnerabilities are treated as critical bugs.
+Game state MUST be authoritative on the server with client-side prediction for responsiveness.
 
-- **Authentication**: OAuth 2.0 with JWT tokens; tokens MUST expire within 15 minutes;
-  refresh tokens MUST be HTTP-only secure cookies
-- **Authorization**: All endpoints MUST verify JWT and check permissions before processing;
-  default-deny policy for all resources
-- **Input Validation**: All user inputs MUST be sanitized; SQL injection, XSS, and CSRF
-  protections MUST be active on all routes
-- **Secrets Management**: Secrets MUST be injected via environment variables;
-  hardcoded credentials in source code are prohibited
-- **HTTPS Only**: All production traffic MUST use TLS 1.3; HTTP redirects to HTTPS
+- **Server Authority**: Game physics and scoring MUST be calculated server-side;
+  clients send inputs, server broadcasts state
+- **WebSocket Protocol**: Game and chat MUST share a single WebSocket connection per client;
+  message types distinguished by a `type` field in JSON payloads
+- **Reconnection Handling**: Clients MUST automatically reconnect on disconnect;
+  server MUST maintain game state for 30 seconds to allow rejoin
+- **Tick Rate**: Server MUST broadcast game state at ≥30 updates/second for Pong;
+  clients interpolate between updates for smooth rendering
 
-**Rationale**: ft_transcendence handles user credentials, personal data, and real-time game state;
-security breaches would compromise user trust and violate 42 project requirements.
+**Rationale**: Server-authoritative game logic prevents cheating and ensures
+fair play—critical for tournament integrity.
 
-### VI. Docker-First Development
+### V. Observable Operations
 
-All development and deployment MUST use containerized environments for consistency.
+System health MUST be visible through Prometheus metrics and Grafana dashboards.
 
-- **Docker Compose**: Development environment MUST be startable with a single `docker compose up` command
-- **Service Isolation**: Each microservice MUST have its own Dockerfile;
-  multi-stage builds MUST be used to minimize image size
-- **Database Containers**: LibSQL/Turso MUST run in containers for local development;
-  production connections use Turso cloud
-- **Environment Parity**: Development containers MUST mirror production configuration;
-  "works on my machine" scenarios are prohibited
-- **Health Checks**: All services MUST expose `/health` endpoints checked by Docker
+- **Metrics Endpoint**: Fresh MUST expose `/metrics` in Prometheus format;
+  custom metrics for active games, connected users, and match completions
+- **Grafana Dashboards**: Pre-configured dashboards MUST show system health,
+  game statistics, and user activity
+- **Structured Logging**: All logs MUST be JSON format with request correlation IDs
+- **Health Checks**: `/health` endpoint MUST return service status for Docker
 
-**Rationale**: Containerization eliminates environment drift between team members
-and ensures predictable deployments.
+**Rationale**: Prometheus + Grafana module (2pts) and Analytics Dashboard module (2pts)
+require observable infrastructure; this also helps debugging in production.
 
-### VII. Simplicity and YAGNI
+### VI. Simplicity and YAGNI
 
 Features MUST solve current requirements; speculative abstractions are prohibited.
 
-- **Start Simple**: Implement the simplest solution that passes tests;
+- **Start Simple**: Implement the simplest solution that works;
   refactor when complexity is proven necessary
-- **No Premature Abstraction**: Do not create factories, strategies, or plugins
+- **No Premature Abstraction**: Do not create factories, repositories, or plugins
   until three concrete use cases require them
 - **Delete Dead Code**: Unused code MUST be removed immediately;
   commented-out code is prohibited in committed files
 - **Dependency Minimalism**: Every external dependency MUST justify its inclusion;
-  prefer stdlib or small focused libraries over large frameworks
+  prefer Deno stdlib and Fresh built-ins over third-party packages
 
-**Rationale**: Over-engineering wastes development time and creates maintenance burden;
-the ft_transcendence deadline requires focused, efficient development.
+**Rationale**: The 42 project deadline requires focused development;
+over-engineering wastes time and creates maintenance burden.
 
-## Technology Stack Constraints
+## 42 Project Modules
+
+### Selected Modules (19 points / 14 required)
+
+| Module | Category | Points | Implementation |
+|--------|----------|--------|----------------|
+| Web-based game (Pong) | Gaming | 2 | Canvas 2D + server-side physics |
+| Remote players | Gaming | 2 | WebSocket real-time multiplayer |
+| Frontend + Backend framework | Web | 2 | Fresh (full-stack, counts as both) |
+| Real-time WebSockets | Web | 2 | Game state + chat |
+| Standard user management | User | 2 | Profiles, friends, avatars, stats |
+| Prometheus + Grafana | DevOps | 2 | `/metrics` endpoint + dashboards |
+| Analytics Dashboard | Data | 2 | Grafana + SQLite plugin |
+| AI Opponent | AI | 2 | Pong AI (must be explainable) |
+| SSR | Web | 1 | Fresh built-in (free) |
+| OAuth 2.0 | User | 1 | 42 API integration |
+| Tournament system | Gaming | 1 | Brackets + matchmaking |
+| **Total** | | **19** | **5pt buffer** |
+
+### Module Dependencies
+
+```
+Tournament system ──────► Web-based game (Pong) [required]
+AI Opponent ────────────► Web-based game (Pong) [required]
+Remote players ─────────► Web-based game (Pong) [required]
+Analytics Dashboard ────► Prometheus + Grafana  [data source]
+Game statistics ────────► Web-based game (Pong) [if added later]
+```
+
+### Standard User Management Requirements (2pts)
+
+Per 42 spec, this module MUST include:
+- Users can update their profile information
+- Users can upload an avatar (with default fallback)
+- Users can add other users as friends and see online status
+- Users have a profile page displaying their information
+- Track user game statistics (wins, losses, ranking)
+- Display match history (1v1 games, dates, results, opponents)
+
+## Technology Stack
 
 ### Runtime and Framework
 
 | Layer | Technology | Version | Rationale |
 |-------|------------|---------|-----------|
-| Runtime | Bun | ≥1.0 | Fast startup, native TypeScript, built-in test runner |
-| Backend Framework | Hono | ≥4.0 | Lightweight, fast, middleware-focused, Bun-optimized |
-| Frontend Framework | React | ≥18.0 | Component model, hooks, ecosystem maturity |
-| Database | LibSQL (Turso) | Latest | SQLite fork with edge replication, serverless-friendly |
-| Data Layer | Prisma TypedSQL | ≥6.0 | Raw SQL with type generation; no ORM abstraction |
-
-### Prisma TypedSQL Workflow
-
-Raw SQL queries are preferred over ORM abstractions. Prisma TypedSQL provides type safety without hiding the SQL:
-
-```
-prisma/sql/
-├── getUsers.sql           # Raw SQL queries
-├── createUser.sql
-├── getMatchHistory.sql
-└── updateUserStats.sql
-```
-
-**Workflow**:
-1. Write raw `.sql` files in `prisma/sql/`
-2. Run `prisma generate --sql` to generate typed client
-3. Import and use: `import { getUsers } from "@prisma/client/sql"`
-4. Execute with `client.$queryRawTyped(getUsers({ email }))`
-
-**Turso Compatibility**: Use `@prisma/adapter-libsql` driver adapter
-
-### UI Framework
-
-| Layer | Technology | Version | Rationale |
-|-------|------------|---------|-----------|
-| Component Library | shadcn/ui | Latest | Copy-paste components; full customization; built on Radix UI |
-| CSS Framework | Tailwind CSS | ≥3.4 | Required by shadcn/ui; utility-first |
-| Icons | Lucide | Latest | Clean, consistent icon set; tree-shakeable |
-| Primitives | Radix UI | Latest | Accessible, unstyled primitives (via shadcn/ui) |
-
-**shadcn/ui Workflow**:
-- Components are copied into `frontend/src/components/ui/`
-- Full ownership—modify as needed; no version lock-in
-- Use `bunx shadcn@latest add <component>` to add new components
+| Runtime | Deno | ≥1.40 | Native TypeScript, secure by default, built-in tooling |
+| Framework | Fresh | ≥1.6 | SSR + Islands, file-based routing, Preact integration |
+| UI Library | Preact | ≥10.0 | Lightweight React alternative, auto-escaping XSS |
+| Database | SQLite/libSQL | Latest | Simple, file-based, `db.prepare()` prevents SQL injection |
+| Reverse Proxy | Traefik | ≥3.0 | HTTPS termination, automatic TLS, Docker integration |
 
 ### Development Tools
 
 | Tool | Purpose | Configuration |
 |------|---------|---------------|
-| Biome | Linting + Formatting | `biome.json` at repo root; format on save enforced |
-| TypeScript | Type checking | Strict mode; shared `tsconfig.base.json` |
-| Bun Test | Testing | Built-in; `bun test` for all test execution |
-| Docker | Containerization | `docker-compose.yml` for local dev; per-service Dockerfiles |
+| Biome | Linting + Formatting | `biome.json` at repo root |
+| Deno | Testing | Built-in `deno test` |
+| Docker | Containerization | `docker-compose.yml` for local dev |
 
-### Authentication
+### Security Layers
 
-- **Provider**: OAuth 2.0 (42 API as primary; optionally Google/GitHub)
-- **Token Format**: JWT with RS256 signing
-- **Session Storage**: HTTP-only secure cookies for refresh tokens
-- **Token Lifetime**: Access token 15min, Refresh token 7 days
+| Layer | Tool | Protects Against |
+|-------|------|------------------|
+| Reverse Proxy | Traefik | HTTPS, TLS termination |
+| Input Validation | Zod (shared) | Invalid data, injection setup |
+| SQL | `db.prepare()` | SQL injection |
+| Passwords | bcrypt | Rainbow tables, brute force |
+| Auth | Session + middleware | Unauthorized access |
+| XSS | Preact auto-escape | Script injection |
+| CSRF | Fresh middleware | Cross-site requests |
 
 ### Communication Protocols
 
-| Use Case | Protocol | Library |
-|----------|----------|---------|
-| REST API | HTTP/2 | Hono built-in |
-| Real-time Game | WebSocket | Hono WebSocket upgrade |
-| Real-time Chat | WebSocket | Shared connection with game |
-| File Uploads | HTTP multipart | Avatar images only; ≤2MB |
+| Use Case | Protocol | Implementation |
+|----------|----------|----------------|
+| Page Rendering | HTTP/2 | Fresh SSR |
+| REST API | HTTP/2 | Fresh API routes (`/api/*`) |
+| Game + Chat | WebSocket | Single shared connection |
+| File Uploads | HTTP multipart | Avatars only; ≤2MB |
 
-### Domain Architecture
+## Project Structure
 
-**Base Domain**: `pong.taiida.com`
-
-| Service | URL | Purpose |
-|---------|-----|---------|
-| Frontend | `pong.taiida.com` | React SPA; main user interface |
-| API Gateway | `api.pong.taiida.com` | REST API entry point; routes to microservices |
-| WebSocket | `ws.pong.taiida.com` | Real-time game and chat connections |
-| Auth Callback | `api.pong.taiida.com/auth/callback` | OAuth 2.0 redirect URI |
-
-**Frontend Routes** (client-side routing under `pong.taiida.com`):
-
-| Route | Purpose |
-|-------|---------|
-| `/` | Landing page / game lobby |
-| `/login` | Authentication page |
-| `/user/:id` | User profile page |
-| `/game/:id` | Active game room |
-| `/tournament/:id` | Tournament bracket view |
-| `/settings` | User settings |
-| `/privacy` | Privacy Policy (required) |
-| `/terms` | Terms of Service (required) |
-
-**API Routes** (under `api.pong.taiida.com`):
-
-| Route | Service | Purpose |
-|-------|---------|---------|
-| `/auth/*` | auth-service | OAuth, JWT, sessions |
-| `/users/*` | user-service | Profiles, friends, stats |
-| `/games/*` | game-service | Match orchestration, history |
-| `/chat/*` | chat-service | Messages, channels |
-| `/health` | all | Health check endpoint |
-
-**CORS Configuration**:
-- Allow origin: `https://pong.taiida.com`
-- Allow credentials: `true`
-- Allowed methods: `GET, POST, PUT, DELETE, OPTIONS`
-
-**SSL/TLS**: All domains MUST use HTTPS (TLS 1.3); managed via Let's Encrypt or Cloudflare
+```
+ft_transcendence/
+├── deno.json              # Deno config + tasks
+├── biome.json             # Linting/formatting
+├── docker-compose.yml     # Container orchestration
+├── fresh.gen.ts           # Fresh manifest (auto-generated)
+├── main.ts                # Entry point
+├── routes/
+│   ├── index.tsx          # Home page
+│   ├── api/               # API endpoints
+│   │   ├── auth/          # OAuth callbacks
+│   │   ├── users/         # User CRUD
+│   │   ├── games/         # Game history
+│   │   └── ws.ts          # WebSocket upgrade
+│   ├── game/              # Game pages
+│   ├── profile/           # User profiles
+│   └── tournament/        # Tournament brackets
+├── islands/               # Interactive components
+│   ├── PongCanvas.tsx     # Game rendering
+│   ├── ChatBox.tsx        # Real-time chat
+│   └── OnlineStatus.tsx   # Friend presence
+├── shared/
+│   ├── types/             # Shared TypeScript types
+│   ├── schemas/           # Zod validation schemas
+│   └── game/              # Game logic (shared server/client)
+├── lib/
+│   ├── db.ts              # Database (db.prepare only!)
+│   ├── auth.ts            # Session management
+│   └── ws.ts              # WebSocket handlers
+├── static/                # Static assets
+├── tests/                 # Test files
+└── infra/
+    ├── traefik/           # Reverse proxy config
+    ├── prometheus/        # Metrics config
+    └── grafana/           # Dashboard provisioning
+```
 
 ## Development Workflow
 
 ### Branch Strategy
 
-- `main`: Production-ready code; protected; requires PR approval
-- `develop`: Integration branch; all feature branches merge here first
-- `feature/<name>`: Individual features; short-lived (≤1 week)
+- `main`: Production-ready; protected; requires PR approval
+- `develop`: Integration branch
+- `feature/<name>`: Individual features
 - `fix/<name>`: Bug fixes
-- `release/<version>`: Release preparation
 
 ### Commit Standards
 
 - **Format**: `<type>(<scope>): <description>` (Conventional Commits)
 - **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-- **Scope**: Service name (`auth`, `game`, `user`, `chat`, `gateway`) or `shared`
-- **Atomicity**: Each commit MUST leave the codebase in a working state
+- **Scope**: `game`, `auth`, `user`, `chat`, `infra`, `shared`
 
 ### Code Review Requirements
 
 - All changes MUST be reviewed by at least one team member
 - Reviews MUST verify:
-  - Tests exist and pass
-  - Type safety is maintained
-  - Security considerations are addressed
-  - Constitution principles are followed
-- Self-merges are prohibited for non-trivial changes
+  - No raw SQL (only `db.prepare()`)
+  - Zod validation on all inputs
+  - No `any` types
+  - Constitution principles followed
+- Self-merges prohibited for non-trivial changes
 
 ### Definition of Done
 
 A feature is complete when:
-1. All acceptance tests pass
-2. Code coverage thresholds are met
-3. Documentation is updated (if applicable)
-4. Code review is approved
-5. CI pipeline passes
-6. Deployed to staging and manually verified
+1. No TypeScript errors (`deno check`)
+2. Biome passes (`deno task lint`)
+3. Code review approved
+4. `docker compose up` works
+5. Manually tested in Chrome (42 requirement)
 
-## 42 Project Requirements (NON-NEGOTIABLE)
+## Container Configuration
 
-These requirements come directly from ft_transcendence v19 and MUST be satisfied for project validation.
+### Docker Compose Services
 
-### Mandatory General Requirements
+```yaml
+services:
+  fresh:        # Main application (Deno + Fresh)
+  traefik:      # Reverse proxy + TLS termination
+  prometheus:   # Metrics collection
+  grafana:      # Dashboards + analytics
+```
 
-- **Web Application**: MUST have frontend, backend, and database
-- **Containerization**: MUST deploy with Docker; single `docker compose up` command
-- **Browser Compatibility**: MUST work on latest stable Google Chrome
-- **Console Cleanliness**: No warnings or errors in browser console
-- **Legal Pages**: Privacy Policy and Terms of Service pages MUST be accessible and contain relevant content
-- **Multi-User Support**: Multiple users MUST be able to use the application simultaneously without conflicts
+### Single Command Startup
 
-### Mandatory Technical Requirements
+Development environment MUST start with:
+```bash
+docker compose up
+```
 
-- **Responsive Frontend**: Clear, responsive, accessible across all devices
-- **CSS Framework**: MUST use a styling solution (Tailwind CSS, etc.)
-- **Environment Variables**: Credentials in `.env` file (git-ignored); `.env.example` MUST be provided
-- **Database Schema**: Clear schema with well-defined relations
-- **User Management**: Basic auth with email/password (hashed, salted); OAuth via modules
-- **Form Validation**: All inputs validated on BOTH frontend AND backend
-- **HTTPS**: Backend MUST use HTTPS everywhere
-
-### Standard User Management (Module: Major - 2pts)
-
-Per your requirements, this module MUST include:
-
-| Feature | Requirement |
-|---------|-------------|
-| Profile Updates | Users can update their profile information |
-| Avatar System | Upload avatar with default fallback |
-| Friends System | Add/remove friends, see online status |
-| Profile Page | Display user information |
-| Display Names | Unique names for tournaments |
-| User Stats | Track wins, losses |
-| Match History | Track all games played |
-
-### Module Point Tracking
-
-**Target**: ≥14 points (Major = 2pts, Minor = 1pt)
-
-**Planned Modules** (update as team decides):
-
-| Module | Type | Points | Status |
-|--------|------|--------|--------|
-| Frontend + Backend Frameworks | Major | 2 | Planned |
-| Real-time WebSocket Features | Major | 2 | Planned |
-| Web-based Pong Game | Major | 2 | Planned |
-| Remote Players | Major | 2 | Planned |
-| Standard User Management | Major | 2 | Planned |
-| OAuth 2.0 (42 API) | Minor | 1 | Planned |
-| Tournament System | Minor | 1 | Planned |
-| Backend as Microservices | Major | 2 | Planned |
-| **Total** | | **14** | |
-
-### README Requirements
-
-The README.md MUST include (per 42 spec):
-
-1. **First line**: Italicized 42 attribution with team logins
-2. **Description**: Project name, goal, key features
-3. **Instructions**: Prerequisites, .env setup, step-by-step run instructions
-4. **Resources**: References + AI usage disclosure
-5. **Team Information**: Roles (PO, PM, Tech Lead, Developers) with responsibilities
-6. **Project Management**: Work organization, tools, communication channels
-7. **Technical Stack**: Frontend, backend, database with justifications
-8. **Database Schema**: Visual representation or description
-9. **Features List**: Complete list with team member assignments
-10. **Modules**: List with point calculations, justifications, implementation details
-11. **Individual Contributions**: Detailed breakdown per team member
+No additional setup commands required after initial clone.
 
 ## Governance
 
 ### Constitution Authority
 
-This constitution supersedes all other development practices and conventions.
-When conflicts arise between this document and external guidance,
-this constitution takes precedence.
+This constitution supersedes all other development practices.
+When conflicts arise, this document takes precedence.
 
 ### Amendment Procedure
 
-1. **Proposal**: Any team member may propose amendments via PR to this file
-2. **Discussion**: Amendments MUST be discussed for ≥24 hours before merging
-3. **Approval**: Amendments require approval from ≥50% of active team members
-4. **Documentation**: Amendment MUST include rationale and impact analysis
-5. **Migration**: Breaking amendments MUST include migration plan for existing code
+1. **Proposal**: Any team member may propose amendments via PR
+2. **Discussion**: Amendments MUST be discussed for ≥24 hours
+3. **Approval**: Requires approval from ≥50% of active team members
+4. **Migration**: Breaking amendments MUST include migration plan
 
 ### Versioning Policy
 
-- **MAJOR** (X.0.0): Backward-incompatible principle changes or removals
-- **MINOR** (x.Y.0): New principles, sections, or material expansions
-- **PATCH** (x.y.Z): Clarifications, typo fixes, non-semantic refinements
-
-### Compliance Review
-
-- Weekly: Quick review of recent commits against principles
-- Sprint End: Comprehensive constitution compliance check
-- Pre-Release: Full audit of all code against constitution
+- **MAJOR** (X.0.0): Architecture changes, principle removals
+- **MINOR** (x.Y.0): New principles, sections, or expansions
+- **PATCH** (x.y.Z): Clarifications, typo fixes
 
 ### Principle Violations
 
-- **Soft Violations**: Documented in code review; fix in next sprint
-- **Hard Violations** (Security, TDD): Block merge; immediate fix required
-- **Repeated Violations**: Trigger team retrospective to identify root cause
+- **Soft Violations**: Documented in code review; fix promptly
+- **Hard Violations** (Security, SQL injection): Block merge; immediate fix required
 
-**Version**: 1.2.0 | **Ratified**: 2026-01-05 | **Last Amended**: 2026-01-05
+**Version**: 2.0.0 | **Ratified**: 2026-01-06 | **Last Amended**: 2026-01-06
