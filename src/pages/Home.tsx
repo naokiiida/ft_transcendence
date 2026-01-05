@@ -11,10 +11,12 @@ export function HomePage() {
       <div className="flex justify-center items-center gap-8 mb-8">
         <span className="text-8xl">🏓</span>
       </div>
-      <Card className="max-w-md mx-auto">
+      <Card className="w-[clamp(20rem,90vw,50ch)] mx-auto">
         <CardHeader className="gap-4">
-          <CardTitle className="text-3xl font-bold">ft_transcendence</CardTitle>
-          <CardDescription className="text-balance">
+          <CardTitle className="text-[clamp(1.5rem,5vw,1.875rem)] font-bold leading-tight">
+            ft_transcendence
+          </CardTitle>
+          <CardDescription className="text-balance leading-relaxed break-words hyphens-auto">
             A real-time multiplayer Pong game built with Bun, Hono, React, and{" "}
             <span className="whitespace-nowrap">shadcn/ui</span>
           </CardDescription>
