@@ -489,6 +489,653 @@ const server = serve({
       return Response.json({ user });
     },
 
+    // ============ User Management Routes ============
+
+    // Update current user profile
+    "/api/users/me": {
+      async PATCH(req) {
+        // Get session
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        try {
+          const body = await req.json();
+          const { displayName } = body;
+
+          // Validate displayName if provided
+          if (displayName !== undefined) {
+            if (typeof displayName !== "string" || displayName.length < 1 || displayName.length > 50) {
+              return Response.json({ error: "Display name must be 1-50 characters" }, { status: 400 });
+            }
+          }
+
+          // Update user
+          const updatedUser = await db.user.update({
+            where: { id: session.userId },
+            data: {
+              ...(displayName !== undefined && { displayName }),
+              updatedAt: new Date(),
+            },
+            select: {
+              id: true,
+              login: true,
+              displayName: true,
+              imageUrl: true,
+              wins: true,
+              losses: true,
+              rating: true,
+            },
+          });
+
+          // Update session if displayName changed
+          if (displayName !== undefined) {
+            session.displayName = displayName;
+          }
+
+          return Response.json({ user: updatedUser });
+        } catch (error) {
+          console.error("Profile update failed:", error);
+          return Response.json({ error: "Failed to update profile" }, { status: 500 });
+        }
+      },
+    },
+
+    // Upload avatar
+    "/api/users/me/avatar": {
+      async POST(req) {
+        // Get session
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        try {
+          const contentType = req.headers.get("content-type") ?? "";
+          if (!contentType.includes("multipart/form-data")) {
+            return Response.json({ error: "Content-Type must be multipart/form-data" }, { status: 400 });
+          }
+
+          const formData = await req.formData();
+          const file = formData.get("avatar");
+
+          if (!file || !(file instanceof File)) {
+            return Response.json({ error: "No avatar file provided" }, { status: 400 });
+          }
+
+          // Validate file type
+          const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+          if (!allowedTypes.includes(file.type)) {
+            return Response.json({ error: "File must be JPEG, PNG, GIF, or WebP" }, { status: 400 });
+          }
+
+          // Validate file size (2MB max per Constitution)
+          const MAX_SIZE = 2 * 1024 * 1024;
+          if (file.size > MAX_SIZE) {
+            return Response.json({ error: "File size must be under 2MB" }, { status: 400 });
+          }
+
+          // Read file content and convert to data URL for storage
+          // (In production, upload to cloud storage like S3/Cloudflare R2)
+          const buffer = await file.arrayBuffer();
+          const base64 = Buffer.from(buffer).toString("base64");
+          const dataUrl = `data:${file.type};base64,${base64}`;
+
+          // Update user avatar
+          const updatedUser = await db.user.update({
+            where: { id: session.userId },
+            data: {
+              imageUrl: dataUrl,
+              updatedAt: new Date(),
+            },
+            select: {
+              id: true,
+              login: true,
+              displayName: true,
+              imageUrl: true,
+            },
+          });
+
+          // Update session
+          session.imageUrl = dataUrl;
+
+          return Response.json({ user: updatedUser });
+        } catch (error) {
+          console.error("Avatar upload failed:", error);
+          return Response.json({ error: "Failed to upload avatar" }, { status: 500 });
+        }
+      },
+    },
+
+    // ============ Friends Routes ============
+
+    // Get current user's friends list
+    "/api/friends": {
+      async GET(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Get friendships where user is either user1 or user2
+        const friendships = await db.friendship.findMany({
+          where: {
+            OR: [{ user1Id: session.userId }, { user2Id: session.userId }],
+          },
+          include: {
+            user1: {
+              select: {
+                id: true,
+                login: true,
+                displayName: true,
+                imageUrl: true,
+                isOnline: true,
+                lastSeen: true,
+              },
+            },
+            user2: {
+              select: {
+                id: true,
+                login: true,
+                displayName: true,
+                imageUrl: true,
+                isOnline: true,
+                lastSeen: true,
+              },
+            },
+          },
+        });
+
+        // Extract the friend (not the current user) from each friendship
+        const friends = friendships.map(f =>
+          f.user1Id === session.userId ? f.user2 : f.user1
+        );
+
+        return Response.json({ friends });
+      },
+    },
+
+    // Get pending friend requests (received)
+    "/api/friends/requests": {
+      async GET(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Get received pending requests
+        const received = await db.friendRequest.findMany({
+          where: {
+            receiverId: session.userId,
+            status: "pending",
+          },
+          include: {
+            sender: {
+              select: {
+                id: true,
+                login: true,
+                displayName: true,
+                imageUrl: true,
+              },
+            },
+          },
+        });
+
+        // Get sent pending requests
+        const sent = await db.friendRequest.findMany({
+          where: {
+            senderId: session.userId,
+            status: "pending",
+          },
+          include: {
+            receiver: {
+              select: {
+                id: true,
+                login: true,
+                displayName: true,
+                imageUrl: true,
+              },
+            },
+          },
+        });
+
+        return Response.json({
+          received: received.map(r => ({
+            id: r.id,
+            sender: r.sender,
+            createdAt: r.createdAt,
+          })),
+          sent: sent.map(s => ({
+            id: s.id,
+            receiver: s.receiver,
+            createdAt: s.createdAt,
+          })),
+        });
+      },
+    },
+
+    // Send friend request
+    "/api/friends/request/:login": {
+      async POST(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const targetLogin = req.params.login;
+
+        // Find target user
+        const targetUser = await db.user.findUnique({
+          where: { login: targetLogin },
+          select: { id: true },
+        });
+
+        if (!targetUser) {
+          return Response.json({ error: "User not found" }, { status: 404 });
+        }
+
+        if (targetUser.id === session.userId) {
+          return Response.json({ error: "Cannot send friend request to yourself" }, { status: 400 });
+        }
+
+        // Check if already friends
+        const existingFriendship = await db.friendship.findFirst({
+          where: {
+            OR: [
+              { user1Id: session.userId, user2Id: targetUser.id },
+              { user1Id: targetUser.id, user2Id: session.userId },
+            ],
+          },
+        });
+
+        if (existingFriendship) {
+          return Response.json({ error: "Already friends" }, { status: 409 });
+        }
+
+        // Check for existing pending request in either direction
+        const existingRequest = await db.friendRequest.findFirst({
+          where: {
+            OR: [
+              { senderId: session.userId, receiverId: targetUser.id, status: "pending" },
+              { senderId: targetUser.id, receiverId: session.userId, status: "pending" },
+            ],
+          },
+        });
+
+        if (existingRequest) {
+          // If they sent us a request, auto-accept it
+          if (existingRequest.senderId === targetUser.id) {
+            await db.friendRequest.update({
+              where: { id: existingRequest.id },
+              data: { status: "accepted" },
+            });
+
+            // Create friendship (user with lower ID is user1)
+            const [user1Id, user2Id] =
+              session.userId < targetUser.id
+                ? [session.userId, targetUser.id]
+                : [targetUser.id, session.userId];
+
+            await db.friendship.create({
+              data: { user1Id, user2Id },
+            });
+
+            return Response.json({ message: "Friend request accepted", status: "accepted" });
+          }
+
+          return Response.json({ error: "Friend request already sent" }, { status: 409 });
+        }
+
+        // Create new friend request
+        await db.friendRequest.create({
+          data: {
+            senderId: session.userId,
+            receiverId: targetUser.id,
+            status: "pending",
+          },
+        });
+
+        return Response.json({ message: "Friend request sent", status: "pending" }, { status: 201 });
+      },
+    },
+
+    // Accept friend request
+    "/api/friends/accept/:requestId": {
+      async POST(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const requestId = parseInt(req.params.requestId, 10);
+        if (isNaN(requestId)) {
+          return Response.json({ error: "Invalid request ID" }, { status: 400 });
+        }
+
+        const friendRequest = await db.friendRequest.findUnique({
+          where: { id: requestId },
+        });
+
+        if (!friendRequest) {
+          return Response.json({ error: "Friend request not found" }, { status: 404 });
+        }
+
+        if (friendRequest.receiverId !== session.userId) {
+          return Response.json({ error: "Cannot accept this request" }, { status: 403 });
+        }
+
+        if (friendRequest.status !== "pending") {
+          return Response.json({ error: "Request already processed" }, { status: 400 });
+        }
+
+        // Update request status
+        await db.friendRequest.update({
+          where: { id: requestId },
+          data: { status: "accepted" },
+        });
+
+        // Create friendship (user with lower ID is user1)
+        const [user1Id, user2Id] =
+          session.userId < friendRequest.senderId
+            ? [session.userId, friendRequest.senderId]
+            : [friendRequest.senderId, session.userId];
+
+        await db.friendship.create({
+          data: { user1Id, user2Id },
+        });
+
+        return Response.json({ message: "Friend request accepted" });
+      },
+    },
+
+    // Reject friend request
+    "/api/friends/reject/:requestId": {
+      async POST(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const requestId = parseInt(req.params.requestId, 10);
+        if (isNaN(requestId)) {
+          return Response.json({ error: "Invalid request ID" }, { status: 400 });
+        }
+
+        const friendRequest = await db.friendRequest.findUnique({
+          where: { id: requestId },
+        });
+
+        if (!friendRequest) {
+          return Response.json({ error: "Friend request not found" }, { status: 404 });
+        }
+
+        if (friendRequest.receiverId !== session.userId) {
+          return Response.json({ error: "Cannot reject this request" }, { status: 403 });
+        }
+
+        if (friendRequest.status !== "pending") {
+          return Response.json({ error: "Request already processed" }, { status: 400 });
+        }
+
+        // Update request status
+        await db.friendRequest.update({
+          where: { id: requestId },
+          data: { status: "rejected" },
+        });
+
+        return Response.json({ message: "Friend request rejected" });
+      },
+    },
+
+    // Remove friend
+    "/api/friends/:login": {
+      async DELETE(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const targetLogin = req.params.login;
+
+        // Find target user
+        const targetUser = await db.user.findUnique({
+          where: { login: targetLogin },
+          select: { id: true },
+        });
+
+        if (!targetUser) {
+          return Response.json({ error: "User not found" }, { status: 404 });
+        }
+
+        // Find and delete friendship
+        const friendship = await db.friendship.findFirst({
+          where: {
+            OR: [
+              { user1Id: session.userId, user2Id: targetUser.id },
+              { user1Id: targetUser.id, user2Id: session.userId },
+            ],
+          },
+        });
+
+        if (!friendship) {
+          return Response.json({ error: "Not friends with this user" }, { status: 404 });
+        }
+
+        await db.friendship.delete({
+          where: { id: friendship.id },
+        });
+
+        return Response.json({ message: "Friend removed" });
+      },
+    },
+
+    // ============ Match History Routes ============
+
+    // Get current user's match history
+    "/api/matches": {
+      async GET(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const url = new URL(req.url);
+        const limit = parseInt(url.searchParams.get("limit") ?? "20", 10);
+        const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
+
+        const matches = await db.gameSession.findMany({
+          where: {
+            OR: [{ player1Id: session.userId }, { player2Id: session.userId }],
+            status: "finished",
+          },
+          include: {
+            player1: {
+              select: {
+                id: true,
+                login: true,
+                displayName: true,
+                imageUrl: true,
+              },
+            },
+            player2: {
+              select: {
+                id: true,
+                login: true,
+                displayName: true,
+                imageUrl: true,
+              },
+            },
+          },
+          orderBy: { finishedAt: "desc" },
+          take: Math.min(limit, 100),
+          skip: offset,
+        });
+
+        // Transform to include user's perspective
+        const formattedMatches = matches.map(m => ({
+          id: m.id,
+          opponent: m.player1Id === session.userId ? m.player2 : m.player1,
+          userScore: m.player1Id === session.userId ? m.score1 : m.score2,
+          opponentScore: m.player1Id === session.userId ? m.score2 : m.score1,
+          won: m.winnerId === session.userId,
+          playedAt: m.finishedAt,
+          tournamentId: m.tournamentId,
+        }));
+
+        return Response.json({ matches: formattedMatches });
+      },
+    },
+
+    // Get match history for a specific user
+    "/api/users/:login/matches": async req => {
+      const login = req.params.login;
+
+      const user = await db.user.findUnique({
+        where: { login },
+        select: { id: true },
+      });
+
+      if (!user) {
+        return Response.json({ error: "User not found" }, { status: 404 });
+      }
+
+      const url = new URL(req.url);
+      const limit = parseInt(url.searchParams.get("limit") ?? "20", 10);
+      const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
+
+      const matches = await db.gameSession.findMany({
+        where: {
+          OR: [{ player1Id: user.id }, { player2Id: user.id }],
+          status: "finished",
+        },
+        include: {
+          player1: {
+            select: {
+              id: true,
+              login: true,
+              displayName: true,
+              imageUrl: true,
+            },
+          },
+          player2: {
+            select: {
+              id: true,
+              login: true,
+              displayName: true,
+              imageUrl: true,
+            },
+          },
+        },
+        orderBy: { finishedAt: "desc" },
+        take: Math.min(limit, 100),
+        skip: offset,
+      });
+
+      // Transform to include target user's perspective
+      const formattedMatches = matches.map(m => ({
+        id: m.id,
+        opponent: m.player1Id === user.id ? m.player2 : m.player1,
+        userScore: m.player1Id === user.id ? m.score1 : m.score2,
+        opponentScore: m.player1Id === user.id ? m.score2 : m.score1,
+        won: m.winnerId === user.id,
+        playedAt: m.finishedAt,
+        tournamentId: m.tournamentId,
+      }));
+
+      return Response.json({ matches: formattedMatches });
+    },
+
     // ============ Game Routes ============
 
     // Get quick match game ID

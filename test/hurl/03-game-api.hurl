@@ -1,5 +1,5 @@
 # Game API Tests
-# Run: hurl --test --variable timestamp=$(date +%s) test/hurl/03-game-api.hurl
+# Run: hurl --test --variable timestamp=$(date +%s) --variable base_url=http://localhost:3000 test/hurl/03-game-api.hurl
 #
 # Tests game room creation and matching API.
 # Note: Hurl shares cookies between requests, so unauthenticated tests run first.
@@ -7,19 +7,19 @@
 # ============ Unauthenticated Tests (MUST RUN FIRST) ============
 
 # Test 1: Get game rooms - public endpoint
-GET http://localhost:3000/api/game/rooms
+GET {{base_url}}/api/game/rooms
 HTTP 200
 [Asserts]
 jsonpath "$.rooms" isCollection
 
 # Test 2: Quick match without auth fails (no cookies yet)
-GET http://localhost:3000/api/game/quick-match
+GET {{base_url}}/api/game/quick-match
 HTTP 401
 [Asserts]
 jsonpath "$.error" == "Unauthorized"
 
 # Test 3: WebSocket upgrade without auth fails
-GET http://localhost:3000/ws
+GET {{base_url}}/ws
 HTTP 401
 [Asserts]
 jsonpath "$.error" == "Unauthorized"
@@ -27,7 +27,7 @@ jsonpath "$.error" == "Unauthorized"
 # ============ Setup: Create Test Players ============
 
 # Register Player 1
-POST http://localhost:3000/auth/register
+POST {{base_url}}/auth/register
 Content-Type: application/json
 {
   "email": "game_p1_{{timestamp}}@test.local",
@@ -40,7 +40,7 @@ HTTP 201
 player1_session: cookie "session"
 
 # Register Player 2
-POST http://localhost:3000/auth/register
+POST {{base_url}}/auth/register
 Content-Type: application/json
 {
   "email": "game_p2_{{timestamp}}@test.local",
@@ -55,7 +55,7 @@ player2_session: cookie "session"
 # ============ Authenticated Game Tests ============
 
 # Test 4: Quick match with Player 1 creates game
-GET http://localhost:3000/api/game/quick-match
+GET {{base_url}}/api/game/quick-match
 Cookie: session={{player1_session}}
 HTTP 200
 [Asserts]
@@ -65,13 +65,13 @@ jsonpath "$.gameId" startsWith "game_"
 game1_id: jsonpath "$.gameId"
 
 # Test 5: Game rooms shows the new game
-GET http://localhost:3000/api/game/rooms
+GET {{base_url}}/api/game/rooms
 HTTP 200
 [Asserts]
 jsonpath "$.rooms" count >= 1
 
 # Test 6: Quick match with Player 2 returns same game (matchmaking)
-GET http://localhost:3000/api/game/quick-match
+GET {{base_url}}/api/game/quick-match
 Cookie: session={{player2_session}}
 HTTP 200
 [Asserts]

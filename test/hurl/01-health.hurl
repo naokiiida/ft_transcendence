@@ -1,8 +1,8 @@
 # Health Check Tests
-# Run: hurl --test test/hurl/01-health.hurl
+# Run: hurl --test --variable base_url=http://localhost:3000 test/hurl/01-health.hurl
 
 # Basic health endpoint
-GET http://localhost:3000/health
+GET {{base_url}}/health
 HTTP 200
 [Asserts]
 jsonpath "$.status" == "ok"

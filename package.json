@@ -9,9 +9,9 @@
     "build": "bun run build.ts",
     "test": "bun test",
     "test:unit": "bun test test/websocket.test.ts",
-    "test:api": "hurl --test --variable timestamp=$(date +%s) --cookie-jar /dev/null test/hurl/*.hurl",
-    "test:api:verbose": "hurl --verbose --variable timestamp=$(date +%s) --cookie-jar /dev/null test/hurl/*.hurl",
-    "test:ci": "bun test && hurl --test --variable timestamp=$(date +%s) --cookie-jar /dev/null test/hurl/*.hurl"
+    "test:api": "hurl --test --variable timestamp=$(date +%s) --variable base_url=http://localhost:3000 --cookie-jar /dev/null test/hurl/*.hurl",
+    "test:api:verbose": "hurl --verbose --variable timestamp=$(date +%s) --variable base_url=http://localhost:3000 --cookie-jar /dev/null test/hurl/*.hurl",
+    "test:ci": "bun test && hurl --test --variable timestamp=$(date +%s) --variable base_url=http://localhost:3000 --cookie-jar /dev/null test/hurl/*.hurl"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",

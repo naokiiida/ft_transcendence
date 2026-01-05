@@ -1,5 +1,5 @@
 # Authentication Flow Tests
-# Run: hurl --test --variable timestamp=$(date +%s) test/hurl/02-auth.hurl
+# Run: hurl --test --variable timestamp=$(date +%s) --variable base_url=http://localhost:3000 test/hurl/02-auth.hurl
 #
 # These tests validate the email/password authentication flow.
 # Note: Hurl shares cookies, so unauthenticated tests MUST run first.
@@ -7,13 +7,13 @@
 # ============ Unauthenticated Tests (MUST RUN FIRST) ============
 
 # Test 1: Get current user without session fails
-GET http://localhost:3000/auth/me
+GET {{base_url}}/auth/me
 HTTP 401
 
 # ============ Validation Tests ============
 
 # Test 2: Registration with invalid email fails
-POST http://localhost:3000/auth/register
+POST {{base_url}}/auth/register
 Content-Type: application/json
 {
   "email": "invalid-email",
@@ -26,7 +26,7 @@ HTTP 400
 jsonpath "$.error" contains "email"
 
 # Test 3: Registration with weak password fails (no uppercase)
-POST http://localhost:3000/auth/register
+POST {{base_url}}/auth/register
 Content-Type: application/json
 {
   "email": "test@example.com",
@@ -39,7 +39,7 @@ HTTP 400
 jsonpath "$.error" contains "Password"
 
 # Test 4: Registration with weak password fails (no number)
-POST http://localhost:3000/auth/register
+POST {{base_url}}/auth/register
 Content-Type: application/json
 {
   "email": "test@example.com",
@@ -54,7 +54,7 @@ jsonpath "$.error" contains "Password"
 # ============ Successful Registration ============
 
 # Test 5: Successful registration
-POST http://localhost:3000/auth/register
+POST {{base_url}}/auth/register
 Content-Type: application/json
 {
   "email": "player1_{{timestamp}}@test.local",
@@ -73,7 +73,7 @@ header "Set-Cookie" contains "session="
 player1_session: cookie "session"
 
 # Test 6: Duplicate email registration fails
-POST http://localhost:3000/auth/register
+POST {{base_url}}/auth/register
 Content-Type: application/json
 {
   "email": "player1_{{timestamp}}@test.local",
@@ -86,7 +86,7 @@ HTTP 409
 jsonpath "$.error" contains "Email"
 
 # Test 7: Duplicate username registration fails
-POST http://localhost:3000/auth/register
+POST {{base_url}}/auth/register
 Content-Type: application/json
 {
   "email": "different_{{timestamp}}@test.local",
@@ -99,7 +99,7 @@ HTTP 409
 jsonpath "$.error" contains "Username"
 
 # Test 8: Login with wrong password fails
-POST http://localhost:3000/auth/local/login
+POST {{base_url}}/auth/local/login
 Content-Type: application/json
 {
   "email": "player1_{{timestamp}}@test.local",
@@ -110,7 +110,7 @@ HTTP 401
 jsonpath "$.error" contains "Invalid"
 
 # Test 9: Login with correct credentials succeeds
-POST http://localhost:3000/auth/local/login
+POST {{base_url}}/auth/local/login
 Content-Type: application/json
 {
   "email": "player1_{{timestamp}}@test.local",
@@ -123,7 +123,7 @@ jsonpath "$.user.login" startsWith "player1_"
 header "Set-Cookie" contains "session="
 
 # Test 10: Get current user with valid session succeeds
-GET http://localhost:3000/auth/me
+GET {{base_url}}/auth/me
 Cookie: session={{player1_session}}
 HTTP 200
 [Asserts]
