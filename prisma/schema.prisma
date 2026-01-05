@@ -72,24 +72,23 @@ model GameSession {
   startedAt  DateTime?
   finishedAt DateTime?
   createdAt  DateTime @default(now())
-
-  tournamentId Int?
-  tournament   Tournament? @relation(fields: [tournamentId], references: [id])
 }
 
 model Tournament {
   id          Int       @id @default(autoincrement())
   name        String
   description String?
-  maxPlayers  Int       @default(8)
+  maxPlayers  Int       @default(8) // Must be power of 2: 4, 8, 16
   status      String    @default("registration") // registration, in_progress, finished
+  currentRound Int      @default(0) // 0 = not started, 1 = first round, etc.
+  creatorId   Int?      // User who created the tournament
 
   createdAt   DateTime  @default(now())
   startedAt   DateTime?
   finishedAt  DateTime?
 
   entries     TournamentEntry[]
-  games       GameSession[]
+  matches     TournamentMatch[]
 }
 
 model TournamentEntry {
@@ -99,10 +98,36 @@ model TournamentEntry {
   tournament   Tournament @relation(fields: [tournamentId], references: [id])
   user         User       @relation(fields: [userId], references: [id])
 
+  seed         Int?       // Seeding position (1 = top seed)
   placement    Int?       // Final placement (1st, 2nd, etc.)
+  eliminated   Boolean    @default(false)
   joinedAt     DateTime   @default(now())
 
   @@unique([tournamentId, userId])
+}
+
+// Tournament match (for bracket tracking)
+model TournamentMatch {
+  id           Int        @id @default(autoincrement())
+  tournamentId Int
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+
+  round        Int        // 1 = first round, 2 = semi-finals, etc.
+  matchNumber  Int        // Position in round (0-indexed)
+
+  player1Id    Int?       // Can be null if waiting for previous match winner
+  player2Id    Int?
+  winnerId     Int?
+  score1       Int        @default(0)
+  score2       Int        @default(0)
+
+  status       String     @default("pending") // pending, in_progress, finished
+  gameId       Int?       @unique // Link to actual GameSession
+
+  createdAt    DateTime   @default(now())
+  finishedAt   DateTime?
+
+  @@unique([tournamentId, round, matchNumber])
 }
 
 // ============ Social Features ============

@@ -74,6 +74,46 @@ function generateSessionId(): string {
     .join("");
 }
 
+/**
+ * Generate standard tournament bracket seeding order
+ * For 8 players: [[1,8], [4,5], [2,7], [3,6]] - ensures top seeds meet late
+ */
+function generateBracketOrder(size: number): [number, number][] {
+  // For single elimination, use standard bracket seeding
+  // This ensures #1 seed plays #8, #4 plays #5, etc.
+  // And that #1 and #2 can only meet in the final
+
+  function buildBracket(seeds: number[]): [number, number][] {
+    if (seeds.length === 2) {
+      const first = seeds[0] ?? 0;
+      const second = seeds[1] ?? 0;
+      return [[first, second]];
+    }
+
+    const half = seeds.length / 2;
+    const top: number[] = [];
+    const bottom: number[] = [];
+
+    // Split so high seeds are distributed: 1,4,2,3 for 4 players
+    for (let i = 0; i < half; i++) {
+      const frontSeed = seeds[i] ?? 0;
+      const backSeed = seeds[seeds.length - 1 - i] ?? 0;
+      if (i % 2 === 0) {
+        top.push(frontSeed);
+        bottom.push(backSeed);
+      } else {
+        bottom.push(frontSeed);
+        top.push(backSeed);
+      }
+    }
+
+    return [...buildBracket(top), ...buildBracket(bottom)];
+  }
+
+  const seeds = Array.from({ length: size }, (_, i) => i + 1);
+  return buildBracket(seeds);
+}
+
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 
 const server = serve({
@@ -1070,7 +1110,6 @@ const server = serve({
           opponentScore: m.player1Id === session.userId ? m.score2 : m.score1,
           won: m.winnerId === session.userId,
           playedAt: m.finishedAt,
-          tournamentId: m.tournamentId,
         }));
 
         return Response.json({ matches: formattedMatches });
@@ -1130,10 +1169,545 @@ const server = serve({
         opponentScore: m.player1Id === user.id ? m.score2 : m.score1,
         won: m.winnerId === user.id,
         playedAt: m.finishedAt,
-        tournamentId: m.tournamentId,
       }));
 
       return Response.json({ matches: formattedMatches });
+    },
+
+    // ============ Tournament Routes ============
+
+    // List all tournaments
+    "/api/tournaments": {
+      async GET(req) {
+        const url = new URL(req.url);
+        const status = url.searchParams.get("status"); // registration, in_progress, finished
+        const limit = parseInt(url.searchParams.get("limit") ?? "20", 10);
+        const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
+
+        const tournaments = await db.tournament.findMany({
+          where: status ? { status } : undefined,
+          include: {
+            entries: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    login: true,
+                    displayName: true,
+                    imageUrl: true,
+                  },
+                },
+              },
+            },
+            _count: {
+              select: { entries: true },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          take: Math.min(limit, 50),
+          skip: offset,
+        });
+
+        return Response.json({
+          tournaments: tournaments.map(t => ({
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            maxPlayers: t.maxPlayers,
+            currentPlayers: t._count.entries,
+            status: t.status,
+            currentRound: t.currentRound,
+            createdAt: t.createdAt,
+            startedAt: t.startedAt,
+            finishedAt: t.finishedAt,
+          })),
+        });
+      },
+
+      // Create a new tournament
+      async POST(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        try {
+          const body = await req.json();
+          const { name, description, maxPlayers } = body;
+
+          // Validate name
+          if (!name || typeof name !== "string" || name.length < 3 || name.length > 50) {
+            return Response.json({ error: "Name must be 3-50 characters" }, { status: 400 });
+          }
+
+          // Validate maxPlayers (must be power of 2: 4, 8, 16)
+          const validSizes = [4, 8, 16];
+          const playerCount = maxPlayers ?? 8;
+          if (!validSizes.includes(playerCount)) {
+            return Response.json({ error: "Max players must be 4, 8, or 16" }, { status: 400 });
+          }
+
+          const tournament = await db.tournament.create({
+            data: {
+              name,
+              description: description ?? null,
+              maxPlayers: playerCount,
+              creatorId: session.userId,
+            },
+          });
+
+          // Auto-join the creator
+          await db.tournamentEntry.create({
+            data: {
+              tournamentId: tournament.id,
+              userId: session.userId,
+            },
+          });
+
+          return Response.json({ tournament }, { status: 201 });
+        } catch (error) {
+          console.error("Tournament creation failed:", error);
+          return Response.json({ error: "Failed to create tournament" }, { status: 500 });
+        }
+      },
+    },
+
+    // Get specific tournament details
+    "/api/tournaments/:id": {
+      async GET(req) {
+        const tournamentId = parseInt(req.params.id, 10);
+        if (isNaN(tournamentId)) {
+          return Response.json({ error: "Invalid tournament ID" }, { status: 400 });
+        }
+
+        const tournament = await db.tournament.findUnique({
+          where: { id: tournamentId },
+          include: {
+            entries: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    login: true,
+                    displayName: true,
+                    imageUrl: true,
+                    rating: true,
+                  },
+                },
+              },
+              orderBy: { seed: "asc" },
+            },
+            matches: {
+              orderBy: [{ round: "asc" }, { matchNumber: "asc" }],
+            },
+          },
+        });
+
+        if (!tournament) {
+          return Response.json({ error: "Tournament not found" }, { status: 404 });
+        }
+
+        return Response.json({ tournament });
+      },
+    },
+
+    // Join a tournament
+    "/api/tournaments/:id/join": {
+      async POST(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const tournamentId = parseInt(req.params.id, 10);
+        if (isNaN(tournamentId)) {
+          return Response.json({ error: "Invalid tournament ID" }, { status: 400 });
+        }
+
+        const tournament = await db.tournament.findUnique({
+          where: { id: tournamentId },
+          include: {
+            _count: { select: { entries: true } },
+          },
+        });
+
+        if (!tournament) {
+          return Response.json({ error: "Tournament not found" }, { status: 404 });
+        }
+
+        if (tournament.status !== "registration") {
+          return Response.json({ error: "Tournament is not accepting registrations" }, { status: 400 });
+        }
+
+        if (tournament._count.entries >= tournament.maxPlayers) {
+          return Response.json({ error: "Tournament is full" }, { status: 400 });
+        }
+
+        // Check if already joined
+        const existingEntry = await db.tournamentEntry.findUnique({
+          where: {
+            tournamentId_userId: {
+              tournamentId,
+              userId: session.userId,
+            },
+          },
+        });
+
+        if (existingEntry) {
+          return Response.json({ error: "Already joined this tournament" }, { status: 409 });
+        }
+
+        await db.tournamentEntry.create({
+          data: {
+            tournamentId,
+            userId: session.userId,
+          },
+        });
+
+        return Response.json({ message: "Joined tournament successfully" });
+      },
+    },
+
+    // Leave a tournament
+    "/api/tournaments/:id/leave": {
+      async POST(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const tournamentId = parseInt(req.params.id, 10);
+        if (isNaN(tournamentId)) {
+          return Response.json({ error: "Invalid tournament ID" }, { status: 400 });
+        }
+
+        const tournament = await db.tournament.findUnique({
+          where: { id: tournamentId },
+        });
+
+        if (!tournament) {
+          return Response.json({ error: "Tournament not found" }, { status: 404 });
+        }
+
+        if (tournament.status !== "registration") {
+          return Response.json({ error: "Cannot leave a tournament that has started" }, { status: 400 });
+        }
+
+        const entry = await db.tournamentEntry.findUnique({
+          where: {
+            tournamentId_userId: {
+              tournamentId,
+              userId: session.userId,
+            },
+          },
+        });
+
+        if (!entry) {
+          return Response.json({ error: "Not in this tournament" }, { status: 404 });
+        }
+
+        await db.tournamentEntry.delete({
+          where: { id: entry.id },
+        });
+
+        return Response.json({ message: "Left tournament successfully" });
+      },
+    },
+
+    // Start a tournament (creator only)
+    "/api/tournaments/:id/start": {
+      async POST(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const tournamentId = parseInt(req.params.id, 10);
+        if (isNaN(tournamentId)) {
+          return Response.json({ error: "Invalid tournament ID" }, { status: 400 });
+        }
+
+        const tournament = await db.tournament.findUnique({
+          where: { id: tournamentId },
+          include: {
+            entries: {
+              include: {
+                user: { select: { id: true, rating: true } },
+              },
+            },
+          },
+        });
+
+        if (!tournament) {
+          return Response.json({ error: "Tournament not found" }, { status: 404 });
+        }
+
+        if (tournament.creatorId !== session.userId) {
+          return Response.json({ error: "Only the creator can start the tournament" }, { status: 403 });
+        }
+
+        if (tournament.status !== "registration") {
+          return Response.json({ error: "Tournament already started" }, { status: 400 });
+        }
+
+        const playerCount = tournament.entries.length;
+        if (playerCount < 2) {
+          return Response.json({ error: "Need at least 2 players to start" }, { status: 400 });
+        }
+
+        // Ensure player count is power of 2, or pad with byes
+        const targetSize = [4, 8, 16].find(n => n >= playerCount) ?? 16;
+        if (playerCount > targetSize) {
+          return Response.json({ error: "Too many players for bracket size" }, { status: 400 });
+        }
+
+        // Seed players by rating (higher rating = lower seed number = better)
+        const sortedEntries = [...tournament.entries].sort(
+          (a, b) => b.user.rating - a.user.rating
+        );
+
+        // Assign seeds
+        for (let i = 0; i < sortedEntries.length; i++) {
+          const entry = sortedEntries[i];
+          if (!entry) continue;
+          await db.tournamentEntry.update({
+            where: { id: entry.id },
+            data: { seed: i + 1 },
+          });
+        }
+
+        // Generate bracket matches for first round
+        const totalRounds = Math.log2(targetSize);
+        const firstRoundMatches = targetSize / 2;
+
+        // Standard bracket seeding (1v8, 4v5, 2v7, 3v6 for 8 players)
+        const bracketOrder = generateBracketOrder(targetSize);
+
+        for (let i = 0; i < firstRoundMatches; i++) {
+          const matchup = bracketOrder[i];
+          if (!matchup) continue;
+          const [seed1, seed2] = matchup;
+          const player1 = sortedEntries.find((_, idx) => idx + 1 === seed1);
+          const player2 = sortedEntries.find((_, idx) => idx + 1 === seed2);
+
+          await db.tournamentMatch.create({
+            data: {
+              tournamentId,
+              round: 1,
+              matchNumber: i,
+              player1Id: player1?.userId ?? null,
+              player2Id: player2?.userId ?? null,
+              status: player1 && player2 ? "pending" : "finished",
+              // Auto-advance if bye (one player missing)
+              winnerId: !player1 ? player2?.userId : (!player2 ? player1?.userId : null),
+            },
+          });
+        }
+
+        // Create empty matches for subsequent rounds
+        for (let round = 2; round <= totalRounds; round++) {
+          const matchesInRound = targetSize / Math.pow(2, round);
+          for (let i = 0; i < matchesInRound; i++) {
+            await db.tournamentMatch.create({
+              data: {
+                tournamentId,
+                round,
+                matchNumber: i,
+                status: "pending",
+              },
+            });
+          }
+        }
+
+        // Update tournament status
+        await db.tournament.update({
+          where: { id: tournamentId },
+          data: {
+            status: "in_progress",
+            currentRound: 1,
+            startedAt: new Date(),
+          },
+        });
+
+        return Response.json({ message: "Tournament started", totalRounds });
+      },
+    },
+
+    // Report match result
+    "/api/tournaments/:id/matches/:matchId/result": {
+      async POST(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const tournamentId = parseInt(req.params.id, 10);
+        const matchId = parseInt(req.params.matchId, 10);
+
+        if (isNaN(tournamentId) || isNaN(matchId)) {
+          return Response.json({ error: "Invalid ID" }, { status: 400 });
+        }
+
+        const match = await db.tournamentMatch.findUnique({
+          where: { id: matchId },
+          include: { tournament: true },
+        });
+
+        if (!match || match.tournamentId !== tournamentId) {
+          return Response.json({ error: "Match not found" }, { status: 404 });
+        }
+
+        if (match.status === "finished") {
+          return Response.json({ error: "Match already completed" }, { status: 400 });
+        }
+
+        // Only players in the match or tournament creator can report
+        const isPlayer = match.player1Id === session.userId || match.player2Id === session.userId;
+        const isCreator = match.tournament.creatorId === session.userId;
+
+        if (!isPlayer && !isCreator) {
+          return Response.json({ error: "Not authorized to report this match" }, { status: 403 });
+        }
+
+        try {
+          const body = await req.json();
+          const { winnerId, score1, score2 } = body;
+
+          if (!winnerId || (winnerId !== match.player1Id && winnerId !== match.player2Id)) {
+            return Response.json({ error: "Invalid winner" }, { status: 400 });
+          }
+
+          // Update match
+          await db.tournamentMatch.update({
+            where: { id: matchId },
+            data: {
+              winnerId,
+              score1: score1 ?? 0,
+              score2: score2 ?? 0,
+              status: "finished",
+              finishedAt: new Date(),
+            },
+          });
+
+          // Mark loser as eliminated
+          const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
+          if (loserId) {
+            await db.tournamentEntry.updateMany({
+              where: { tournamentId, userId: loserId },
+              data: { eliminated: true },
+            });
+          }
+
+          // Advance winner to next round
+          const totalRounds = Math.log2(match.tournament.maxPlayers);
+          if (match.round < totalRounds) {
+            const nextMatchNumber = Math.floor(match.matchNumber / 2);
+            const isTopHalf = match.matchNumber % 2 === 0;
+
+            await db.tournamentMatch.update({
+              where: {
+                tournamentId_round_matchNumber: {
+                  tournamentId,
+                  round: match.round + 1,
+                  matchNumber: nextMatchNumber,
+                },
+              },
+              data: isTopHalf ? { player1Id: winnerId } : { player2Id: winnerId },
+            });
+          } else {
+            // This was the final match - tournament is finished
+            await db.tournament.update({
+              where: { id: tournamentId },
+              data: {
+                status: "finished",
+                finishedAt: new Date(),
+              },
+            });
+
+            // Set winner's placement
+            await db.tournamentEntry.updateMany({
+              where: { tournamentId, userId: winnerId },
+              data: { placement: 1 },
+            });
+
+            // Set runner-up placement
+            if (loserId) {
+              await db.tournamentEntry.updateMany({
+                where: { tournamentId, userId: loserId },
+                data: { placement: 2 },
+              });
+            }
+          }
+
+          // Check if current round is complete and advance
+          const roundMatches = await db.tournamentMatch.findMany({
+            where: { tournamentId, round: match.round },
+          });
+
+          const allFinished = roundMatches.every(m => m.status === "finished");
+          if (allFinished && match.round < totalRounds) {
+            await db.tournament.update({
+              where: { id: tournamentId },
+              data: { currentRound: match.round + 1 },
+            });
+          }
+
+          return Response.json({ message: "Match result recorded" });
+        } catch (error) {
+          console.error("Failed to record match result:", error);
+          return Response.json({ error: "Failed to record result" }, { status: 500 });
+        }
+      },
     },
 
     // ============ Game Routes ============

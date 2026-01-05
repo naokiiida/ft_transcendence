@@ -18,6 +18,8 @@ import { GamePage } from "./pages/Game";
 import { ProfilePage } from "./pages/Profile";
 import { FriendsPage } from "./pages/Friends";
 import { LeaderboardPage } from "./pages/Leaderboard";
+import { TournamentsPage } from "./pages/Tournaments";
+import { TournamentPage } from "./pages/Tournament";
 
 import "./index.css";
 
@@ -57,6 +59,14 @@ const router = createBrowserRouter([
   {
     path: "/leaderboard",
     element: <LeaderboardPage />,
+  },
+  {
+    path: "/tournaments",
+    element: <TournamentsPage />,
+  },
+  {
+    path: "/tournament/:id",
+    element: <TournamentPage />,
   },
 ]);
 

@@ -53,9 +53,12 @@ export function HomePage() {
                   <p className="text-sm text-muted-foreground">@{user.login}</p>
                 </div>
               </Link>
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-2 justify-center flex-wrap">
                 <Button onClick={handlePlayGame} disabled={isJoining}>
                   {isJoining ? "Joining..." : "Play Game"}
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/tournaments">Tournaments</Link>
                 </Button>
                 <Button variant="outline" onClick={logout}>
                   Sign Out
