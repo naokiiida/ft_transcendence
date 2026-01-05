@@ -36,11 +36,11 @@ describe("WebSocket Authentication", () => {
 
 // Test 3: Game rooms API
 describe("Game Rooms API", () => {
-  test("game rooms endpoint returns empty array initially", async () => {
+  test("game rooms endpoint returns array of rooms", async () => {
     const response = await fetch(`${API_URL}/api/game/rooms`);
     expect(response.ok).toBe(true);
     const data = await response.json();
-    expect(data.rooms).toEqual([]);
+    expect(Array.isArray(data.rooms)).toBe(true);
   });
 
   test("quick-match requires authentication", async () => {

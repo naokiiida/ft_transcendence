@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "bun --env-file=secret/.env --hot src/index.ts",
     "start": "NODE_ENV=production bun --env-file=secret/.env src/index.ts",
-    "build": "bun run build.ts"
+    "build": "bun run build.ts",
+    "test": "bun test",
+    "test:unit": "bun test test/websocket.test.ts",
+    "test:api": "hurl --test --variable timestamp=$(date +%s) --cookie-jar /dev/null test/hurl/*.hurl",
+    "test:api:verbose": "hurl --verbose --variable timestamp=$(date +%s) --cookie-jar /dev/null test/hurl/*.hurl",
+    "test:ci": "bun test && hurl --test --variable timestamp=$(date +%s) --cookie-jar /dev/null test/hurl/*.hurl"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
