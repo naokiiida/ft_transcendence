@@ -1,8 +1,16 @@
-import { Link } from "react-router";
+import { Link, Navigate } from "react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export function LoginPage() {
+  const { isAuthenticated, isLoading, login } = useAuth();
+
+  // Redirect to home if already authenticated
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div className="container mx-auto p-8 flex items-center justify-center min-h-screen">
       <Card className="w-full max-w-md">
@@ -11,8 +19,13 @@ export function LoginPage() {
           <CardDescription>Sign in to start playing</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <Button className="w-full" size="lg">
-            Sign in with 42
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={login}
+            disabled={isLoading}
+          >
+            {isLoading ? "Loading..." : "Sign in with 42"}
           </Button>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

@@ -9,6 +9,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
 
+import { AuthProvider } from "./lib/auth/AuthContext";
 import { HomePage } from "./pages/Home";
 import { LoginPage } from "./pages/Login";
 import { PrivacyPage } from "./pages/Privacy";
@@ -38,7 +39,9 @@ const router = createBrowserRouter([
 const elem = document.getElementById("root")!;
 const app = (
   <StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>
 );
 
