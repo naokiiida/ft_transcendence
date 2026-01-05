@@ -1,10 +1,26 @@
-import { Link } from "react-router";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 export function HomePage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isJoining, setIsJoining] = useState(false);
+
+  const handlePlayGame = async () => {
+    setIsJoining(true);
+    try {
+      const response = await fetch("/api/game/quick-match");
+      if (!response.ok) throw new Error("Failed to find game");
+      const { gameId } = await response.json();
+      navigate(`/game/${gameId}`);
+    } catch (error) {
+      console.error("Failed to join game:", error);
+      setIsJoining(false);
+    }
+  };
 
   return (
     <div className="container mx-auto p-8 text-center">
@@ -38,7 +54,9 @@ export function HomePage() {
                 </div>
               </div>
               <div className="flex gap-4 justify-center">
-                <Button>Play Game</Button>
+                <Button onClick={handlePlayGame} disabled={isJoining}>
+                  {isJoining ? "Joining..." : "Play Game"}
+                </Button>
                 <Button variant="outline" onClick={logout}>
                   Sign Out
                 </Button>

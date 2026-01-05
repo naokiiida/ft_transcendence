@@ -3,6 +3,7 @@ import index from "./index.html";
 import { initiateOAuthFlow, handleOAuthCallback, refreshAccessToken, fetchUserProfile } from "./lib/auth";
 import type { SessionData } from "./lib/auth";
 import { db } from "./lib/db";
+import { websocketHandlers, findOrCreateQuickMatch, getGameRoomsInfo, type WebSocketData } from "./lib/game";
 
 // In-memory session store (in production, use Redis or database)
 const sessions = new Map<string, SessionData>();
@@ -265,7 +266,77 @@ const server = serve({
 
       return Response.json({ user });
     },
+
+    // ============ Game Routes ============
+
+    // Get quick match game ID
+    "/api/game/quick-match": {
+      GET(req) {
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId || !sessions.get(sessionId)) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const gameId = findOrCreateQuickMatch();
+        return Response.json({ gameId });
+      },
+    },
+
+    // Get active games (for debugging)
+    "/api/game/rooms": {
+      GET() {
+        return Response.json({ rooms: getGameRoomsInfo() });
+      },
+    },
+
+    // WebSocket upgrade endpoint
+    "/ws": {
+      async GET(req) {
+        // Get session from cookie
+        const cookie = req.headers.get("cookie");
+        const sessionId = cookie
+          ?.split(";")
+          .find(c => c.trim().startsWith("session="))
+          ?.split("=")[1];
+
+        if (!sessionId) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Upgrade to WebSocket
+        const success = server.upgrade(req, {
+          data: {
+            userId: session.userId,
+            login: session.login,
+            displayName: session.displayName,
+            gameId: null,
+            playerIndex: null,
+            paddleDirection: "stop",
+          } satisfies WebSocketData,
+        });
+
+        if (!success) {
+          return Response.json({ error: "WebSocket upgrade failed" }, { status: 500 });
+        }
+
+        // Return undefined to indicate upgrade handled
+        return undefined;
+      },
+    },
   },
+
+  // WebSocket handlers
+  websocket: websocketHandlers,
 
   development: process.env.NODE_ENV !== "production" && {
     // Enable browser hot reloading in development

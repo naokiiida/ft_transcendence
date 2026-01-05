@@ -14,6 +14,7 @@ import { HomePage } from "./pages/Home";
 import { LoginPage } from "./pages/Login";
 import { PrivacyPage } from "./pages/Privacy";
 import { TermsPage } from "./pages/Terms";
+import { GamePage } from "./pages/Game";
 
 import "./index.css";
 
@@ -33,6 +34,10 @@ const router = createBrowserRouter([
   {
     path: "/terms",
     element: <TermsPage />,
+  },
+  {
+    path: "/game/:gameId",
+    element: <GamePage />,
   },
 ]);
 
