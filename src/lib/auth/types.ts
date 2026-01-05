@@ -1,6 +1,9 @@
 /**
- * Type definitions for 42 OAuth authentication
+ * Type definitions for authentication (42 OAuth and local email/password)
  */
+
+/** Authentication method types */
+export type AuthMethod = "oauth42" | "local";
 
 /** Token response from 42 API */
 export interface TokenResponse {
@@ -49,16 +52,22 @@ export interface User42 {
   active?: boolean;
 }
 
-/** Session data stored in cookies/JWT */
+/**
+ * Session data stored in memory (associated with session cookie)
+ * Supports both 42 OAuth and local email/password authentication
+ */
 export interface SessionData {
   userId: number;
   login: string;
   displayName: string;
   email: string;
   imageUrl: string;
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
+  authMethod: AuthMethod;
+
+  // OAuth-specific fields (only present for authMethod="oauth42")
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
 }
 
 /** PKCE flow state stored temporarily during OAuth */
@@ -66,4 +75,18 @@ export interface PKCEState {
   codeVerifier: string;
   state: string;
   createdAt: number;
+}
+
+/** Registration request for local auth */
+export interface RegisterRequest {
+  email: string;
+  username: string;
+  password: string;
+  displayName?: string;
+}
+
+/** Login request for local auth */
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
