@@ -14,8 +14,9 @@ export function HomePage() {
       <Card className="max-w-md mx-auto">
         <CardHeader className="gap-4">
           <CardTitle className="text-3xl font-bold">ft_transcendence</CardTitle>
-          <CardDescription>
-            A real-time multiplayer Pong game built with Bun, Hono, React, and shadcn/ui
+          <CardDescription className="text-balance">
+            A real-time multiplayer Pong game built with Bun, Hono, React, and{" "}
+            <span className="whitespace-nowrap">shadcn/ui</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
