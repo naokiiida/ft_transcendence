@@ -2,28 +2,20 @@
 ================================================================================
 SYNC IMPACT REPORT
 ================================================================================
-Version change: 1.0.0 → 2.0.0 (MAJOR - Architecture pivot from microservices to monolith)
+Version change: 2.0.0 → 2.1.0 (MINOR - Add deployment details)
 
-Modified principles:
-  - "Microservices Architecture" → REMOVED (replaced with Fresh-First Monolith)
-  - "Web-First Development" → Updated for Fresh Islands architecture (not SPA)
-  - "Type Safety First" → Updated for Deno native TypeScript
-  - "Docker-First Development" → Simplified to "Container-Based Development"
-  - "Test-Driven Development" → Relaxed to "Test-Supported Development"
+Modified sections:
+  - Technology Stack: libSQL → Plain SQLite with WAL mode
+  - Technology Stack: Added DaisyUI (Tailwind-based CSS)
+  - Container Configuration: Added domain and Dockerfile details
 
-Added sections:
-  - 42 Project Modules (19 points tracking)
-  - Security Layers (defense-in-depth table)
+Added:
+  - Domain: pong.taiida.com (Cloudflare DNS → 127.0.0.1)
+  - CSS Framework: DaisyUI + Tailwind
+  - SQLite WAL mode configuration
+  - Multi-stage Dockerfile per Fresh docs
 
-Removed sections:
-  - Microservices service list (api-gateway, auth-service, etc.)
-  - Bun/Hono/React stack details
-  - Drizzle ORM
-
-Templates requiring updates:
-  - .specify/templates/plan-template.md: ✅ Compatible (monolith structure option exists)
-  - .specify/templates/spec-template.md: ✅ Compatible (User Stories structure aligns)
-  - .specify/templates/tasks-template.md: ✅ Compatible (Phase structure aligns)
+Templates requiring updates: None (configuration details only)
 
 Follow-up TODOs:
   - Create git hook to prevent raw db.query() usage (enforce db.prepare())
@@ -175,6 +167,12 @@ Per 42 spec, this module MUST include:
 
 ## Technology Stack
 
+### Domain and Deployment
+
+- **Domain**: `pong.taiida.com`
+- **DNS**: Cloudflare (pointing to `127.0.0.1` for local dev)
+- **Deployment**: Docker multi-stage build per [Fresh Docker docs](https://fresh.deno.dev/docs/deployment/docker)
+
 ### Runtime and Framework
 
 | Layer | Technology | Version | Rationale |
@@ -182,8 +180,23 @@ Per 42 spec, this module MUST include:
 | Runtime | Deno | ≥1.40 | Native TypeScript, secure by default, built-in tooling |
 | Framework | Fresh | ≥1.6 | SSR + Islands, file-based routing, Preact integration |
 | UI Library | Preact | ≥10.0 | Lightweight React alternative, auto-escaping XSS |
-| Database | SQLite/libSQL | Latest | Simple, file-based, `db.prepare()` prevents SQL injection |
+| CSS Framework | DaisyUI + Tailwind | Latest | Component library, per [Fresh DaisyUI docs](https://fresh.deno.dev/docs/examples/daisyui) |
+| Database | SQLite (WAL mode) | Latest | Simple, file-based, WAL for concurrent reads |
 | Reverse Proxy | Traefik | ≥3.0 | HTTPS termination, automatic TLS, Docker integration |
+
+### SQLite Configuration
+
+```typescript
+// lib/db.ts - WAL mode MUST be enabled at connection
+const db = new Database("data/pong.db");
+db.exec("PRAGMA journal_mode = WAL");
+db.exec("PRAGMA foreign_keys = ON");
+db.exec("PRAGMA busy_timeout = 5000");
+```
+
+- **WAL Mode**: Enables concurrent reads during writes; required for WebSocket connections
+- **File Location**: `data/pong.db` (Docker volume for persistence)
+- **Prepared Statements**: ALL queries MUST use `db.prepare()`, never string interpolation
 
 ### Development Tools
 
@@ -191,7 +204,8 @@ Per 42 spec, this module MUST include:
 |------|---------|---------------|
 | Biome | Linting + Formatting | `biome.json` at repo root |
 | Deno | Testing | Built-in `deno test` |
-| Docker | Containerization | `docker-compose.yml` for local dev |
+| Docker | Containerization | Multi-stage Dockerfile |
+| Tailwind | CSS compilation | Via Fresh plugin |
 
 ### Security Layers
 
@@ -220,10 +234,15 @@ Per 42 spec, this module MUST include:
 ft_transcendence/
 ├── deno.json              # Deno config + tasks
 ├── biome.json             # Linting/formatting
+├── tailwind.config.ts     # Tailwind + DaisyUI config
 ├── docker-compose.yml     # Container orchestration
+├── Dockerfile             # Multi-stage build
 ├── fresh.gen.ts           # Fresh manifest (auto-generated)
 ├── main.ts                # Entry point
+├── data/
+│   └── pong.db            # SQLite database (WAL mode)
 ├── routes/
+│   ├── _app.tsx           # App wrapper (Tailwind styles)
 │   ├── index.tsx          # Home page
 │   ├── api/               # API endpoints
 │   │   ├── auth/          # OAuth callbacks
@@ -233,10 +252,12 @@ ft_transcendence/
 │   ├── game/              # Game pages
 │   ├── profile/           # User profiles
 │   └── tournament/        # Tournament brackets
-├── islands/               # Interactive components
-│   ├── PongCanvas.tsx     # Game rendering
+├── islands/               # Interactive components (hydrated)
+│   ├── PongCanvas.tsx     # Game rendering (Canvas 2D)
 │   ├── ChatBox.tsx        # Real-time chat
 │   └── OnlineStatus.tsx   # Friend presence
+├── components/            # Server-rendered components
+│   └── ui/                # DaisyUI wrappers
 ├── shared/
 │   ├── types/             # Shared TypeScript types
 │   ├── schemas/           # Zod validation schemas
@@ -245,7 +266,8 @@ ft_transcendence/
 │   ├── db.ts              # Database (db.prepare only!)
 │   ├── auth.ts            # Session management
 │   └── ws.ts              # WebSocket handlers
-├── static/                # Static assets
+├── static/
+│   └── styles.css         # Compiled Tailwind output
 ├── tests/                 # Test files
 └── infra/
     ├── traefik/           # Reverse proxy config
@@ -293,10 +315,44 @@ A feature is complete when:
 
 ```yaml
 services:
-  fresh:        # Main application (Deno + Fresh)
+  fresh:        # Main application (Deno + Fresh) - pong.taiida.com
   traefik:      # Reverse proxy + TLS termination
   prometheus:   # Metrics collection
   grafana:      # Dashboards + analytics
+
+volumes:
+  sqlite_data:  # Persistent SQLite database (data/pong.db)
+```
+
+### Dockerfile (Multi-Stage Build)
+
+Per [Fresh Docker deployment docs](https://fresh.deno.dev/docs/deployment/docker):
+
+```dockerfile
+# Stage 1: Build
+FROM denoland/deno:2.1.4 AS builder
+WORKDIR /app
+COPY . .
+RUN deno task build
+
+# Stage 2: Run
+FROM denoland/deno:2.1.4
+WORKDIR /app
+COPY --from=builder /app .
+EXPOSE 8000
+CMD ["run", "-A", "main.ts"]
+```
+
+### Traefik Configuration
+
+```yaml
+# docker-compose.yml labels for fresh service
+labels:
+  - "traefik.enable=true"
+  - "traefik.http.routers.pong.rule=Host(`pong.taiida.com`)"
+  - "traefik.http.routers.pong.entrypoints=websecure"
+  - "traefik.http.routers.pong.tls=true"
+  - "traefik.http.services.pong.loadbalancer.server.port=8000"
 ```
 
 ### Single Command Startup
@@ -306,7 +362,7 @@ Development environment MUST start with:
 docker compose up
 ```
 
-No additional setup commands required after initial clone.
+Access at: `https://pong.taiida.com` (resolves to 127.0.0.1 via Cloudflare DNS)
 
 ## Governance
 
@@ -333,4 +389,4 @@ When conflicts arise, this document takes precedence.
 - **Soft Violations**: Documented in code review; fix promptly
 - **Hard Violations** (Security, SQL injection): Block merge; immediate fix required
 
-**Version**: 2.0.0 | **Ratified**: 2026-01-06 | **Last Amended**: 2026-01-06
+**Version**: 2.1.0 | **Ratified**: 2026-01-06 | **Last Amended**: 2026-01-06
