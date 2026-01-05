@@ -5,6 +5,12 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Database files
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+*.db-journal
+
 # Environment files with secrets
 secret/.env
 secret/credentials.json
@@ -30,3 +36,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 bun-debug.log*
+
+/generated/prisma

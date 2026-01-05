@@ -2,9 +2,39 @@ import { serve } from "bun";
 import index from "./index.html";
 import { initiateOAuthFlow, handleOAuthCallback, refreshAccessToken, fetchUserProfile } from "./lib/auth";
 import type { SessionData } from "./lib/auth";
+import { db } from "./lib/db";
 
 // In-memory session store (in production, use Redis or database)
 const sessions = new Map<string, SessionData>();
+
+/**
+ * Create or update user in database from 42 profile
+ */
+async function upsertUser(user42: {
+  id: number;
+  login: string;
+  email: string;
+  displayname: string;
+  image: { link: string };
+}) {
+  return db.user.upsert({
+    where: { id42: user42.id },
+    create: {
+      id42: user42.id,
+      login: user42.login,
+      email: user42.email,
+      displayName: user42.displayname,
+      imageUrl: user42.image.link,
+    },
+    update: {
+      email: user42.email,
+      displayName: user42.displayname,
+      imageUrl: user42.image.link,
+      isOnline: true,
+      lastSeen: new Date(),
+    },
+  });
+}
 
 function generateSessionId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -57,16 +87,19 @@ const server = serve({
         }
 
         try {
-          const { tokens, user } = await handleOAuthCallback(code, state);
+          const { tokens, user: user42 } = await handleOAuthCallback(code, state);
 
-          // Create session
+          // Create or update user in database
+          const dbUser = await upsertUser(user42);
+
+          // Create session with database user ID
           const sessionId = generateSessionId();
           const session: SessionData = {
-            userId: user.id,
-            login: user.login,
-            displayName: user.displayname,
-            email: user.email,
-            imageUrl: user.image.link,
+            userId: dbUser.id, // Use database ID, not 42 ID
+            login: dbUser.login,
+            displayName: dbUser.displayName,
+            email: dbUser.email,
+            imageUrl: dbUser.imageUrl ?? "",
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
             expiresAt: Date.now() + tokens.expires_in * 1000,
@@ -75,7 +108,6 @@ const server = serve({
           sessions.set(sessionId, session);
 
           // Set session cookie and redirect to home
-          const response = Response.redirect("/", 302);
           return new Response(null, {
             status: 302,
             headers: {
@@ -181,6 +213,57 @@ const server = serve({
       return Response.json({
         message: `Hello, ${name}!`,
       });
+    },
+
+    // Get leaderboard
+    "/api/leaderboard": {
+      async GET(req) {
+        const url = new URL(req.url);
+        const limit = parseInt(url.searchParams.get("limit") ?? "10", 10);
+
+        const users = await db.user.findMany({
+          select: {
+            id: true,
+            login: true,
+            displayName: true,
+            imageUrl: true,
+            wins: true,
+            losses: true,
+            rating: true,
+          },
+          orderBy: [{ rating: "desc" }, { wins: "desc" }],
+          take: Math.min(limit, 100), // Cap at 100
+        });
+
+        return Response.json({ leaderboard: users });
+      },
+    },
+
+    // Get user profile by login
+    "/api/users/:login": async req => {
+      const login = req.params.login;
+
+      const user = await db.user.findUnique({
+        where: { login },
+        select: {
+          id: true,
+          login: true,
+          displayName: true,
+          imageUrl: true,
+          wins: true,
+          losses: true,
+          rating: true,
+          isOnline: true,
+          lastSeen: true,
+          createdAt: true,
+        },
+      });
+
+      if (!user) {
+        return Response.json({ error: "User not found" }, { status: 404 });
+      }
+
+      return Response.json({ user });
     },
   },
 

@@ -1,0 +1,144 @@
+// Prisma schema for ft_transcendence
+// Uses LibSQL (Turso) with Prisma TypedSQL
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  previewFeatures = ["typedSql"]
+}
+
+datasource db {
+  provider = "sqlite"
+  // URL configured in prisma.config.ts
+}
+
+// ============ User Management ============
+
+model User {
+  id          Int      @id @default(autoincrement())
+  id42        Int      @unique // 42 intra user ID
+  login       String   @unique // 42 login (e.g., "niida")
+  email       String   @unique
+  displayName String
+  imageUrl    String?
+
+  // Game stats
+  wins        Int      @default(0)
+  losses      Int      @default(0)
+  rating      Int      @default(1000) // ELO rating
+
+  // Account status
+  isOnline    Boolean  @default(false)
+  lastSeen    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  sessionsAsPlayer1 GameSession[] @relation("Player1")
+  sessionsAsPlayer2 GameSession[] @relation("Player2")
+  sentFriendRequests    FriendRequest[] @relation("Sender")
+  receivedFriendRequests FriendRequest[] @relation("Receiver")
+  friendsAsUser1    Friendship[] @relation("User1")
+  friendsAsUser2    Friendship[] @relation("User2")
+  chatMessages      ChatMessage[]
+  tournamentEntries TournamentEntry[]
+}
+
+// ============ Game System ============
+
+model GameSession {
+  id         Int      @id @default(autoincrement())
+  player1Id  Int
+  player2Id  Int
+  player1    User     @relation("Player1", fields: [player1Id], references: [id])
+  player2    User     @relation("Player2", fields: [player2Id], references: [id])
+
+  score1     Int      @default(0)
+  score2     Int      @default(0)
+  winnerId   Int?
+
+  status     String   @default("waiting") // waiting, playing, finished, cancelled
+  startedAt  DateTime?
+  finishedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  tournamentId Int?
+  tournament   Tournament? @relation(fields: [tournamentId], references: [id])
+}
+
+model Tournament {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  maxPlayers  Int       @default(8)
+  status      String    @default("registration") // registration, in_progress, finished
+
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  entries     TournamentEntry[]
+  games       GameSession[]
+}
+
+model TournamentEntry {
+  id           Int        @id @default(autoincrement())
+  tournamentId Int
+  userId       Int
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+
+  placement    Int?       // Final placement (1st, 2nd, etc.)
+  joinedAt     DateTime   @default(now())
+
+  @@unique([tournamentId, userId])
+}
+
+// ============ Social Features ============
+
+model FriendRequest {
+  id         Int      @id @default(autoincrement())
+  senderId   Int
+  receiverId Int
+  sender     User     @relation("Sender", fields: [senderId], references: [id])
+  receiver   User     @relation("Receiver", fields: [receiverId], references: [id])
+
+  status     String   @default("pending") // pending, accepted, rejected
+  createdAt  DateTime @default(now())
+
+  @@unique([senderId, receiverId])
+}
+
+model Friendship {
+  id        Int      @id @default(autoincrement())
+  user1Id   Int
+  user2Id   Int
+  user1     User     @relation("User1", fields: [user1Id], references: [id])
+  user2     User     @relation("User2", fields: [user2Id], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([user1Id, user2Id])
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+
+  channelId Int
+  channel   ChatChannel @relation(fields: [channelId], references: [id])
+
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model ChatChannel {
+  id          Int      @id @default(autoincrement())
+  name        String?  // Null for direct messages
+  isPrivate   Boolean  @default(false)
+  isDirect    Boolean  @default(false) // True for 1-on-1 chats
+
+  createdAt   DateTime @default(now())
+  messages    ChatMessage[]
+}
