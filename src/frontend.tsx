@@ -15,6 +15,9 @@ import { LoginPage } from "./pages/Login";
 import { PrivacyPage } from "./pages/Privacy";
 import { TermsPage } from "./pages/Terms";
 import { GamePage } from "./pages/Game";
+import { ProfilePage } from "./pages/Profile";
+import { FriendsPage } from "./pages/Friends";
+import { LeaderboardPage } from "./pages/Leaderboard";
 
 import "./index.css";
 
@@ -38,6 +41,22 @@ const router = createBrowserRouter([
   {
     path: "/game/:gameId",
     element: <GamePage />,
+  },
+  {
+    path: "/profile",
+    element: <ProfilePage />,
+  },
+  {
+    path: "/profile/:login",
+    element: <ProfilePage />,
+  },
+  {
+    path: "/friends",
+    element: <FriendsPage />,
+  },
+  {
+    path: "/leaderboard",
+    element: <LeaderboardPage />,
   },
 ]);
 

@@ -42,7 +42,7 @@ export function HomePage() {
             <p className="text-muted-foreground">Loading...</p>
           ) : isAuthenticated && user ? (
             <>
-              <div className="flex items-center justify-center gap-3 mb-2">
+              <Link to="/profile" className="flex items-center justify-center gap-3 mb-2 hover:bg-muted p-2 rounded-lg transition-colors">
                 <img
                   src={user.imageUrl}
                   alt={user.displayName}
@@ -52,7 +52,7 @@ export function HomePage() {
                   <p className="font-semibold">{user.displayName}</p>
                   <p className="text-sm text-muted-foreground">@{user.login}</p>
                 </div>
-              </div>
+              </Link>
               <div className="flex gap-4 justify-center">
                 <Button onClick={handlePlayGame} disabled={isJoining}>
                   {isJoining ? "Joining..." : "Play Game"}
