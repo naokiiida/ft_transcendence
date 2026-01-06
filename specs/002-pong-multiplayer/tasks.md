@@ -19,9 +19,8 @@
 **Purpose**: Project initialization per plan.md structure
 
 - [ ] T001 Create Fresh project with `deno run -A -r https://fresh.deno.dev` in repository root
-- [ ] T002 [P] Configure deno.json with strict TypeScript, tasks (dev, build, lint, test)
-- [ ] T003 [P] Configure biome.json for linting and formatting
-- [ ] T004 [P] Configure tailwind.config.ts with DaisyUI plugin per research.md
+- [ ] T002 [P] Configure deno.json: strict TypeScript, tasks (dev, build, lint, test, setup), lint/fmt rules; setup task runs `git config core.hooksPath .hooks`
+- [ ] T003 [P] Configure tailwind.config.ts with DaisyUI plugin per research.md
 - [ ] T005 [P] Create .env.example with FT_CLIENT_ID, FT_CLIENT_SECRET, FT_REDIRECT_URI, SESSION_SECRET
 - [ ] T006 Create directory structure per plan.md: routes/, islands/, components/, shared/, lib/, static/, infra/
 
@@ -68,26 +67,40 @@
 
 ---
 
-## Phase 3: User Story 2 - OAuth Login (Priority: P1) 🎯 MVP-BLOCKING
+## Phase 3: User Story 2 - Authentication (Priority: P1) 🎯 MVP-BLOCKING
 
-**Goal**: Users can authenticate via 42 OAuth and receive a session
+**Goal**: Users can authenticate via email/password OR 42 OAuth and receive a session
 
-**Independent Test**: Click "Login with 42", complete OAuth flow, verify profile page shows 42 intra data
+**Independent Test**: (a) Register with email/password, login, verify profile; (b) Click "Login with 42", complete OAuth, verify profile
 
 **Why before US1**: Authentication is required for matchmaking and game creation
 
-### Implementation
+### Core Auth Infrastructure
 
-- [ ] T029 Create lib/auth.ts with getAuthorizationUrl(), exchangeCodeForToken(), fetchUserProfile() per research.md
-- [ ] T030 Create lib/session.ts with createSession(), getSession(), deleteSession() using db.prepare()
-- [ ] T031 [P] [US2] Create routes/login.tsx with "Login with 42" button and OAuth redirect
-- [ ] T032 [US2] Create routes/api/auth/callback.ts handling OAuth code exchange, user creation, session creation
-- [ ] T033 [US2] Create routes/api/auth/logout.ts invalidating session and clearing cookie
-- [ ] T034 [US2] Update routes/_middleware.ts to extract session and populate ctx.state.user
-- [ ] T035 [US2] Create routes/api/users/me.ts returning current user profile per contracts/openapi.yaml
-- [ ] T036 [US2] Create routes/index.tsx (home page) with auth-aware content
+- [ ] T029 [P] [US2] Create shared/schemas/auth.ts with Zod schemas: emailSchema (regex), passwordSchema (≥8 chars), loginSchema, registerSchema
+- [ ] T030 [US2] Create lib/password.ts with hashPassword(), verifyPassword() using bcrypt (cost factor 12)
+- [ ] T031 [US2] Create lib/session.ts with createSession(), getSession(), deleteSession() using db.prepare()
+- [ ] T032 [US2] Create lib/auth.ts with getAuthorizationUrl(), exchangeCodeForToken(), fetchUserProfile() per research.md
 
-**Checkpoint**: Users can login via 42 OAuth and see their profile data
+### Email/Password Auth
+
+- [ ] T033 [P] [US2] Create routes/register.tsx with email, password, display name form + validation
+- [ ] T034 [P] [US2] Create routes/login.tsx with email/password form + "Login with 42" OAuth button
+- [ ] T035 [US2] Create routes/api/auth/register.ts: validate input, check email uniqueness, hash password, create user, create session
+- [ ] T036 [US2] Create routes/api/auth/login.ts: validate input, verify password, rate-limit (5 attempts/15 min), create session
+
+### 42 OAuth Auth
+
+- [ ] T037 [US2] Create routes/api/auth/callback.ts: OAuth code exchange, account merge if email exists, user creation, session creation
+
+### Common Auth
+
+- [ ] T038 [US2] Create routes/api/auth/logout.ts invalidating session and clearing cookie
+- [ ] T039 [US2] Update routes/_middleware.ts to extract session and populate ctx.state.user
+- [ ] T040 [US2] Create routes/api/users/me.ts returning current user profile per contracts/openapi.yaml
+- [ ] T041 [US2] Create routes/index.tsx (home page) with auth-aware content
+
+**Checkpoint**: Users can register/login via email/password OR 42 OAuth and see their profile data
 
 ---
 
@@ -99,37 +112,37 @@
 
 ### Game Physics & Constants
 
-- [ ] T037 [P] [US1] Create shared/game/constants.ts with CANVAS_WIDTH, PADDLE_HEIGHT, BALL_SPEED, etc.
-- [ ] T038 [P] [US1] Create shared/game/physics.ts with ball movement, collision detection (shared for client prediction)
+- [ ] T042 [P] [US1] Create shared/game/constants.ts with CANVAS_WIDTH, PADDLE_HEIGHT, BALL_SPEED, etc.
+- [ ] T043 [P] [US1] Create shared/game/physics.ts with ball movement, collision detection (shared for client prediction)
 
 ### Server-Side Game Logic
 
-- [ ] T039 [US1] Create lib/ws.ts with WebSocket connection manager, room management per research.md
-- [ ] T040 [US1] Create lib/matchmaking.ts with FIFO queue, pair matching, game creation
-- [ ] T041 [US1] Create lib/game-server.ts with game loop (30 tick/sec), state broadcast, score tracking
-- [ ] T042 [US1] Create routes/api/ws.ts with Deno.upgradeWebSocket(), message routing per contracts/websocket-protocol.md
+- [ ] T044 [US1] Create lib/ws.ts with WebSocket connection manager, room management per research.md
+- [ ] T045 [US1] Create lib/matchmaking.ts with FIFO queue, pair matching, game creation
+- [ ] T046 [US1] Create lib/game-server.ts with game loop (30 tick/sec), state broadcast, score tracking
+- [ ] T047 [US1] Create routes/api/ws.ts with Deno.upgradeWebSocket(), message routing per contracts/websocket-protocol.md
 
 ### Game Persistence
 
-- [ ] T043 [US1] Create routes/api/games/index.ts with GET (history) per contracts/openapi.yaml
-- [ ] T044 [US1] Create routes/api/games/[id].ts with GET (game details) per contracts/openapi.yaml
-- [ ] T045 [US1] Add game completion handler: persist to DB, update user wins/losses/elo
+- [ ] T048 [US1] Create routes/api/games/index.ts with GET (history) per contracts/openapi.yaml
+- [ ] T049 [US1] Create routes/api/games/[id].ts with GET (game details) per contracts/openapi.yaml
+- [ ] T050 [US1] Add game completion handler: persist to DB, update user wins/losses/elo
 
 ### Client-Side Game UI
 
-- [ ] T046 [P] [US1] Create islands/PongCanvas.tsx with Canvas 2D rendering, ball/paddle drawing
-- [ ] T047 [P] [US1] Create islands/PongControls.tsx with W/S key input handling at 60fps
-- [ ] T048 [US1] Create islands/MatchmakingQueue.tsx with queue position, wait time display
-- [ ] T049 [P] [US1] Create components/game/ScoreDisplay.tsx showing both player scores
-- [ ] T050 [P] [US1] Create components/game/GameOverModal.tsx with winner, final score, rematch option
-- [ ] T051 [US1] Create routes/game/index.tsx (lobby) with "Quick Match" button triggering matchmaking
-- [ ] T052 [US1] Create routes/game/[id].tsx (game room) integrating PongCanvas, controls, score
+- [ ] T051 [P] [US1] Create islands/PongCanvas.tsx with Canvas 2D rendering, ball/paddle drawing
+- [ ] T052 [P] [US1] Create islands/PongControls.tsx with W/S key input handling at 60fps
+- [ ] T053 [US1] Create islands/MatchmakingQueue.tsx with queue position, wait time display
+- [ ] T054 [P] [US1] Create components/game/ScoreDisplay.tsx showing both player scores
+- [ ] T055 [P] [US1] Create components/game/GameOverModal.tsx with winner, final score, rematch option
+- [ ] T056 [US1] Create routes/game/index.tsx (lobby) with "Quick Match" button triggering matchmaking
+- [ ] T057 [US1] Create routes/game/[id].tsx (game room) integrating PongCanvas, controls, score
 
 ### WebSocket Client Integration
 
-- [ ] T053 [US1] Add ReconnectingWebSocket class to islands/PongCanvas.tsx per research.md
-- [ ] T054 [US1] Implement game_state message handling with client-side interpolation
-- [ ] T055 [US1] Implement reconnection grace period (30 seconds) handling
+- [ ] T058 [US1] Add ReconnectingWebSocket class to islands/PongCanvas.tsx per research.md
+- [ ] T059 [US1] Implement game_state message handling with client-side interpolation
+- [ ] T060 [US1] Implement reconnection grace period (30 seconds) handling
 
 **Checkpoint**: Two users can complete a full multiplayer Pong game
 
@@ -143,26 +156,26 @@
 
 ### Profile Management
 
-- [ ] T056 [P] [US3] Create routes/api/users/[id].ts with GET per contracts/openapi.yaml
-- [ ] T057 [US3] Add PATCH to routes/api/users/me.ts for display_name update
-- [ ] T058 [US3] Create routes/api/users/me/avatar.ts handling multipart upload (≤2MB, PNG/JPG/GIF)
-- [ ] T059 [US3] Create routes/profile/index.tsx showing current user profile, edit form
-- [ ] T060 [US3] Create routes/profile/[id].tsx showing other user's profile (public view)
-- [ ] T061 [US3] Create islands/AvatarUpload.tsx with drag-drop, preview, upload progress
+- [ ] T061 [P] [US3] Create routes/api/users/[id].ts with GET per contracts/openapi.yaml
+- [ ] T062 [US3] Add PATCH to routes/api/users/me.ts for display_name update
+- [ ] T063 [US3] Create routes/api/users/me/avatar.ts handling multipart upload (≤2MB, PNG/JPG/GIF)
+- [ ] T064 [US3] Create routes/profile/index.tsx showing current user profile, edit form
+- [ ] T065 [US3] Create routes/profile/[id].tsx showing other user's profile (public view)
+- [ ] T066 [US3] Create islands/AvatarUpload.tsx with drag-drop, preview, upload progress
 
 ### Friends System
 
-- [ ] T062 [P] [US3] Create routes/api/friends.ts with GET (list), POST (send request) per contracts/openapi.yaml
-- [ ] T063 [US3] Create routes/api/friends/[id].ts with PATCH (accept/decline), DELETE (unfriend)
-- [ ] T064 [US3] Create islands/OnlineStatus.tsx with presence indicator (green/gray dot)
-- [ ] T065 [US3] Add presence tracking to lib/ws.ts using heartbeat messages
-- [ ] T066 [US3] Add friends list section to routes/profile/index.tsx with OnlineStatus indicators
+- [ ] T067 [P] [US3] Create routes/api/users/me/friends.ts with GET (list), POST (send request) per contracts/openapi.yaml
+- [ ] T068 [US3] Create routes/api/users/me/friends/[id].ts with PATCH (accept/decline), DELETE (unfriend)
+- [ ] T069 [US3] Create islands/OnlineStatus.tsx with presence indicator (green/gray dot)
+- [ ] T070 [US3] Add presence tracking to lib/ws.ts using heartbeat messages
+- [ ] T071 [US3] Add friends list section to routes/profile/index.tsx with OnlineStatus indicators
 
 ### Match History & Stats
 
-- [ ] T067 [US3] Create routes/api/users/[id]/stats.ts returning wins, losses, elo, win_rate
-- [ ] T068 [US3] Create routes/api/users/[id]/games.ts returning paginated match history
-- [ ] T069 [US3] Add match history section to profile pages showing GameSummary cards
+- [ ] T072 [US3] Create routes/api/users/[id]/stats.ts returning wins, losses, elo, win_rate
+- [ ] T073 [US3] Create routes/api/users/[id]/games.ts returning paginated match history
+- [ ] T074 [US3] Add match history section to profile pages showing GameSummary cards
 
 **Checkpoint**: Full user management with profiles, friends, and stats
 
@@ -176,16 +189,16 @@
 
 ### AI Logic
 
-- [ ] T070 [P] [US4] Create shared/game/ai.ts with difficulty-based paddle positioning (Easy: 40% miss, Hard: 5% miss)
-- [ ] T071 [US4] Add AI explanation generation: predicted_ball_y, target_paddle_y, confidence, reasoning
+- [ ] T075 [P] [US4] Create shared/game/ai.ts with difficulty-based paddle positioning (Easy: 40% miss, Hard: 5% miss)
+- [ ] T076 [US4] Add AI explanation generation: predicted_ball_y, target_paddle_y, confidence, reasoning
 
 ### AI Game Integration
 
-- [ ] T072 [US4] Add game_type='ai' handling to lib/game-server.ts with server-side AI moves
-- [ ] T073 [US4] Add POST to routes/api/games/index.ts for creating AI game per contracts/openapi.yaml
-- [ ] T074 [US4] Create routes/game/ai.tsx with difficulty selection (Easy/Medium/Hard)
-- [ ] T075 [US4] Create islands/AIExplainer.tsx showing real-time AI decision visualization
-- [ ] T076 [US4] Add ai_explain WebSocket message handling per contracts/websocket-protocol.md
+- [ ] T077 [US4] Add game_type='ai' handling to lib/game-server.ts with server-side AI moves
+- [ ] T078 [US4] Add POST to routes/api/games/index.ts for creating AI game per contracts/openapi.yaml
+- [ ] T079 [US4] Create routes/game/ai.tsx with difficulty selection (Easy/Medium/Hard)
+- [ ] T080 [US4] Create islands/AIExplainer.tsx showing real-time AI decision visualization
+- [ ] T081 [US4] Add ai_explain WebSocket message handling per contracts/websocket-protocol.md
 
 **Checkpoint**: AI opponent works with all difficulties and explainability
 
@@ -203,8 +216,8 @@
 - [ ] T078 [US5] Create routes/api/tournaments/[id].ts with GET (details), bracket data
 - [ ] T079 [US5] Create routes/api/tournaments/[id]/join.ts for joining open tournaments
 - [ ] T080 [US5] Create routes/api/tournaments/[id]/start.ts for creator to start tournament
-- [ ] T081 [US5] Add bracket generation logic: seed participants, create TournamentMatch records
-- [ ] T082 [US5] Add winner advancement logic: update bracket, schedule next match
+- [ ] T081 [US5] Add bracket generation logic: seed participants, create TournamentMatch records with best-of-3 series tracking (games_won_p1, games_won_p2)
+- [ ] T082 [US5] Add winner advancement logic: track best-of-3 series (first to 2 wins), update bracket, schedule next match
 
 ### Tournament UI
 
@@ -378,8 +391,8 @@ Stream 3: T043-T045 (API routes)
 
 | Metric | Count |
 |--------|-------|
-| Total Tasks | 108 |
-| Setup Tasks | 6 |
+| Total Tasks | 107 |
+| Setup Tasks | 5 |
 | Foundational Tasks | 22 |
 | US1 (Game) Tasks | 19 |
 | US2 (Auth) Tasks | 8 |
@@ -389,7 +402,7 @@ Stream 3: T043-T045 (API routes)
 | US6 (Chat) Tasks | 4 |
 | US7 (Metrics) Tasks | 6 |
 | Polish Tasks | 12 |
-| Parallelizable [P] | 36 |
+| Parallelizable [P] | 35 |
 
 ---
 

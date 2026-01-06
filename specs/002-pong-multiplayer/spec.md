@@ -30,6 +30,18 @@ ft_transcendence is a full-stack web application for playing Pong online with re
 
 ---
 
+## Clarifications
+
+### Session 2026-01-07
+
+- Q: How should email/password and 42 OAuth coexist? → A: Both methods equal; linked accounts when OAuth email matches existing
+- Q: Email verification required before account active? → A: No, immediate access; regex validation only (no SMTP)
+- Q: Password reset flow? → A: No password reset (simplicity for 42 project scope)
+- Q: Can 42 OAuth users link to existing email/password accounts? → A: Yes, merge accounts when email matches
+- Q: Registration fields for email signup? → A: Email + password + display name (required)
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Play a Quick Match Online (Priority: P1)
@@ -54,23 +66,39 @@ A user wants to play Pong against another real player over the internet without 
 
 ---
 
-### User Story 2 - Create Account and Login via 42 OAuth (Priority: P1)
+### User Story 2 - Create Account and Login (Priority: P1)
 
-A 42 student wants to quickly create an account using their 42 credentials without remembering another password.
+A user wants to create an account and log in using either email/password or 42 OAuth credentials.
 
-**Why this priority**: Authentication is required for all other features. The 42 OAuth module (1pt) is essential for the 42 school context, and user management (2pts) depends on having user accounts.
+**Why this priority**: Authentication is required for all other features. Both methods (email/password and 42 OAuth) are supported equally to maximize accessibility.
 
-**Independent Test**: Can be tested by clicking "Login with 42", completing OAuth flow, and verifying a user profile page appears with 42 intra data.
+**Independent Test**: Can be tested by (a) registering with email/password, logging in, verifying profile; (b) clicking "Login with 42", completing OAuth flow, verifying profile with 42 intra data.
 
 **Acceptance Scenarios**:
 
-1. **Given** an unauthenticated user on the login page, **When** they click "Login with 42", **Then** they are redirected to 42's OAuth authorization page.
+#### Email/Password Registration & Login
 
-2. **Given** a user who authorizes the app on 42's OAuth page, **When** they are redirected back, **Then** a new user record is created (if first login) with their 42 intra username, email, and profile picture.
+1. **Given** an unauthenticated user on the registration page, **When** they enter email, password (≥8 chars), and display name, **Then** a new user record is created and they are logged in with a valid session cookie.
 
-3. **Given** an existing user who logs in via OAuth, **When** they complete the flow, **Then** they are redirected to their profile page with a valid session cookie (HTTP-only, secure).
+2. **Given** an unauthenticated user on the login page, **When** they enter valid email and password, **Then** they are redirected to their profile page with a valid session cookie (HTTP-only, secure).
 
-4. **Given** a logged-in user, **When** they click "Logout", **Then** their session is invalidated and they are redirected to the home page.
+3. **Given** a user entering an invalid email format, **When** they submit, **Then** they see "Invalid email format" error (regex validation client + server).
+
+4. **Given** a user entering a password <8 characters, **When** they submit, **Then** they see "Password must be at least 8 characters" error.
+
+5. **Given** an email that already exists in the system, **When** a user tries to register with it, **Then** they see "Email already registered" error.
+
+#### 42 OAuth Login
+
+6. **Given** an unauthenticated user on the login page, **When** they click "Login with 42", **Then** they are redirected to 42's OAuth authorization page.
+
+7. **Given** a user who authorizes the app on 42's OAuth page, **When** they are redirected back and no account exists with that email, **Then** a new user record is created with their 42 intra username, email, and profile picture.
+
+8. **Given** a user who authorizes the app on 42's OAuth page, **When** they are redirected back and an account already exists with that email, **Then** the accounts are merged (OAuth linked to existing account) and they are logged in.
+
+#### Common
+
+9. **Given** a logged-in user, **When** they click "Logout", **Then** their session is invalidated and they are redirected to the home page.
 
 ---
 
@@ -184,6 +212,9 @@ A developer/admin wants to monitor system health and usage patterns.
 - **Full Matchmaking Queue**: Queue has max capacity of 100; additional users see "Server busy, try again shortly".
 - **Invalid Avatar Upload**: Files >2MB or non-image MIME types are rejected with clear error message.
 - **Tournament Abandonment**: If a player fails to join a tournament match within 5 minutes, they forfeit that match.
+- **Invalid Login Credentials**: After 5 failed login attempts, account is rate-limited for 15 minutes (prevent brute force).
+- **OAuth Email Merge**: When 42 OAuth email matches existing email/password account, link OAuth credentials to existing account; user retains access via both methods.
+- **Duplicate Email Registration**: Reject with "Email already registered" and suggest login or 42 OAuth if already linked.
 
 ---
 
@@ -209,17 +240,19 @@ A developer/admin wants to monitor system health and usage patterns.
 
 #### User Management (FR-3xx)
 
-- **FR-301**: Users MUST authenticate via 42 OAuth 2.0
+- **FR-301**: Users MUST be able to authenticate via email/password OR 42 OAuth 2.0 (both methods equal)
+- **FR-301a**: Email/password registration MUST require: email (regex validated), password (≥8 chars, bcrypt hashed), display name
+- **FR-301b**: 42 OAuth login MUST merge with existing account if email matches (link OAuth to existing user)
 - **FR-302**: Users MUST be able to update their display name
 - **FR-303**: Users MUST be able to upload avatar (≤2MB, PNG/JPG/GIF)
 - **FR-304**: Users MUST be able to send/accept/decline friend requests
 - **FR-305**: System MUST display friend online/offline status in real-time
 - **FR-306**: System MUST display user's match history (date, opponent, result)
-- **FR-307**: System MUST track user statistics (wins, losses, ranking)
+- **FR-307**: System MUST track user statistics (wins, losses, ranking using ELO: K=32, initial rating 1000, formula `newRating = oldRating + K * (actual - expected)` where `expected = 1 / (1 + 10^((opponentRating - rating) / 400))`)
 
 #### AI Opponent (FR-4xx)
 
-- **FR-401**: System MUST provide AI opponent with 3 difficulty levels
+- **FR-401**: System MUST provide AI opponent with 3 difficulty levels (Easy: misses ~40% of reachable balls, Medium: ~20%, Hard: ≤5%). A ball is "reachable" if `|ball_y - paddle_center_y| ≤ PADDLE_SPEED * time_until_ball_crosses_goal_line`
 - **FR-402**: AI decision-making MUST be explainable (visible to user on request)
 - **FR-403**: AI MUST run server-side (no client-side cheating possible)
 
@@ -251,7 +284,7 @@ A developer/admin wants to monitor system health and usage patterns.
 - **NFR-102**: CSRF tokens MUST be validated on all state-changing requests
 - **NFR-103**: Session cookies MUST be HTTP-only and Secure
 - **NFR-104**: All inputs MUST be validated with Zod schemas (client + server)
-- **NFR-105**: Passwords (if any) MUST use bcrypt with cost factor ≥10
+- **NFR-105**: Passwords MUST use bcrypt with cost factor ≥12; password_hash stored in User table (nullable for OAuth-only accounts)
 - **NFR-106**: All traffic MUST use HTTPS (Traefik TLS termination)
 
 #### Performance (NFR-2xx)
@@ -268,7 +301,7 @@ A developer/admin wants to monitor system health and usage patterns.
 
 ### Key Entities
 
-- **User**: id, intra_username, email, display_name, avatar_url, created_at, last_seen
+- **User**: id, email (unique), password_hash (nullable for OAuth-only users), display_name, avatar_url, intra_id (nullable, for 42 OAuth linking), intra_username (nullable), created_at, last_seen
 - **Friendship**: id, requester_id, addressee_id, status (pending/accepted/declined), created_at
 - **Game**: id, player1_id, player2_id, winner_id, player1_score, player2_score, game_type (quick/tournament/ai), started_at, ended_at
 - **Tournament**: id, name, creator_id, max_players, status (open/ready/in_progress/completed), created_at

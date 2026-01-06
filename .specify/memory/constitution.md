@@ -202,8 +202,7 @@ db.exec("PRAGMA busy_timeout = 5000");
 
 | Tool | Purpose | Configuration |
 |------|---------|---------------|
-| Biome | Linting + Formatting | `biome.json` at repo root |
-| Deno | Testing | Built-in `deno test` |
+| Deno | Linting + Formatting + Testing | Built-in `deno lint`, `deno fmt`, `deno test` |
 | Docker | Containerization | Multi-stage Dockerfile |
 | Tailwind | CSS compilation | Via Fresh plugin |
 
@@ -232,8 +231,7 @@ db.exec("PRAGMA busy_timeout = 5000");
 
 ```
 ft_transcendence/
-├── deno.json              # Deno config + tasks
-├── biome.json             # Linting/formatting
+├── deno.json              # Deno config + tasks (includes lint/fmt rules)
 ├── tailwind.config.ts     # Tailwind + DaisyUI config
 ├── docker-compose.yml     # Container orchestration
 ├── Dockerfile             # Multi-stage build
@@ -304,7 +302,7 @@ ft_transcendence/
 
 A feature is complete when:
 1. No TypeScript errors (`deno check`)
-2. Biome passes (`deno task lint`)
+2. Deno lint/fmt passes (`deno lint && deno fmt --check`)
 3. Code review approved
 4. `docker compose up` works
 5. Manually tested in Chrome (42 requirement)

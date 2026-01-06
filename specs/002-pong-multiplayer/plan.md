@@ -53,8 +53,7 @@ specs/002-pong-multiplayer/
 
 ```text
 # Fresh Monolithic Structure (per Constitution)
-deno.json                 # Deno config + tasks
-biome.json                # Linting/formatting
+deno.json                 # Deno config + tasks (includes lint/fmt rules)
 tailwind.config.ts        # Tailwind + DaisyUI config
 docker-compose.yml        # Container orchestration
 Dockerfile                # Multi-stage build
@@ -68,15 +67,19 @@ routes/
 ├── _app.tsx              # App wrapper (Tailwind styles)
 ├── _middleware.ts        # CSRF, auth, session middleware
 ├── index.tsx             # Home page
-├── login.tsx             # Login page with 42 OAuth
+├── login.tsx             # Login page (email/password + 42 OAuth)
+├── register.tsx          # Registration page (email/password)
 ├── api/
 │   ├── auth/
-│   │   ├── callback.ts   # OAuth callback handler
+│   │   ├── register.ts   # Email/password registration
+│   │   ├── login.ts      # Email/password login
+│   │   ├── callback.ts   # OAuth callback handler (with account merge)
 │   │   └── logout.ts     # Session invalidation
 │   ├── users/
 │   │   ├── [id].ts       # User CRUD
 │   │   ├── me.ts         # Current user
-│   │   └── friends.ts    # Friend management
+│   │   └── me/
+│   │       └── friends.ts # Friend management (GET, POST, PATCH, DELETE)
 │   ├── games/
 │   │   ├── index.ts      # Game history, create game
 │   │   └── [id].ts       # Specific game details
@@ -129,6 +132,7 @@ shared/
 │   ├── tournament.ts     # Tournament types
 │   └── ws.ts             # WebSocket message types
 ├── schemas/
+│   ├── auth.ts           # Zod schemas for login/register (email regex, password ≥8)
 │   ├── user.ts           # Zod schemas for user input
 │   ├── game.ts           # Zod schemas for game messages
 │   └── tournament.ts     # Zod schemas for tournament input
@@ -140,6 +144,7 @@ shared/
 lib/
 ├── db.ts                 # Database (db.prepare() only!)
 ├── auth.ts               # Session management, OAuth helpers
+├── password.ts           # bcrypt hash/verify (cost factor 12)
 ├── ws.ts                 # WebSocket connection manager
 ├── game-server.ts        # Game loop, state management
 ├── matchmaking.ts        # Queue logic
