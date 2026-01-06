@@ -1496,7 +1496,7 @@ const server = serve({
         }
 
         // Ensure player count is power of 2, or pad with byes
-        const targetSize = [4, 8, 16].find(n => n >= playerCount) ?? 16;
+        const targetSize = [2, 4, 8, 16].find(n => n >= playerCount) ?? 16;
         if (playerCount > targetSize) {
           return Response.json({ error: "Too many players for bracket size" }, { status: 400 });
         }

@@ -163,11 +163,14 @@ export function TournamentPage() {
     matchesByRound[m.round]!.push(m);
   });
 
-  const totalRounds = Math.log2(tournament.maxPlayers);
+  // Calculate totalRounds from actual bracket data (max round in matches)
+  const totalRounds = tournament.matches.length > 0
+    ? Math.max(...tournament.matches.map(m => m.round))
+    : Math.log2(tournament.maxPlayers);
   const getRoundName = (round: number) => {
     if (round === totalRounds) return "Final";
-    if (round === totalRounds - 1) return "Semi-Finals";
-    if (round === totalRounds - 2) return "Quarter-Finals";
+    if (round === totalRounds - 1 && totalRounds > 1) return "Semi-Finals";
+    if (round === totalRounds - 2 && totalRounds > 2) return "Quarter-Finals";
     return `Round ${round}`;
   };
 

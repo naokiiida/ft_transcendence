@@ -10,4 +10,4 @@ export {
   findUserById42,
   findUserByLogin,
   getLeaderboard,
-} from "../../../generated/prisma/sql.js";
+} from "../../../generated/prisma/sql";
