@@ -35,16 +35,18 @@
 
 ### User
 
-Represents a registered user authenticated via 42 OAuth.
+Represents a registered user authenticated via email/password or 42 OAuth (or both).
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
 | id | TEXT | PRIMARY KEY | UUID v4 |
-| intra_username | TEXT | UNIQUE, NOT NULL | 42 intra login (immutable) |
-| email | TEXT | UNIQUE, NOT NULL | Email from 42 API |
+| email | TEXT | UNIQUE, NOT NULL | Email address (unique identifier) |
+| password_hash | TEXT | NULL | bcrypt hash (NULL for OAuth-only users) |
 | display_name | TEXT | NOT NULL, max 32 chars | Editable display name |
 | avatar_url | TEXT | NULL | Path to uploaded avatar or NULL for default |
-| oauth_access_token | TEXT | NOT NULL | 42 OAuth access token (encrypted at rest) |
+| intra_id | TEXT | UNIQUE, NULL | 42 intra ID (for OAuth linking) |
+| intra_username | TEXT | UNIQUE, NULL | 42 intra login (for display) |
+| oauth_access_token | TEXT | NULL | 42 OAuth access token (encrypted at rest) |
 | oauth_refresh_token | TEXT | NULL | 42 OAuth refresh token (encrypted at rest) |
 | wins | INTEGER | DEFAULT 0 | Total wins across all games |
 | losses | INTEGER | DEFAULT 0 | Total losses across all games |
@@ -53,10 +55,16 @@ Represents a registered user authenticated via 42 OAuth.
 | last_seen | TEXT | NOT NULL | ISO 8601 timestamp (updated on activity) |
 
 **Indexes**:
-- `idx_user_intra` on `intra_username`
+- `idx_user_email` on `email`
+- `idx_user_intra_id` on `intra_id`
 - `idx_user_elo` on `elo_rating` (for leaderboards)
 
+**Constraints**:
+- At least one auth method: CHECK(password_hash IS NOT NULL OR intra_id IS NOT NULL)
+
 **Validation Rules** (Zod):
+- `email`: Valid email format (regex)
+- `password`: ≥8 characters (before hashing)
 - `display_name`: 1-32 characters, alphanumeric + spaces + underscores
 - `avatar_url`: Valid URL path or null
 
@@ -278,23 +286,27 @@ PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 PRAGMA busy_timeout = 5000;
 
--- Users table
+-- Users table (supports email/password and/or 42 OAuth)
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
-  intra_username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
+  password_hash TEXT,  -- NULL for OAuth-only users (bcrypt, cost 12)
   display_name TEXT NOT NULL,
   avatar_url TEXT,
-  oauth_access_token TEXT NOT NULL,
+  intra_id TEXT UNIQUE,  -- 42 intra ID for OAuth linking
+  intra_username TEXT UNIQUE,  -- 42 login (for display)
+  oauth_access_token TEXT,
   oauth_refresh_token TEXT,
   wins INTEGER DEFAULT 0,
   losses INTEGER DEFAULT 0,
   elo_rating INTEGER DEFAULT 1000,
   created_at TEXT NOT NULL,
-  last_seen TEXT NOT NULL
+  last_seen TEXT NOT NULL,
+  CHECK(password_hash IS NOT NULL OR intra_id IS NOT NULL)  -- At least one auth method
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_intra ON users(intra_username);
+CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_user_intra_id ON users(intra_id);
 CREATE INDEX IF NOT EXISTS idx_user_elo ON users(elo_rating);
 
 -- Sessions table

@@ -212,19 +212,19 @@
 
 ### Tournament Backend
 
-- [ ] T077 [P] [US5] Create routes/api/tournaments/index.ts with GET (list), POST (create) per contracts/openapi.yaml
-- [ ] T078 [US5] Create routes/api/tournaments/[id].ts with GET (details), bracket data
-- [ ] T079 [US5] Create routes/api/tournaments/[id]/join.ts for joining open tournaments
-- [ ] T080 [US5] Create routes/api/tournaments/[id]/start.ts for creator to start tournament
-- [ ] T081 [US5] Add bracket generation logic: seed participants, create TournamentMatch records with best-of-3 series tracking (games_won_p1, games_won_p2)
-- [ ] T082 [US5] Add winner advancement logic: track best-of-3 series (first to 2 wins), update bracket, schedule next match
+- [ ] T082 [P] [US5] Create routes/api/tournaments/index.ts with GET (list), POST (create) per contracts/openapi.yaml
+- [ ] T083 [US5] Create routes/api/tournaments/[id].ts with GET (details), bracket data
+- [ ] T084 [US5] Create routes/api/tournaments/[id]/join.ts for joining open tournaments
+- [ ] T085 [US5] Create routes/api/tournaments/[id]/start.ts for creator to start tournament
+- [ ] T086 [US5] Add bracket generation logic: seed participants, create TournamentMatch records with best-of-3 series tracking (games_won_p1, games_won_p2)
+- [ ] T087 [US5] Add winner advancement logic: track best-of-3 series (first to 2 wins), update bracket, schedule next match
 
 ### Tournament UI
 
-- [ ] T083 [US5] Create routes/tournament/index.tsx listing open/active tournaments
-- [ ] T084 [US5] Create routes/tournament/create.tsx with form (name, max_players)
-- [ ] T085 [US5] Create routes/tournament/[id].tsx showing bracket and match status
-- [ ] T086 [US5] Create islands/TournamentBracket.tsx visualizing bracket with clickable matches
+- [ ] T088 [US5] Create routes/tournament/index.tsx listing open/active tournaments
+- [ ] T089 [US5] Create routes/tournament/create.tsx with form (name, max_players)
+- [ ] T090 [US5] Create routes/tournament/[id].tsx showing bracket and match status
+- [ ] T091 [US5] Create islands/TournamentBracket.tsx visualizing bracket with clickable matches
 
 **Checkpoint**: Complete tournament system with brackets
 
@@ -238,10 +238,10 @@
 
 ### Chat Implementation
 
-- [ ] T087 [US6] Add chat_message/chat_received handlers to lib/ws.ts
-- [ ] T088 [US6] Add rate limiting (5 messages/10 seconds) to chat handler
-- [ ] T089 [US6] Create islands/ChatBox.tsx with message list, input, XSS-safe rendering
-- [ ] T090 [US6] Integrate ChatBox into routes/game/[id].tsx
+- [ ] T092 [US6] Add chat_message/chat_received handlers to lib/ws.ts
+- [ ] T093 [US6] Add rate limiting (5 messages/10 seconds) to chat handler
+- [ ] T094 [US6] Create islands/ChatBox.tsx with message list, input, XSS-safe rendering
+- [ ] T095 [US6] Integrate ChatBox into routes/game/[id].tsx
 
 **Checkpoint**: Chat works with rate limiting and XSS protection
 
@@ -255,12 +255,12 @@
 
 ### Metrics & Dashboards
 
-- [ ] T091 [US7] Add game metrics to lib/metrics.ts: active_games, games_completed, game_duration
-- [ ] T092 [US7] Add WebSocket metrics: websocket_connections, matchmaking_queue_size
-- [ ] T093 [US7] Create infra/prometheus/prometheus.yml with scrape config for Fresh app
-- [ ] T094 [US7] Create infra/grafana/provisioning/datasources/prometheus.yml
-- [ ] T095 [US7] Create infra/grafana/dashboards/system-health.json with connection/game graphs
-- [ ] T096 [US7] Create infra/grafana/dashboards/game-analytics.json with play statistics
+- [ ] T096 [US7] Add game metrics to lib/metrics.ts: active_games, games_completed, game_duration
+- [ ] T097 [US7] Add WebSocket metrics: websocket_connections, matchmaking_queue_size
+- [ ] T098 [US7] Create infra/prometheus/prometheus.yml with scrape config for Fresh app
+- [ ] T099 [US7] Create infra/grafana/provisioning/datasources/prometheus.yml
+- [ ] T100 [US7] Create infra/grafana/dashboards/system-health.json with connection/game graphs
+- [ ] T101 [US7] Create infra/grafana/dashboards/game-analytics.json with play statistics
 
 **Checkpoint**: Full observability with Prometheus + Grafana
 
@@ -272,24 +272,25 @@
 
 ### Docker Deployment
 
-- [ ] T097 Create Dockerfile with multi-stage build per research.md
-- [ ] T098 Create docker-compose.yml with fresh, traefik, prometheus, grafana services
-- [ ] T099 Create infra/traefik/traefik.yml with HTTPS config for pong.taiida.com
-- [ ] T100 Verify `docker compose up` starts all services correctly
+- [ ] T102 Create Dockerfile with multi-stage build per research.md
+- [ ] T103 Create docker-compose.yml with fresh, traefik, prometheus, grafana services
+- [ ] T104 Create infra/traefik/traefik.yml with HTTPS config for pong.taiida.com
+- [ ] T105 Verify `docker compose up` starts all services correctly
 
 ### Security Hardening
 
-- [ ] T101 Audit all routes for CSRF token validation on POST/PUT/DELETE
-- [ ] T102 Audit all SQL queries use db.prepare() (no raw string interpolation)
-- [ ] T103 Verify all Zod schemas are applied on both client and server
-- [ ] T104 Add rate limiting to API endpoints (beyond just chat)
+- [ ] T106 Audit all routes for CSRF token validation on POST/PUT/DELETE
+- [ ] T107 Audit all SQL queries use db.prepare() (no raw string interpolation)
+- [ ] T108 Verify all Zod schemas are applied on both client and server
+- [ ] T109 Add rate limiting to API endpoints (beyond just chat)
+- [ ] T110 Audit password hashing uses bcrypt with cost factor ≥12
 
 ### Final Validation
 
-- [ ] T105 Run quickstart.md validation: fresh install → docker compose up → play game
-- [ ] T106 Verify all 7 user stories work independently
-- [ ] T107 Type check entire codebase: `deno task check` passes
-- [ ] T108 Lint entire codebase: `deno task lint` passes
+- [ ] T111 Run quickstart.md validation: fresh install → docker compose up → play game
+- [ ] T112 Verify all 7 user stories work independently (including email/password and OAuth auth)
+- [ ] T113 Type check entire codebase: `deno task check` passes
+- [ ] T114 Lint entire codebase: `deno task lint` passes
 
 ---
 
@@ -391,18 +392,18 @@ Stream 3: T043-T045 (API routes)
 
 | Metric | Count |
 |--------|-------|
-| Total Tasks | 107 |
+| Total Tasks | 114 |
 | Setup Tasks | 5 |
 | Foundational Tasks | 22 |
+| US2 (Auth) Tasks | 13 |
 | US1 (Game) Tasks | 19 |
-| US2 (Auth) Tasks | 8 |
 | US3 (Profile) Tasks | 14 |
 | US4 (AI) Tasks | 7 |
 | US5 (Tournament) Tasks | 10 |
 | US6 (Chat) Tasks | 4 |
 | US7 (Metrics) Tasks | 6 |
-| Polish Tasks | 12 |
-| Parallelizable [P] | 35 |
+| Polish Tasks | 13 |
+| Parallelizable [P] | 38 |
 
 ---
 
