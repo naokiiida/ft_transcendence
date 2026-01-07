@@ -1,0 +1,58 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - deno-cache:/deno-dir
+    ports:
+      - "8000:8000"
+    environment:
+      - DENO_DIR=/deno-dir
+      - DENO_NO_UPDATE_CHECK=1
+      - DENO_NO_PROMPT=1
+    command: sleep infinity
+    networks:
+      - pong-network
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../infra/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - pong-network
+    profiles:
+      - observability
+
+  grafana:
+    image: grafana/grafana:10.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ../infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - pong-network
+    profiles:
+      - observability
+
+networks:
+  pong-network:
+    driver: bridge
+
+volumes:
+  deno-cache:
+  prometheus-data:
+  grafana-data:

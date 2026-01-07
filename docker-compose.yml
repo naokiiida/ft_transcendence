@@ -1,0 +1,95 @@
+# ============================================
+# ft_transcendence Production Stack
+# Single command: docker compose up --build
+# ============================================
+
+services:
+  # --- Main Application ---
+  fresh:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DENO_ENV=production
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - pong-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fresh.rule=Host(`pong.taiida.com`)"
+      - "traefik.http.routers.fresh.tls=true"
+      - "traefik.http.services.fresh.loadbalancer.server.port=8000"
+
+  # --- Reverse Proxy ---
+  traefik:
+    image: traefik:v3.0
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/traefik:/etc/traefik:ro
+      - traefik-certs:/letsencrypt
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@taiida.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    restart: unless-stopped
+    networks:
+      - pong-network
+    profiles:
+      - production
+
+  # --- Observability ---
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - pong-network
+
+  grafana:
+    image: grafana/grafana:10.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - pong-network
+
+networks:
+  pong-network:
+    driver: bridge
+
+volumes:
+  traefik-certs:
+  prometheus-data:
+  grafana-data:

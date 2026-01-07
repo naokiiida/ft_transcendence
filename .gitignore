@@ -1,2 +1,43 @@
-# deps
+# Dependencies
 node_modules/
+
+# Environment
+.env
+.env.local
+
+# Database
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Deno
+.deno/
+deno-dir/
+
+# Fresh
+_fresh/
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+_build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker volumes (local)
+prometheus-data/
+grafana-data/

@@ -1,0 +1,47 @@
+{
+  "name": "ft_transcendence",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "denoland.vscode-deno",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "deno.enable": true,
+        "deno.lint": true,
+        "deno.unstable": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "denoland.vscode-deno",
+        "[typescript]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        }
+      }
+    }
+  },
+
+  "forwardPorts": [8000, 9090, 3000],
+  "portsAttributes": {
+    "8000": { "label": "Fresh App", "onAutoForward": "notify" },
+    "9090": { "label": "Prometheus", "onAutoForward": "silent" },
+    "3000": { "label": "Grafana", "onAutoForward": "silent" }
+  },
+
+  "postCreateCommand": "deno cache main.ts || true",
+  "postStartCommand": "echo '🎮 ft_transcendence dev environment ready!'",
+
+  "remoteUser": "deno"
+}
