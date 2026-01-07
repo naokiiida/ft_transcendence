@@ -1,0 +1,74 @@
+{
+  "nodeModulesDir": "manual",
+  "tasks": {
+    "check": "deno fmt --check . && deno lint . && deno check",
+    "dev": "vite",
+    "build": "vite build",
+    "start": "deno serve -A _fresh/server.js",
+    "update": "deno run -A -r jsr:@fresh/update .",
+    "setup": "git config core.hooksPath .hooks && deno install",
+    "test": "deno test -A",
+    "test:watch": "deno test -A --watch",
+    "test:coverage": "deno test -A --coverage=coverage && deno coverage coverage",
+    "db:migrate": "deno run -A lib/db.ts",
+    "fmt": "deno fmt",
+    "lint": "deno lint"
+  },
+  "lint": {
+    "rules": {
+      "tags": [
+        "fresh",
+        "recommended"
+      ]
+    }
+  },
+  "exclude": [
+    "**/_fresh/*",
+    "**/node_modules/*",
+    "coverage/"
+  ],
+  "imports": {
+    "@/": "./",
+    "fresh": "jsr:@fresh/core@^2.2.0",
+    "preact": "npm:preact@^10.27.2",
+    "@preact/signals": "npm:@preact/signals@^2.5.0",
+    "@fresh/plugin-vite": "jsr:@fresh/plugin-vite@^1.0.8",
+    "vite": "npm:vite@^7.1.3",
+    "tailwindcss": "npm:tailwindcss@^4.1.10",
+    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.1.12",
+    "daisyui": "npm:daisyui@^5",
+    "zod": "npm:zod@^3.24",
+    "@db/sqlite": "jsr:@db/sqlite@^0.13",
+    "bcrypt": "https://deno.land/x/bcrypt@v0.4.1/mod.ts"
+  },
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.asynciterable",
+      "dom.iterable",
+      "deno.ns"
+    ],
+    "jsx": "precompile",
+    "jsxImportSource": "preact",
+    "jsxPrecompileSkipElements": [
+      "a",
+      "img",
+      "source",
+      "body",
+      "html",
+      "head",
+      "title",
+      "meta",
+      "script",
+      "link",
+      "style",
+      "base",
+      "noscript",
+      "template"
+    ],
+    "types": [
+      "vite/client"
+    ],
+    "strict": true
+  }
+}
