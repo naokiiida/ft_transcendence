@@ -1,7 +1,7 @@
 # Quickstart: ft_transcendence Development
 
 **Feature**: 002-pong-multiplayer
-**Date**: 2026-01-06
+**Date**: 2026-01-08 (updated)
 
 This guide gets a developer from zero to running the application.
 

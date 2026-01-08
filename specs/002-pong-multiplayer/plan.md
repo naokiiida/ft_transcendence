@@ -1,38 +1,46 @@
 # Implementation Plan: ft_transcendence - Multiplayer Pong Platform
 
-**Branch**: `002-pong-multiplayer` | **Date**: 2026-01-06 | **Spec**: [spec.md](./spec.md)
+**Branch**: `002-pong-multiplayer` | **Date**: 2026-01-08 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/002-pong-multiplayer/spec.md`
 
 ## Summary
 
-Build a full-stack multiplayer Pong web application using Deno Fresh with SSR + Islands architecture. The platform supports real-time gameplay via WebSockets, 42 OAuth authentication, user profiles with friends/stats, AI opponents with explainable decision-making, tournament brackets, and observability through Prometheus/Grafana. Target: 19 points across 11 42 project modules.
+Full-stack Pong multiplayer platform built with **Deno Fresh** (SSR + Islands architecture). Core deliverables: real-time WebSocket gameplay, 42 OAuth + email auth, tournament brackets, AI opponent with explainability, and Prometheus/Grafana observability. Targets **19 module points** (14 required) for 42 project evaluation.
 
 ## Technical Context
 
 **Language/Version**: TypeScript (Deno ≥1.40 native)
 **Primary Dependencies**: Fresh ≥1.6, Preact ≥10.0, DaisyUI + Tailwind, Zod
 **Storage**: SQLite with WAL mode (`data/pong.db`)
-**Testing**: Deno built-in (`deno test`)
-**Target Platform**: Web (Chrome required for 42 eval), Docker deployment
-**Project Type**: web (monolithic Fresh app with SSR + Islands)
-**Performance Goals**: ≥30 game state updates/sec, <100ms input latency (LAN), 50 concurrent games
-**Constraints**: Server-authoritative game logic, single WebSocket per client, no `any` types
-**Scale/Scope**: 50 concurrent users, single domain (pong.taiida.com)
+**Testing**: `deno test` (built-in)
+**Target Platform**: Docker containers (linux/amd64), accessed via HTTPS at `pong.taiida.com`
+**Project Type**: Web (Fresh monolith - combined frontend/backend)
+**Performance Goals**: ≥30 game state updates/sec, <100ms LAN latency, ≥100 concurrent games
+**Constraints**: Single `docker compose up` startup, no microservices, SQLite only
+**Scale/Scope**: 50 concurrent games, ~100 users, 42 evaluation readiness
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-| Principle | Status | Evidence |
-|-----------|--------|----------|
-| I. Fresh-First Monolithic | ✅ PASS | Single Fresh app, no microservices, Islands for interactivity |
-| II. Type Safety First | ✅ PASS | Strict TS, Zod validation, shared types in `shared/` |
-| III. Security by Default | ✅ PASS | db.prepare(), CSRF middleware, OAuth 2.0, Zod input validation |
-| IV. Real-Time Game Architecture | ✅ PASS | Server-authoritative physics, single WebSocket, 30 tick/sec |
-| V. Observable Operations | ✅ PASS | /metrics, /health, JSON logs, Grafana dashboards |
-| VI. Simplicity and YAGNI | ✅ PASS | No premature abstractions, direct implementations |
+| Principle | Gate Criteria | Status |
+|-----------|---------------|--------|
+| I. Fresh-First Monolithic | Single codebase, no microservices, Islands for interactivity | ✅ PASS |
+| II. Type Safety First | `strict: true`, no `any`, Zod validation on all inputs | ✅ PASS |
+| III. Security by Default | `db.prepare()` only, bcrypt, CSRF tokens, HTTPS | ✅ PASS |
+| IV. Real-Time Game Architecture | Server-authoritative physics, WebSocket protocol, 30 tick/sec | ✅ PASS |
+| V. Observable Operations | `/metrics`, `/health`, JSON logs, Grafana dashboards | ✅ PASS |
+| VI. Simplicity and YAGNI | No premature abstractions, minimal dependencies | ✅ PASS |
 
-**Gate Result**: PASS - Proceed to Phase 0
+**Pre-Design Gate**: PASSED - Proceed to Phase 0
+
+**Post-Design Gate** (2026-01-08): PASSED - All principles maintained
+- ✅ Single Fresh codebase with Islands architecture
+- ✅ Zod schemas defined in `shared/schemas/`
+- ✅ `db.prepare()` pattern in research.md examples
+- ✅ Server-authoritative game loop at 30 tick/sec
+- ✅ `/metrics` and `/health` endpoints planned
+- ✅ Minimal dependencies (Deno stdlib + Fresh + Zod)
 
 ## Project Structure
 
@@ -41,151 +49,120 @@ Build a full-stack multiplayer Pong web application using Deno Fresh with SSR + 
 ```text
 specs/002-pong-multiplayer/
 ├── plan.md              # This file
-├── spec.md              # Feature specification
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 ├── contracts/           # Phase 1 output (OpenAPI specs)
-└── tasks.md             # Phase 2 output (via /speckit.tasks)
+└── tasks.md             # Phase 2 output (/speckit.tasks)
 ```
 
 ### Source Code (repository root)
 
 ```text
-# Fresh Monolithic Structure (per Constitution)
-deno.json                 # Deno config + tasks (includes lint/fmt rules)
-tailwind.config.ts        # Tailwind + DaisyUI config
-docker-compose.yml        # Container orchestration
-Dockerfile                # Multi-stage build
-fresh.gen.ts              # Fresh manifest (auto-generated)
-main.ts                   # Entry point
-
-data/
-└── pong.db               # SQLite database (WAL mode)
-
-routes/
-├── _app.tsx              # App wrapper (Tailwind styles)
-├── _middleware.ts        # CSRF, auth, session middleware
-├── index.tsx             # Home page
-├── login.tsx             # Login page (email/password + 42 OAuth)
-├── register.tsx          # Registration page (email/password)
-├── api/
-│   ├── auth/
-│   │   ├── register.ts   # Email/password registration
-│   │   ├── login.ts      # Email/password login
-│   │   ├── callback.ts   # OAuth callback handler (with account merge)
-│   │   └── logout.ts     # Session invalidation
-│   ├── users/
-│   │   ├── [id].ts       # User CRUD
-│   │   ├── me.ts         # Current user
-│   │   └── me/
-│   │       └── friends.ts # Friend management (GET, POST, PATCH, DELETE)
-│   ├── games/
-│   │   ├── index.ts      # Game history, create game
-│   │   └── [id].ts       # Specific game details
-│   ├── tournaments/
-│   │   ├── index.ts      # List/create tournaments
-│   │   └── [id].ts       # Tournament details/join
-│   ├── ws.ts             # WebSocket upgrade endpoint
-│   ├── metrics.ts        # Prometheus metrics
-│   └── health.ts         # Health check
-├── game/
-│   ├── index.tsx         # Game lobby
-│   ├── [id].tsx          # Game room page
-│   └── ai.tsx            # AI opponent page
-├── profile/
-│   ├── index.tsx         # Current user profile
-│   └── [id].tsx          # Other user profile
-└── tournament/
-    ├── index.tsx         # Tournament list
-    ├── create.tsx        # Create tournament
-    └── [id].tsx          # Tournament bracket view
-
-islands/
-├── PongCanvas.tsx        # Game rendering (Canvas 2D)
-├── PongControls.tsx      # Keyboard input handling
-├── ChatBox.tsx           # Real-time chat
-├── OnlineStatus.tsx      # Friend presence indicators
-├── MatchmakingQueue.tsx  # Queue UI with wait time
-├── TournamentBracket.tsx # Bracket visualization
-├── AIExplainer.tsx       # AI decision visualization
-└── AvatarUpload.tsx      # Profile image upload
-
-components/
-├── ui/                   # DaisyUI wrappers (server-rendered)
-│   ├── Button.tsx
-│   ├── Card.tsx
-│   ├── Modal.tsx
-│   └── Badge.tsx
-├── layout/
-│   ├── Header.tsx
-│   ├── Footer.tsx
-│   └── Nav.tsx
-└── game/
-    ├── ScoreDisplay.tsx
-    └── GameOverModal.tsx
-
-shared/
-├── types/
-│   ├── user.ts           # User, Friendship types
-│   ├── game.ts           # Game, GameState types
-│   ├── tournament.ts     # Tournament types
-│   └── ws.ts             # WebSocket message types
-├── schemas/
-│   ├── auth.ts           # Zod schemas for login/register (email regex, password ≥8)
-│   ├── user.ts           # Zod schemas for user input
-│   ├── game.ts           # Zod schemas for game messages
-│   └── tournament.ts     # Zod schemas for tournament input
-└── game/
-    ├── physics.ts        # Ball/paddle physics (shared for prediction)
-    ├── constants.ts      # Game dimensions, speeds
-    └── ai.ts             # AI logic (server-only runtime)
-
-lib/
-├── db.ts                 # Database (db.prepare() only!)
-├── auth.ts               # Session management, OAuth helpers
-├── password.ts           # bcrypt hash/verify (cost factor 12)
-├── ws.ts                 # WebSocket connection manager
-├── game-server.ts        # Game loop, state management
-├── matchmaking.ts        # Queue logic
-├── metrics.ts            # Prometheus metric definitions
-└── logger.ts             # JSON structured logging
-
-static/
-└── styles.css            # Compiled Tailwind output
-
-tests/
-├── unit/
-│   ├── physics.test.ts   # Game physics tests
-│   ├── ai.test.ts        # AI decision tests
-│   └── schemas.test.ts   # Zod schema tests
-├── integration/
-│   ├── auth.test.ts      # OAuth flow tests
-│   ├── game.test.ts      # Game lifecycle tests
-│   └── ws.test.ts        # WebSocket tests
-└── e2e/
-    └── game-flow.test.ts # Full game E2E
-
-infra/
-├── traefik/
-│   └── traefik.yml       # Reverse proxy config
-├── prometheus/
-│   └── prometheus.yml    # Scrape config
-└── grafana/
-    ├── provisioning/
-    │   ├── datasources/
-    │   └── dashboards/
-    └── dashboards/
-        ├── system-health.json
-        └── game-analytics.json
+# Fresh Monolith Structure (per Constitution §I)
+ft_transcendence/
+├── deno.json              # Deno config + tasks
+├── tailwind.config.ts     # Tailwind + DaisyUI
+├── docker-compose.yml     # Container orchestration
+├── Dockerfile             # Multi-stage build
+├── fresh.gen.ts           # Fresh manifest (auto-generated)
+├── main.ts                # Entry point
+├── data/
+│   └── pong.db            # SQLite database (WAL mode)
+├── routes/
+│   ├── _app.tsx           # App wrapper
+│   ├── _middleware.ts     # Auth + CSRF middleware
+│   ├── index.tsx          # Home page
+│   ├── login.tsx          # Email/password + 42 OAuth
+│   ├── register.tsx       # Email registration
+│   ├── api/
+│   │   ├── auth/
+│   │   │   ├── login.ts       # POST /api/auth/login
+│   │   │   ├── logout.ts      # POST /api/auth/logout
+│   │   │   ├── register.ts    # POST /api/auth/register
+│   │   │   └── oauth/
+│   │   │       └── 42/        # 42 OAuth callback
+│   │   ├── users/
+│   │   │   ├── [id].ts        # GET/PATCH user profile
+│   │   │   └── me.ts          # GET current user
+│   │   ├── friends/           # Friend request endpoints
+│   │   ├── games/             # Game history endpoints
+│   │   ├── tournaments/       # Tournament CRUD
+│   │   ├── matchmaking.ts     # POST /api/matchmaking
+│   │   └── ws.ts              # WebSocket upgrade
+│   ├── game/
+│   │   ├── [id].tsx           # Game room page
+│   │   └── ai.tsx             # AI opponent page
+│   ├── profile/
+│   │   ├── [id].tsx           # User profile view
+│   │   └── edit.tsx           # Profile edit page
+│   ├── tournament/
+│   │   ├── index.tsx          # Tournament list
+│   │   ├── create.tsx         # Create tournament
+│   │   └── [id].tsx           # Tournament bracket view
+│   ├── metrics.ts             # Prometheus /metrics
+│   └── health.ts              # Health check /health
+├── islands/
+│   ├── PongCanvas.tsx         # Game rendering (Canvas 2D)
+│   ├── ChatBox.tsx            # Real-time chat
+│   ├── OnlineStatus.tsx       # Friend presence indicator
+│   ├── MatchmakingQueue.tsx   # Queue UI with timer
+│   ├── TournamentBracket.tsx  # Interactive bracket
+│   └── AIExplainer.tsx        # AI decision visualization
+├── components/
+│   ├── ui/                    # DaisyUI wrappers
+│   ├── layout/                # Page layouts
+│   └── forms/                 # Form components
+├── shared/
+│   ├── types/
+│   │   ├── user.ts            # User, Session types
+│   │   ├── game.ts            # GameState, PlayerInput types
+│   │   ├── tournament.ts      # Tournament, Match types
+│   │   └── ws.ts              # WebSocket message types
+│   ├── schemas/
+│   │   ├── auth.ts            # Login, Register schemas (Zod)
+│   │   ├── user.ts            # Profile update schemas
+│   │   ├── game.ts            # Game action schemas
+│   │   └── tournament.ts      # Tournament schemas
+│   └── game/
+│       ├── physics.ts         # Ball/paddle physics
+│       ├── constants.ts       # Game dimensions, speeds
+│       └── ai.ts              # AI decision logic
+├── lib/
+│   ├── db.ts                  # SQLite with db.prepare() only
+│   ├── auth.ts                # Session management
+│   ├── ws.ts                  # WebSocket handlers
+│   ├── matchmaking.ts         # Queue management
+│   ├── metrics.ts             # Prometheus metrics
+│   └── oauth42.ts             # 42 OAuth client
+├── static/
+│   └── styles.css             # Compiled Tailwind
+├── tests/
+│   ├── unit/
+│   │   ├── physics.test.ts
+│   │   ├── ai.test.ts
+│   │   └── auth.test.ts
+│   ├── integration/
+│   │   ├── game.test.ts
+│   │   └── tournament.test.ts
+│   └── e2e/
+│       └── gameplay.test.ts
+└── infra/
+    ├── traefik/
+    │   └── traefik.yml        # Traefik config
+    ├── prometheus/
+    │   └── prometheus.yml     # Scrape config
+    └── grafana/
+        ├── provisioning/      # Dashboard provisioning
+        └── dashboards/        # Pre-built dashboards
 ```
 
-**Structure Decision**: Fresh monolithic structure following constitution conventions. All source code in single deployable unit. Routes use file-based routing, Islands for interactive components only.
+**Structure Decision**: Fresh monolith with Islands architecture per Constitution §I. Routes handle SSR pages and API endpoints. Interactive components (game canvas, chat, brackets) are Islands with selective hydration. Shared types/schemas enable type-safe client-server communication.
 
 ## Complexity Tracking
 
-> No violations detected - design follows constitution principles.
+> No violations - design follows Constitution principles.
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| N/A | N/A | N/A |
+| *(none)* | — | — |

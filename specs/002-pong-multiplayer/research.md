@@ -1,7 +1,7 @@
 # Research: ft_transcendence Technical Decisions
 
 **Feature**: 002-pong-multiplayer
-**Date**: 2026-01-06
+**Date**: 2026-01-08 (updated from 2026-01-06)
 **Status**: Complete
 
 This document resolves all "NEEDS CLARIFICATION" items from the Technical Context and documents key technology decisions.
@@ -384,6 +384,268 @@ export const ChatMessageSchema = z.object({
   game_id: z.string().uuid(),
   content: z.string().max(200),
 });
+```
+
+---
+
+## 6. Canvas Game Loop & Client-Server Synchronization
+
+### Decision: Fixed timestep server loop with client interpolation
+
+### Rationale
+- Server runs authoritative physics at 30 ticks/second (every 33ms)
+- Client renders at 60 FPS using requestAnimationFrame
+- Client interpolates between received server states for smooth visuals
+- Paddle inputs are sent immediately with client-side prediction
+
+### Server Tick Loop
+
+```typescript
+// lib/game-loop.ts
+const TICK_RATE = 30; // 30 updates/second
+const TICK_INTERVAL = 1000 / TICK_RATE; // ~33.33ms
+
+class GameLoop {
+  private lastTick = performance.now();
+  private accumulator = 0;
+
+  start() {
+    setInterval(() => {
+      const now = performance.now();
+      const delta = now - this.lastTick;
+      this.lastTick = now;
+      this.accumulator += delta;
+
+      while (this.accumulator >= TICK_INTERVAL) {
+        this.fixedUpdate();
+        this.accumulator -= TICK_INTERVAL;
+      }
+    }, TICK_INTERVAL);
+  }
+
+  private fixedUpdate() {
+    for (const [gameId, game] of activeGames) {
+      if (game.status === "playing") {
+        updatePhysics(game);
+        broadcastToRoom(gameId, { type: "game_state", state: game.state });
+      }
+    }
+  }
+}
+```
+
+### Client Interpolation
+
+```typescript
+// islands/PongCanvas.tsx
+const INTERPOLATION_DELAY = 100; // 100ms buffer
+
+class GameRenderer {
+  private stateBuffer: { state: GameState; timestamp: number }[] = [];
+
+  receiveState(state: GameState) {
+    this.stateBuffer.push({ state, timestamp: Date.now() });
+    // Keep only last 1 second of states
+    const cutoff = Date.now() - 1000;
+    this.stateBuffer = this.stateBuffer.filter(s => s.timestamp > cutoff);
+  }
+
+  render(ctx: CanvasRenderingContext2D) {
+    const renderTime = Date.now() - INTERPOLATION_DELAY;
+    const interpolated = this.interpolateState(renderTime);
+    this.drawGame(ctx, interpolated);
+  }
+
+  private interpolateState(targetTime: number): GameState {
+    // Find two states to interpolate between
+    let before: { state: GameState; timestamp: number } | null = null;
+    let after: { state: GameState; timestamp: number } | null = null;
+
+    for (let i = 0; i < this.stateBuffer.length - 1; i++) {
+      if (this.stateBuffer[i].timestamp <= targetTime &&
+          this.stateBuffer[i + 1].timestamp >= targetTime) {
+        before = this.stateBuffer[i];
+        after = this.stateBuffer[i + 1];
+        break;
+      }
+    }
+
+    if (!before || !after) {
+      return this.stateBuffer[this.stateBuffer.length - 1]?.state ?? initialState;
+    }
+
+    const t = (targetTime - before.timestamp) / (after.timestamp - before.timestamp);
+    return {
+      ball: {
+        x: lerp(before.state.ball.x, after.state.ball.x, t),
+        y: lerp(before.state.ball.y, after.state.ball.y, t),
+      },
+      paddle1: { y: lerp(before.state.paddle1.y, after.state.paddle1.y, t) },
+      paddle2: { y: lerp(before.state.paddle2.y, after.state.paddle2.y, t) },
+      score: after.state.score, // Scores don't interpolate
+    };
+  }
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+```
+
+### Client-Side Prediction for Paddle
+
+```typescript
+// islands/PongCanvas.tsx
+class PaddleController {
+  private localY: number;
+  private serverY: number;
+  private velocity = 0;
+
+  handleInput(direction: "up" | "down" | "none") {
+    // Apply immediately for responsiveness
+    const speed = PADDLE_SPEED;
+    this.velocity = direction === "up" ? -speed : direction === "down" ? speed : 0;
+
+    // Send to server
+    ws.send(JSON.stringify({ type: "game_input", game_id, direction }));
+  }
+
+  update(deltaMs: number) {
+    this.localY += this.velocity * (deltaMs / 1000);
+    this.localY = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, this.localY));
+  }
+
+  reconcile(serverState: GameState, isPlayer1: boolean) {
+    this.serverY = isPlayer1 ? serverState.paddle1.y : serverState.paddle2.y;
+    // Smooth correction towards server position
+    const diff = this.serverY - this.localY;
+    if (Math.abs(diff) > 5) {
+      this.localY += diff * 0.3; // Blend 30% towards server
+    }
+  }
+}
+```
+
+---
+
+## 7. Game Disconnection Handling
+
+### Decision: Pause with 10-second reconnection window
+
+Per spec clarification (2026-01-08), when a player disconnects:
+
+1. Game pauses immediately
+2. Opponent sees "Game paused - waiting for opponent"
+3. 10-second timer starts
+4. If player reconnects within 10 seconds, game resumes
+5. If timeout expires, opponent wins by forfeit
+
+### Implementation Pattern
+
+```typescript
+// lib/game.ts
+const RECONNECT_TIMEOUT = 10_000; // 10 seconds
+
+function handlePlayerDisconnect(gameId: string, playerId: string) {
+  const game = activeGames.get(gameId);
+  if (!game || game.status !== "playing") return;
+
+  game.status = "paused";
+  game.disconnectedPlayer = playerId;
+  game.pausedAt = Date.now();
+
+  // Notify remaining player
+  const remainingPlayerId = game.player1_id === playerId ? game.player2_id : game.player1_id;
+  sendToPlayer(remainingPlayerId, {
+    type: "game_paused",
+    reason: "opponent_disconnected",
+    message: "Game paused - waiting for opponent",
+    timeoutMs: RECONNECT_TIMEOUT,
+  });
+
+  // Start forfeit timer
+  game.forfeitTimer = setTimeout(() => {
+    if (game.status === "paused") {
+      game.status = "forfeit";
+      game.winner_id = remainingPlayerId;
+      endGame(gameId, "forfeit");
+    }
+  }, RECONNECT_TIMEOUT);
+}
+
+function handlePlayerReconnect(gameId: string, playerId: string) {
+  const game = activeGames.get(gameId);
+  if (!game || game.status !== "paused" || game.disconnectedPlayer !== playerId) return;
+
+  clearTimeout(game.forfeitTimer);
+  game.status = "playing";
+  game.disconnectedPlayer = null;
+
+  // Notify both players
+  broadcastToRoom(gameId, { type: "game_resumed" });
+}
+```
+
+---
+
+## 8. Tournament Rules
+
+### Decision: Power-of-2 only (4 or 8 players), no byes
+
+Per spec clarification (2026-01-08):
+
+- Tournament can be created with max capacity of 4, 8, or 16
+- Creator can manually start when exactly **4 or 8** players have joined
+- No bye logic needed - brackets are always full
+- Best-of-3 format for all tournament matches
+
+### Bracket Generation
+
+```typescript
+// lib/tournament.ts
+function generateBracket(participants: string[]): TournamentMatch[] {
+  const count = participants.length;
+  if (count !== 4 && count !== 8) {
+    throw new Error("Tournament must have exactly 4 or 8 players");
+  }
+
+  // Shuffle for random seeding
+  const shuffled = [...participants].sort(() => Math.random() - 0.5);
+
+  const matches: TournamentMatch[] = [];
+  const rounds = Math.log2(count);
+
+  // Generate first round matches
+  for (let i = 0; i < count / 2; i++) {
+    matches.push({
+      id: crypto.randomUUID(),
+      round: 1,
+      match_index: i,
+      player1_id: shuffled[i * 2],
+      player2_id: shuffled[i * 2 + 1],
+      status: "ready",
+    });
+  }
+
+  // Generate placeholder matches for subsequent rounds
+  let prevRoundMatches = count / 2;
+  for (let round = 2; round <= rounds; round++) {
+    const matchesInRound = prevRoundMatches / 2;
+    for (let i = 0; i < matchesInRound; i++) {
+      matches.push({
+        id: crypto.randomUUID(),
+        round,
+        match_index: i,
+        player1_id: null, // TBD from previous round
+        player2_id: null,
+        status: "pending",
+      });
+    }
+    prevRoundMatches = matchesInRound;
+  }
+
+  return matches;
+}
 ```
 
 ---
