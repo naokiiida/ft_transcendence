@@ -40,6 +40,13 @@ ft_transcendence is a full-stack web application for playing Pong online with re
 - Q: Can 42 OAuth users link to existing email/password accounts? → A: Yes, merge accounts when email matches
 - Q: Registration fields for email signup? → A: Email + password + display name (required)
 
+### Session 2026-01-08
+
+- Q: Game state behavior during player disconnection? → A: Game pauses; 10-second reconnection window; forfeit if timeout; opponent sees "Game paused - waiting for opponent"
+- Q: Behavior when 42 OAuth API unavailable? → A: Show error message + suggest email/password login as fallback
+- Q: What if tournament never fills to max capacity? → A: Creator can manually start anytime if ≥4 players joined
+- Q: Bracket generation for non-power-of-2 player counts? → A: Only allow starting with exact 4 or 8 players (no byes)
+
 ---
 
 ## User Scenarios & Testing *(mandatory)*
@@ -158,7 +165,7 @@ A user wants to compete in a structured tournament with brackets and multiple ro
 
 1. **Given** a logged-in user, **When** they click "Create Tournament", **Then** they can set tournament name, max players (4, 8, or 16), and game settings.
 
-2. **Given** a tournament in "Open" state, **When** users join until max capacity, **Then** the tournament automatically transitions to "Ready" state and brackets are generated.
+2. **Given** a tournament in "Open" state, **When** users join until max capacity OR creator clicks "Start" with exactly 4 or 8 players, **Then** the tournament transitions to "Ready" state and brackets are generated.
 
 3. **Given** a tournament in "Ready" state, **When** the creator clicks "Start Tournament", **Then** first-round matches are scheduled and participants are notified.
 
@@ -206,9 +213,10 @@ A developer/admin wants to monitor system health and usage patterns.
 
 ### Edge Cases
 
-- **Network Disconnection Mid-Game**: If a player disconnects, server maintains game state for 30 seconds. If they reconnect within that window, they rejoin. If timeout expires, opponent wins by forfeit.
+- **Network Disconnection Mid-Game**: If a player disconnects, game pauses immediately and opponent sees "Game paused - waiting for opponent". If player reconnects within 10 seconds, game resumes. If timeout expires, opponent wins by forfeit.
 - **Simultaneous Ball Contact**: Server-authoritative physics resolves all collisions; client rendering interpolates to mask latency.
 - **OAuth Token Expiry**: Refresh tokens are used automatically; if refresh fails, user is redirected to login.
+- **42 OAuth API Unavailable**: Display "42 login temporarily unavailable" error and suggest using email/password login as fallback.
 - **Full Matchmaking Queue**: Queue has max capacity of 100; additional users see "Server busy, try again shortly".
 - **Invalid Avatar Upload**: Files >2MB or non-image MIME types are rejected with clear error message.
 - **Tournament Abandonment**: If a player fails to join a tournament match within 5 minutes, they forfeit that match.
@@ -235,7 +243,7 @@ A developer/admin wants to monitor system health and usage patterns.
 
 - **FR-201**: System MUST support remote play via WebSocket connections
 - **FR-202**: Server MUST pair players in matchmaking queue (FIFO)
-- **FR-203**: System MUST handle player reconnection within 30-second grace period
+- **FR-203**: System MUST pause game on disconnect, display "Game paused - waiting for opponent" to remaining player, and allow reconnection within 10-second grace period; forfeit on timeout
 - **FR-204**: System MUST share single WebSocket connection for game state and chat
 
 #### User Management (FR-3xx)
@@ -258,7 +266,8 @@ A developer/admin wants to monitor system health and usage patterns.
 
 #### Tournament (FR-5xx)
 
-- **FR-501**: Users MUST be able to create tournaments (4, 8, or 16 players)
+- **FR-501**: Users MUST be able to create tournaments (4, 8, or 16 max players)
+- **FR-501a**: Creator MUST be able to manually start tournament when exactly 4 or 8 players have joined (power-of-2 only; no byes)
 - **FR-502**: System MUST auto-generate single-elimination brackets
 - **FR-503**: System MUST track tournament progress and display bracket UI
 - **FR-504**: Tournament matches MUST use best-of-3 format
