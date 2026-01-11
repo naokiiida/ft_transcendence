@@ -10,51 +10,72 @@ const meta: Meta<typeof ScoreBoard> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+/**
+ * デフォルトのスコアボード（0-0）
+ */
+export const デフォルト: Story = {
   args: {
-    player1: { name: "Player 1", score: 0 },
-    player2: { name: "Player 2", score: 0 },
+    player1: { name: "プレイヤー1", score: 0 },
+    player2: { name: "プレイヤー2", score: 0 },
   },
 };
 
-export const InProgress: Story = {
+/**
+ * 試合中のスコア表示
+ */
+export const 試合中: Story = {
   args: {
-    player1: { name: "Alice", score: 5 },
-    player2: { name: "Bob", score: 3 },
+    player1: { name: "田中", score: 5 },
+    player2: { name: "鈴木", score: 3 },
   },
 };
 
-export const CloseGame: Story = {
+/**
+ * 接戦のスコア表示
+ */
+export const 接戦: Story = {
   args: {
-    player1: { name: "John", score: 10 },
-    player2: { name: "Jane", score: 9 },
+    player1: { name: "佐藤", score: 10 },
+    player2: { name: "高橋", score: 9 },
   },
 };
 
-export const Blowout: Story = {
+/**
+ * 大差がついた試合
+ */
+export const 大差: Story = {
   args: {
-    player1: { name: "Champion", score: 11 },
-    player2: { name: "Newcomer", score: 2 },
+    player1: { name: "チャンピオン", score: 11 },
+    player2: { name: "新人", score: 2 },
   },
 };
 
-export const MatchPoint: Story = {
+/**
+ * マッチポイント（同点）
+ */
+export const マッチポイント: Story = {
   args: {
-    player1: { name: "Player 1", score: 10 },
-    player2: { name: "Player 2", score: 10 },
+    player1: { name: "プレイヤー1", score: 10 },
+    player2: { name: "プレイヤー2", score: 10 },
   },
 };
 
-export const GameOver: Story = {
+/**
+ * 試合終了後のスコア
+ */
+export const 試合終了: Story = {
   args: {
-    player1: { name: "Winner", score: 11 },
-    player2: { name: "Runner-up", score: 8 },
+    player1: { name: "勝者", score: 11 },
+    player2: { name: "準優勝", score: 8 },
   },
 };
 
-export const LongNames: Story = {
+/**
+ * 長い名前のプレイヤー表示
+ */
+export const 長い名前: Story = {
   args: {
-    player1: { name: "VeryLongPlayerName", score: 7 },
-    player2: { name: "AnotherLongName", score: 4 },
+    player1: { name: "とても長いプレイヤー名", score: 7 },
+    player2: { name: "別の長い名前のプレイヤー", score: 4 },
   },
 };

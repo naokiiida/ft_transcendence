@@ -17,76 +17,91 @@ const meta: Meta<typeof Alert> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+/**
+ * デフォルトのアラート
+ */
+export const デフォルト: Story = {
   render: () => (
     <Alert>
       <Info className="h-4 w-4" />
-      <AlertTitle>Information</AlertTitle>
+      <AlertTitle>お知らせ</AlertTitle>
       <AlertDescription>
-        This is a default alert with some information.
+        これはデフォルトのアラートメッセージです。
       </AlertDescription>
     </Alert>
   ),
 };
 
-export const Destructive: Story = {
+/**
+ * エラー（削除・危険）アラート
+ */
+export const エラー: Story = {
   render: () => (
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
-      <AlertTitle>Error</AlertTitle>
+      <AlertTitle>エラー</AlertTitle>
       <AlertDescription>
-        Something went wrong. Please try again.
+        問題が発生しました。もう一度お試しください。
       </AlertDescription>
     </Alert>
   ),
 };
 
-export const Success: Story = {
+/**
+ * 成功アラート
+ */
+export const 成功: Story = {
   render: () => (
     <Alert variant="success">
       <CheckCircle className="h-4 w-4" />
-      <AlertTitle>Success</AlertTitle>
+      <AlertTitle>成功</AlertTitle>
       <AlertDescription>
-        Your changes have been saved successfully.
+        変更が正常に保存されました。
       </AlertDescription>
     </Alert>
   ),
 };
 
-export const Warning: Story = {
+/**
+ * 警告アラート
+ */
+export const 警告: Story = {
   render: () => (
     <Alert variant="warning">
       <AlertTriangle className="h-4 w-4" />
-      <AlertTitle>Warning</AlertTitle>
+      <AlertTitle>警告</AlertTitle>
       <AlertDescription>
-        Please review your input before proceeding.
+        続行する前に入力内容をご確認ください。
       </AlertDescription>
     </Alert>
   ),
 };
 
-export const AllVariants: Story = {
+/**
+ * 全バリエーション一覧
+ */
+export const 全バリエーション: Story = {
   render: () => (
     <div className="flex flex-col gap-4">
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Default</AlertTitle>
-        <AlertDescription>Default alert message.</AlertDescription>
+        <AlertTitle>デフォルト</AlertTitle>
+        <AlertDescription>デフォルトのアラートメッセージ。</AlertDescription>
       </Alert>
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>Destructive alert message.</AlertDescription>
+        <AlertTitle>エラー</AlertTitle>
+        <AlertDescription>エラーのアラートメッセージ。</AlertDescription>
       </Alert>
       <Alert variant="success">
         <CheckCircle className="h-4 w-4" />
-        <AlertTitle>Success</AlertTitle>
-        <AlertDescription>Success alert message.</AlertDescription>
+        <AlertTitle>成功</AlertTitle>
+        <AlertDescription>成功のアラートメッセージ。</AlertDescription>
       </Alert>
       <Alert variant="warning">
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Warning</AlertTitle>
-        <AlertDescription>Warning alert message.</AlertDescription>
+        <AlertTitle>警告</AlertTitle>
+        <AlertDescription>警告のアラートメッセージ。</AlertDescription>
       </Alert>
     </div>
   ),

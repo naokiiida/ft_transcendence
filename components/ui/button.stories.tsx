@@ -23,88 +23,121 @@ const meta: Meta<typeof Button> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+/**
+ * デフォルトボタン
+ */
+export const デフォルト: Story = {
   args: {
-    children: "Button",
+    children: "ボタン",
     variant: "default",
   },
 };
 
-export const Destructive: Story = {
+/**
+ * 削除・危険ボタン
+ */
+export const 削除: Story = {
   args: {
-    children: "Delete",
+    children: "削除",
     variant: "destructive",
   },
 };
 
-export const Outline: Story = {
+/**
+ * アウトラインボタン
+ */
+export const アウトライン: Story = {
   args: {
-    children: "Outline",
+    children: "アウトライン",
     variant: "outline",
   },
 };
 
-export const Secondary: Story = {
+/**
+ * セカンダリボタン
+ */
+export const セカンダリ: Story = {
   args: {
-    children: "Secondary",
+    children: "セカンダリ",
     variant: "secondary",
   },
 };
 
-export const Ghost: Story = {
+/**
+ * ゴーストボタン
+ */
+export const ゴースト: Story = {
   args: {
-    children: "Ghost",
+    children: "ゴースト",
     variant: "ghost",
   },
 };
 
-export const Link: Story = {
+/**
+ * リンクスタイルボタン
+ */
+export const リンク: Story = {
   args: {
-    children: "Link",
+    children: "リンク",
     variant: "link",
   },
 };
 
-export const Small: Story = {
+/**
+ * 小サイズボタン
+ */
+export const 小サイズ: Story = {
   args: {
-    children: "Small",
+    children: "小",
     size: "sm",
   },
 };
 
-export const Large: Story = {
+/**
+ * 大サイズボタン
+ */
+export const 大サイズ: Story = {
   args: {
-    children: "Large",
+    children: "大",
     size: "lg",
   },
 };
 
-export const Disabled: Story = {
+/**
+ * 無効状態ボタン
+ */
+export const 無効: Story = {
   args: {
-    children: "Disabled",
+    children: "無効",
     disabled: true,
   },
 };
 
-export const AllVariants: Story = {
+/**
+ * 全バリエーション一覧
+ */
+export const 全バリエーション: Story = {
   render: () => (
     <div className="flex flex-wrap gap-4">
-      <Button variant="default">Default</Button>
-      <Button variant="destructive">Destructive</Button>
-      <Button variant="outline">Outline</Button>
-      <Button variant="secondary">Secondary</Button>
-      <Button variant="ghost">Ghost</Button>
-      <Button variant="link">Link</Button>
+      <Button variant="default">デフォルト</Button>
+      <Button variant="destructive">削除</Button>
+      <Button variant="outline">アウトライン</Button>
+      <Button variant="secondary">セカンダリ</Button>
+      <Button variant="ghost">ゴースト</Button>
+      <Button variant="link">リンク</Button>
     </div>
   ),
 };
 
-export const AllSizes: Story = {
+/**
+ * 全サイズ一覧
+ */
+export const 全サイズ: Story = {
   render: () => (
     <div className="flex items-center gap-4">
-      <Button size="sm">Small</Button>
-      <Button size="default">Default</Button>
-      <Button size="lg">Large</Button>
+      <Button size="sm">小</Button>
+      <Button size="default">中</Button>
+      <Button size="lg">大</Button>
     </div>
   ),
 };

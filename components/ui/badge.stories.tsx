@@ -16,57 +16,78 @@ const meta: Meta<typeof Badge> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+/**
+ * デフォルトバッジ
+ */
+export const デフォルト: Story = {
   args: {
-    children: "Badge",
+    children: "バッジ",
     variant: "default",
   },
 };
 
-export const Secondary: Story = {
+/**
+ * セカンダリバッジ
+ */
+export const セカンダリ: Story = {
   args: {
-    children: "Secondary",
+    children: "セカンダリ",
     variant: "secondary",
   },
 };
 
-export const Destructive: Story = {
+/**
+ * エラー（削除・危険）バッジ
+ */
+export const エラー: Story = {
   args: {
-    children: "Destructive",
+    children: "エラー",
     variant: "destructive",
   },
 };
 
-export const Outline: Story = {
+/**
+ * アウトラインバッジ
+ */
+export const アウトライン: Story = {
   args: {
-    children: "Outline",
+    children: "アウトライン",
     variant: "outline",
   },
 };
 
-export const Success: Story = {
+/**
+ * 成功バッジ
+ */
+export const 成功: Story = {
   args: {
-    children: "Success",
+    children: "成功",
     variant: "success",
   },
 };
 
-export const Warning: Story = {
+/**
+ * 警告バッジ
+ */
+export const 警告: Story = {
   args: {
-    children: "Warning",
+    children: "警告",
     variant: "warning",
   },
 };
 
-export const AllVariants: Story = {
+/**
+ * 全バリエーション一覧
+ */
+export const 全バリエーション: Story = {
   render: () => (
     <div className="flex flex-wrap gap-2">
-      <Badge variant="default">Default</Badge>
-      <Badge variant="secondary">Secondary</Badge>
-      <Badge variant="destructive">Destructive</Badge>
-      <Badge variant="outline">Outline</Badge>
-      <Badge variant="success">Success</Badge>
-      <Badge variant="warning">Warning</Badge>
+      <Badge variant="default">デフォルト</Badge>
+      <Badge variant="secondary">セカンダリ</Badge>
+      <Badge variant="destructive">エラー</Badge>
+      <Badge variant="outline">アウトライン</Badge>
+      <Badge variant="success">成功</Badge>
+      <Badge variant="warning">警告</Badge>
     </div>
   ),
 };

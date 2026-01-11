@@ -10,44 +10,56 @@ const meta: Meta<typeof Avatar> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const WithImage: Story = {
+/**
+ * 画像付きアバター
+ */
+export const 画像付き: Story = {
   render: () => (
     <Avatar>
-      <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-      <AvatarFallback>CN</AvatarFallback>
+      <AvatarImage src="https://github.com/shadcn.png" alt="ユーザー" />
+      <AvatarFallback>田中</AvatarFallback>
     </Avatar>
   ),
 };
 
-export const WithFallback: Story = {
+/**
+ * フォールバック表示（画像なし）
+ */
+export const フォールバック: Story = {
   render: () => (
     <Avatar>
-      <AvatarImage src="/broken-image.jpg" alt="User" />
-      <AvatarFallback>JD</AvatarFallback>
+      <AvatarImage src="/broken-image.jpg" alt="ユーザー" />
+      <AvatarFallback>山田</AvatarFallback>
     </Avatar>
   ),
 };
 
-export const Sizes: Story = {
+/**
+ * サイズバリエーション
+ */
+export const サイズ: Story = {
   render: () => (
     <div className="flex items-center gap-4">
       <Avatar className="h-8 w-8">
-        <AvatarFallback>SM</AvatarFallback>
+        <AvatarFallback>小</AvatarFallback>
       </Avatar>
       <Avatar>
-        <AvatarFallback>MD</AvatarFallback>
+        <AvatarFallback>中</AvatarFallback>
       </Avatar>
       <Avatar className="h-14 w-14">
-        <AvatarFallback>LG</AvatarFallback>
+        <AvatarFallback>大</AvatarFallback>
       </Avatar>
       <Avatar className="h-20 w-20">
-        <AvatarFallback>XL</AvatarFallback>
+        <AvatarFallback>特大</AvatarFallback>
       </Avatar>
     </div>
   ),
 };
 
-export const Group: Story = {
+/**
+ * グループ表示
+ */
+export const グループ: Story = {
   render: () => (
     <div className="flex -space-x-4">
       <Avatar className="border-2 border-background">

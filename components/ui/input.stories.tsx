@@ -23,52 +23,73 @@ const meta: Meta<typeof Input> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+/**
+ * デフォルト入力欄
+ */
+export const デフォルト: Story = {
   args: {
     type: "text",
-    placeholder: "Enter text...",
+    placeholder: "テキストを入力...",
   },
 };
 
-export const Email: Story = {
+/**
+ * メールアドレス入力
+ */
+export const メール: Story = {
   args: {
     type: "email",
-    placeholder: "email@example.com",
+    placeholder: "example@mail.com",
   },
 };
 
-export const Password: Story = {
+/**
+ * パスワード入力
+ */
+export const パスワード: Story = {
   args: {
     type: "password",
-    placeholder: "Enter password",
+    placeholder: "パスワードを入力",
   },
 };
 
-export const Disabled: Story = {
+/**
+ * 無効状態
+ */
+export const 無効: Story = {
   args: {
     disabled: true,
-    placeholder: "Disabled input",
+    placeholder: "無効な入力欄",
   },
 };
 
-export const WithLabel: Story = {
+/**
+ * ラベル付き入力欄
+ */
+export const ラベル付き: Story = {
   render: () => (
     <div className="grid w-full max-w-sm items-center gap-1.5">
-      <Label htmlFor="email">Email</Label>
-      <Input type="email" id="email" placeholder="Email" />
+      <Label htmlFor="email">メールアドレス</Label>
+      <Input type="email" id="email" placeholder="メールアドレス" />
     </div>
   ),
 };
 
-export const WithValue: Story = {
+/**
+ * 初期値付き入力欄
+ */
+export const 初期値付き: Story = {
   args: {
-    defaultValue: "Default value",
+    defaultValue: "デフォルト値",
   },
 };
 
-export const Search: Story = {
+/**
+ * 検索入力欄
+ */
+export const 検索: Story = {
   args: {
     type: "search",
-    placeholder: "Search...",
+    placeholder: "検索...",
   },
 };

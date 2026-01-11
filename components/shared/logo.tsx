@@ -17,14 +17,14 @@ export function Logo({ size = "md", className }: LogoProps) {
   return (
     <div
       className={cn(
-        "font-mono font-bold tracking-tighter",
+        "font-bold tracking-[.25em]",
         sizeConfig[size],
         className
       )}
     >
-      <span className="text-primary text-glow">PONG</span>
+      <span className="text-primary text-glow">ぽん</span>
       <span className="text-muted-foreground">.</span>
-      <span className="text-secondary">42</span>
+      <span className="text-secondary">ふぉーてぃーつー</span>
     </div>
   );
 }

@@ -18,58 +18,70 @@ const meta: Meta<typeof Card> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+/**
+ * デフォルトカード
+ */
+export const デフォルト: Story = {
   render: () => (
     <Card className="w-[350px]">
       <CardHeader>
-        <CardTitle>Card Title</CardTitle>
-        <CardDescription>Card description goes here.</CardDescription>
+        <CardTitle>カードタイトル</CardTitle>
+        <CardDescription>カードの説明文がここに入ります。</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>This is the card content area.</p>
+        <p>これはカードのコンテンツエリアです。</p>
       </CardContent>
       <CardFooter>
-        <Button>Action</Button>
+        <Button>アクション</Button>
       </CardFooter>
     </Card>
   ),
 };
 
-export const SimpleCard: Story = {
+/**
+ * シンプルなカード
+ */
+export const シンプル: Story = {
   render: () => (
     <Card className="w-[350px] p-6">
-      <p>A simple card with just content.</p>
+      <p>シンプルなコンテンツのみのカード。</p>
     </Card>
   ),
 };
 
-export const WithoutFooter: Story = {
+/**
+ * フッターなしカード
+ */
+export const フッターなし: Story = {
   render: () => (
     <Card className="w-[350px]">
       <CardHeader>
-        <CardTitle>Notifications</CardTitle>
-        <CardDescription>You have 3 unread messages.</CardDescription>
+        <CardTitle>通知</CardTitle>
+        <CardDescription>3件の未読メッセージがあります。</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Check your inbox for new updates.</p>
+        <p>新しい更新を確認してください。</p>
       </CardContent>
     </Card>
   ),
 };
 
-export const WithActions: Story = {
+/**
+ * アクションボタン付きカード
+ */
+export const アクション付き: Story = {
   render: () => (
     <Card className="w-[350px]">
       <CardHeader>
-        <CardTitle>Create Project</CardTitle>
-        <CardDescription>Deploy your new project in one-click.</CardDescription>
+        <CardTitle>プロジェクト作成</CardTitle>
+        <CardDescription>ワンクリックで新しいプロジェクトをデプロイ。</CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Configure your project settings here.</p>
+        <p>ここでプロジェクトの設定を行います。</p>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline">Cancel</Button>
-        <Button>Deploy</Button>
+        <Button variant="outline">キャンセル</Button>
+        <Button>デプロイ</Button>
       </CardFooter>
     </Card>
   ),

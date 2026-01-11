@@ -7,21 +7,21 @@ import { Gamepad2, Users, Trophy, Bot } from "lucide-react";
 export default function Home() {
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      {/* ヒーローセクション */}
       <div className="flex flex-col items-center justify-center gap-8 px-4 py-16">
         <Logo size="lg" />
         <p className="text-center text-lg text-muted-foreground">
-          Real-time multiplayer Pong with tournaments
+          リアルタイムマルチプレイヤー Pong とトーナメント
         </p>
 
         <div className="flex gap-4">
           <Button size="lg" className="glow-primary">
             <Gamepad2 className="mr-2 h-5 w-5" />
-            Quick Match
+            クイックマッチ
           </Button>
           <Button size="lg" variant="secondary">
             <Bot className="mr-2 h-5 w-5" />
-            Play vs AI
+            AI対戦
           </Button>
         </div>
 
@@ -32,18 +32,17 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Features */}
+      {/* 機能紹介 */}
       <div className="mx-auto grid max-w-4xl gap-6 px-4 pb-16 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              Multiplayer
+              マルチプレイヤー
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Play against real players from around the world with low-latency
-            WebSocket connections.
+            低遅延WebSocket接続で、世界中のプレイヤーと対戦できます。
           </CardContent>
         </Card>
 
@@ -51,12 +50,11 @@ export default function Home() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-accent" />
-              Tournaments
+              トーナメント
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Compete in single-elimination tournaments with bracket tracking and
-            leaderboards.
+            シングルエリミネーション形式のトーナメントに参加。ブラケット追跡とリーダーボード機能付き。
           </CardContent>
         </Card>
 
@@ -64,12 +62,11 @@ export default function Home() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-secondary" />
-              AI Opponent
+              AI対戦
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Practice against AI with three difficulty levels and explainable
-            decision-making.
+            3段階の難易度設定と思考プロセスの可視化機能を備えたAIと練習できます。
           </CardContent>
         </Card>
       </div>
