@@ -56,6 +56,30 @@ npm run build      # 本番ビルド
 npm run start      # 本番サーバー起動
 ```
 
+## Storybook
+
+UIコンポーネントのカタログとドキュメントを確認できます。
+
+```bash
+# Storybook を起動
+npm run storybook
+```
+
+ブラウザで http://localhost:6006 を開く
+
+### 含まれるコンポーネント
+
+- **UI**: Button, Card, Badge, Input, Alert, Avatar, Separator など
+- **Game**: ScoreBoard, PlayerCard, ChatPanel, GameStatus など
+- **Shared**: Logo, OnlineIndicator など
+
+### Storybook のビルド
+
+```bash
+# 静的ファイルとしてビルド
+npm run build-storybook
+```
+
 ## Docker で起動
 
 ```bash
@@ -121,7 +145,7 @@ ft_transcendence/
 |----------|------|
 | ランタイム | Node.js 22 |
 | フレームワーク | Next.js 15 (App Router) |
-| UI | React 19 + DaisyUI + Tailwind CSS |
+| UI | React 19 + shadcn/ui + Tailwind CSS |
 | データベース | SQLite (WAL モード) |
 | バリデーション | Zod |
 | リアルタイム通信 | WebSocket |

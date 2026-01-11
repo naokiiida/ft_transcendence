@@ -333,19 +333,19 @@ export const handler = {
 
 ## 5. 追加の決定
 
-### DaisyUI + Tailwind CSS
+### shadcn/ui + Tailwind CSS
 
-Freshドキュメントに従い、公式DaisyUIプラグインを使用：
+shadcn/uiコンポーネントライブラリを使用：
 
 ```typescript
 // tailwind.config.ts
-import daisyui from "daisyui";
-
 export default {
-  content: ["{routes,islands,components}/**/*.{ts,tsx}"],
-  plugins: [daisyui],
-  daisyui: {
-    themes: ["light", "dark"],
+  content: ["{app,components}/**/*.{ts,tsx}"],
+  darkMode: "class",
+  theme: {
+    extend: {
+      // shadcn/ui用のカスタムテーマ設定
+    },
   },
 };
 ```
@@ -657,7 +657,7 @@ function generateBracket(participants: string[]): TournamentMatch[] {
 | ランタイム | Deno | 1.40以上 |
 | フレームワーク | Fresh | 1.6以上 |
 | データベース | @db/sqlite経由のSQLite | jsr:@db/sqlite@0.13 |
-| CSS | DaisyUI + Tailwind | 最新 |
+| CSS | shadcn/ui + Tailwind | 最新 |
 | メトリクス | ts_prometheus | deno.land/x/ts_prometheus@v0.3.0 |
 | バリデーション | Zod | npm:zod |
 | WebSocket | ネイティブDeno.upgradeWebSocket | 組み込み |

@@ -4,7 +4,7 @@ Auto-generated from all feature plans. Last updated: 2026-01-11
 
 ## Active Technologies
 - SQLite with WAL mode (`data/pong.db`)
-- TypeScript + Next.js 15 (App Router), React 19, DaisyUI + Tailwind, Zod
+- TypeScript + Next.js 15 (App Router), React 19, shadcn/ui + Tailwind, Zod
 
 ## Project Structure
 

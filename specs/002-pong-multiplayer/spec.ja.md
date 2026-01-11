@@ -354,7 +354,7 @@ ft_transcendenceは、リアルタイムマルチプレイヤー機能を備え�
 - **ランタイム**: Deno 1.40以上
 - **フレームワーク**: Fresh 1.6以上
 - **UI**: Preact 10.0以上
-- **CSS**: DaisyUI + Tailwind
+- **CSS**: shadcn/ui + Tailwind
 - **データベース**: WALモードのSQLite（`data/pong.db`）
 - **リバースプロキシ**: Traefik 3.0以上
 

@@ -251,6 +251,6 @@ docker compose up --build
 
 - [Freshドキュメント](https://fresh.deno.dev/docs)
 - [Denoマニュアル](https://docs.deno.com)
-- [DaisyUIコンポーネント](https://daisyui.com/components)
+- [shadcn/uiコンポーネント](https://ui.shadcn.com/docs/components)
 - [42 APIドキュメント](https://api.intra.42.fr/apidoc)
 - [Prometheusクエリ言語](https://prometheus.io/docs/prometheus/latest/querying/basics/)
