@@ -20,7 +20,7 @@
 
 - [ ] T001 Create Fresh project with `deno run -A -r https://fresh.deno.dev` in repository root
 - [ ] T002 [P] Configure deno.json: strict TypeScript, tasks (dev, build, lint, test, setup), import maps
-- [ ] T003 [P] Configure tailwind.config.ts with DaisyUI plugin per research.md
+- [ ] T003 [P] Configure tailwind.config.ts with shadcn/ui setup per research.md
 - [ ] T004 [P] Create .env.example with FT_CLIENT_ID, FT_CLIENT_SECRET, FT_REDIRECT_URI, SESSION_SECRET
 - [ ] T005 Create directory structure per plan.md: routes/, islands/, components/, shared/, lib/, static/, infra/
 - [ ] T006 [P] Create .hooks/pre-commit with `deno task lint && deno task check` and configure in deno.json
@@ -52,14 +52,14 @@
 - [ ] T018 Create lib/logger.ts with JSON structured logging and correlation IDs
 - [ ] T019 Create lib/metrics.ts with Prometheus metrics per research.md (ts_prometheus)
 - [ ] T020 Create routes/_middleware.ts with CSRF token generation/validation framework
-- [ ] T021 Create routes/_app.tsx with Tailwind styles and DaisyUI theme provider
+- [ ] T021 Create routes/_app.tsx with Tailwind styles and shadcn/ui theme provider
 - [ ] T022 [P] Create components/layout/Header.tsx with navigation structure
 - [ ] T023 [P] Create components/layout/Footer.tsx with copyright
 - [ ] T024 [P] Create components/layout/Nav.tsx with auth-aware navigation links
-- [ ] T025 [P] Create components/ui/Button.tsx as DaisyUI wrapper
-- [ ] T026 [P] Create components/ui/Card.tsx as DaisyUI wrapper
-- [ ] T027 [P] Create components/ui/Modal.tsx as DaisyUI wrapper
-- [ ] T028 [P] Create components/ui/Badge.tsx as DaisyUI wrapper
+- [ ] T025 [P] Create components/ui/Button.tsx as shadcn/ui component
+- [ ] T026 [P] Create components/ui/Card.tsx as shadcn/ui component
+- [ ] T027 [P] Create components/ui/Modal.tsx as shadcn/ui component
+- [ ] T028 [P] Create components/ui/Badge.tsx as shadcn/ui component
 
 ### System Endpoints
 
