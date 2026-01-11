@@ -1,54 +1,64 @@
 # ============================================
 # ft_transcendence Production Dockerfile
-# Multi-stage build for Fresh/Deno application
+# Multi-stage build for Next.js application
 # ============================================
 
-# --- Build Stage ---
-FROM denoland/deno:alpine-2.1.4 AS builder
+# --- Dependencies Stage ---
+FROM node:22-alpine AS deps
 
 WORKDIR /app
 
-# Copy dependency files first (cache layer)
-COPY deno.json deno.lock* ./
+# Copy package files
+COPY package.json package-lock.json* ./
 
-# Cache dependencies
-RUN deno cache deno.json || true
+# Install dependencies
+RUN npm ci
 
-# Copy source code
+# --- Build Stage ---
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Cache all imports and type-check
-RUN deno cache main.ts
-RUN deno task build || true
+# Build the application
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
 
 # --- Production Stage ---
-FROM denoland/deno:alpine-2.1.4
+FROM node:22-alpine AS runner
+
+WORKDIR /app
 
 # Install only runtime dependencies
 RUN apk add --no-cache sqlite
 
-# Deno user already exists in base image
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-WORKDIR /app
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Copy built application from builder
-COPY --from=builder --chown=deno:deno /app .
+# Copy built application
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Create data directory for SQLite
-RUN mkdir -p /app/data && chown -R deno:deno /app/data
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 
-# Environment
-ENV DENO_DIR=/deno-dir
-ENV DENO_NO_UPDATE_CHECK=1
-ENV DENO_NO_PROMPT=1
-ENV DENO_ENV=production
+USER nextjs
 
-USER deno
+EXPOSE 3000
 
-EXPOSE 8000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8000/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-CMD ["deno", "task", "start"]
+CMD ["node", "server.js"]

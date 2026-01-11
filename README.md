@@ -4,8 +4,8 @@
 
 ## 必要な環境
 
-- deno
-- docker
+- Node.js 22+
+- Docker
 
 ## クイックスタート
 
@@ -23,14 +23,14 @@ cp .env.example .env
 #    - SESSION_SECRET: 下記コマンドで生成
 openssl rand -hex 32
 
-# 4. Git hooks を設定 & 依存関係をインストール
-deno task setup
+# 4. 依存関係をインストール
+npm install
 
 # 5. 開発サーバーを起動
-deno task dev
+npm run dev
 ```
 
-ブラウザで http://localhost:5173 を開く
+ブラウザで http://localhost:3000 を開く
 
 ## 42 OAuth アプリの登録
 
@@ -44,36 +44,29 @@ deno task dev
 
 ```bash
 # 開発
-deno task dev          # 開発サーバー起動 (ホットリロード)
-deno task check        # フォーマット + Lint + 型チェック
+npm run dev        # 開発サーバー起動 (ホットリロード)
+npm run lint       # ESLint チェック
 
 # テスト
-deno task test         # テスト実行
-deno task test:watch   # ウォッチモードでテスト
+npm test           # テスト実行
+npm run test:watch # ウォッチモードでテスト
 
 # ビルド
-deno task build        # 本番ビルド
-deno task start        # 本番サーバー起動
-
-# データベース
-deno task db:migrate   # マイグレーション実行
-
-# フォーマット
-deno task fmt          # コード整形
-deno task lint         # Lint チェック
+npm run build      # 本番ビルド
+npm run start      # 本番サーバー起動
 ```
 
 ## Docker で起動
 
 ```bash
-# 全サービス起動 (Fresh + Prometheus + Grafana)
+# 全サービス起動 (Next.js + Prometheus + Grafana)
 docker compose up --build
 
 # バックグラウンドで起動
 docker compose up -d
 
 # ログ確認
-docker compose logs -f fresh
+docker compose logs -f app
 
 # 停止
 docker compose down
@@ -81,9 +74,9 @@ docker compose down
 
 | サービス | URL | 説明 |
 |----------|-----|------|
-| Fresh | http://localhost:8000 | メインアプリ |
+| Next.js | http://localhost:3000 | メインアプリ |
 | Prometheus | http://localhost:9090 | メトリクス |
-| Grafana | http://localhost:3000 | ダッシュボード (admin/admin) |
+| Grafana | http://localhost:3001 | ダッシュボード (admin/admin) |
 
 ## VS Code / Cursor で開発
 
@@ -91,47 +84,44 @@ docker compose down
 
 1. VS Code で `ft_transcendence` フォルダを開く
 2. コマンドパレット → 「Dev Containers: Reopen in Container」
-3. 自動的に Deno 環境が構築される
+3. 自動的に Node.js 環境が構築される
 
 ### ローカルで開発する場合
 
 推奨拡張機能:
-- `denoland.vscode-deno` (必須)
+- `dbaeumer.vscode-eslint`
 - `bradlc.vscode-tailwindcss`
+- `esbenp.prettier-vscode`
 
 ## プロジェクト構成
 
 ```
 ft_transcendence/
-├── routes/           # ページ & API ルート
-│   ├── _app.tsx      # アプリ全体のレイアウト
-│   ├── index.tsx     # トップページ
-│   └── api/          # API エンドポイント
-├── islands/          # クライアントサイド JS (インタラクティブ)
-├── components/       # 再利用可能な UI コンポーネント
-├── assets/           # CSS (Tailwind + DaisyUI)
-├── static/           # 静的ファイル (favicon など)
-├── lib/              # サーバーサイドロジック (今後作成)
-│   ├── db.ts         # SQLite 接続
-│   └── auth.ts       # 認証ヘルパー
-├── shared/           # クライアント/サーバー共有コード (今後作成)
-│   ├── types/        # TypeScript 型定義
-│   └── schemas/      # Zod バリデーションスキーマ
+├── app/              # Next.js App Router ページ
+│   ├── layout.tsx    # ルートレイアウト
+│   ├── page.tsx      # トップページ
+│   ├── globals.css   # グローバルスタイル
+│   └── api/          # API Routes (今後作成)
+├── components/       # React コンポーネント
+├── lib/              # ユーティリティ & データベース
+│   ├── db.ts         # SQLite 接続 (今後作成)
+│   └── auth.ts       # 認証ヘルパー (今後作成)
+├── public/           # 静的ファイル (favicon など)
 ├── tests/            # テストファイル (今後作成)
 ├── infra/            # Prometheus/Grafana 設定
 ├── specs/            # 仕様書 (詳細設計)
-├── deno.json         # Deno 設定 & タスク定義
-├── main.ts           # エントリーポイント
-└── vite.config.ts    # Vite 設定
+├── package.json      # 依存関係 & スクリプト
+├── next.config.ts    # Next.js 設定
+└── tailwind.config.ts # Tailwind CSS 設定
 ```
 
 ## 技術スタック
 
 | カテゴリ | 技術 |
 |----------|------|
-| ランタイム | Deno 2.x |
-| フレームワーク | Fresh 2.x (SSR + Islands) |
-| UI | Preact + DaisyUI + Tailwind CSS v4 |
+| ランタイム | Node.js 22 |
+| フレームワーク | Next.js 15 (App Router) |
+| UI | React 19 + DaisyUI + Tailwind CSS |
 | データベース | SQLite (WAL モード) |
 | バリデーション | Zod |
 | リアルタイム通信 | WebSocket |
@@ -151,21 +141,20 @@ ft_transcendence/
 
 ## トラブルシューティング
 
-### `deno task dev` でエラーが出る
+### `npm run dev` でエラーが出る
 
 ```bash
-# キャッシュをクリアして再インストール
-rm -rf node_modules deno.lock
-deno install
-deno task dev
+# node_modules を削除して再インストール
+rm -rf node_modules package-lock.json
+npm install
+npm run dev
 ```
 
 ### ポートが使用中
 
 ```bash
 # 使用中のプロセスを確認
-lsof -i :5173
-lsof -i :8000
+lsof -i :3000
 
 # プロセスを終了
 kill -9 <PID>
@@ -181,6 +170,6 @@ docker compose build --no-cache
 ## チーム開発ルール
 
 1. **ブランチ**: `feature/xxx` で作業し、PR でマージ
-2. **コミット前**: `deno task check` を実行
+2. **コミット前**: `npm run lint` を実行
 3. **型安全**: `any` 禁止、Zod でバリデーション
 4. **セキュリティ**: SQL は必ずパラメータ化クエリを使用

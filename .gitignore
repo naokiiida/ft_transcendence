@@ -4,6 +4,7 @@ node_modules/
 # Environment
 .env
 .env.local
+.env.*.local
 
 # Database
 data/
@@ -11,12 +12,9 @@ data/
 *.db-wal
 *.db-shm
 
-# Deno
-.deno/
-deno-dir/
-
-# Fresh
-_fresh/
+# Next.js
+.next/
+out/
 
 # IDE
 .idea/
@@ -32,7 +30,6 @@ Thumbs.db
 
 # Build
 dist/
-_build/
 
 # Logs
 *.log
@@ -41,3 +38,10 @@ npm-debug.log*
 # Docker volumes (local)
 prometheus-data/
 grafana-data/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+coverage/

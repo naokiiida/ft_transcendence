@@ -1,17 +1,16 @@
-import type { ComponentChildren } from "preact";
+import { ButtonHTMLAttributes } from "react";
 
-export interface ButtonProps {
-  id?: string;
-  onClick?: () => void;
-  children?: ComponentChildren;
-  disabled?: boolean;
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  children: React.ReactNode;
 }
 
-export function Button(props: ButtonProps) {
+export function Button({ children, className, ...props }: ButtonProps) {
   return (
     <button
+      className={`btn btn-primary ${className ?? ""}`}
       {...props}
-      class="px-2 py-1 border-gray-500 border-2 rounded-sm bg-white hover:bg-gray-200 transition-colors"
-    />
+    >
+      {children}
+    </button>
   );
 }
