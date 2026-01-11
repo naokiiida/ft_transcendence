@@ -33,7 +33,7 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 # Install only runtime dependencies
-RUN apk add --no-cache sqlite
+RUN apk add --no-cache sqlite wget
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
