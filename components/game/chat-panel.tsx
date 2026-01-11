@@ -72,7 +72,7 @@ export function ChatPanel({
                 <Avatar className="h-6 w-6">
                   <AvatarImage src={message.userAvatar} />
                   <AvatarFallback className="text-xs">
-                    {message.userName[0]}
+                    {message.userName?.[0] || message.userId?.[0] || "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div
