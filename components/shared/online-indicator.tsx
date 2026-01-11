@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
@@ -18,10 +17,10 @@ interface OnlineIndicatorProps {
 }
 
 const statusConfig: Record<Status, { color: string; label: string }> = {
-  online: { color: "bg-green-500", label: "Online" },
-  offline: { color: "bg-gray-500", label: "Offline" },
-  away: { color: "bg-yellow-500", label: "Away" },
-  "in-game": { color: "bg-purple-500", label: "In Game" },
+  online: { color: "bg-green-500", label: "オンライン" },
+  offline: { color: "bg-gray-500", label: "オフライン" },
+  away: { color: "bg-yellow-500", label: "離席中" },
+  "in-game": { color: "bg-purple-500", label: "ゲーム中" },
 };
 
 const sizeConfig = {
@@ -55,13 +54,11 @@ export function OnlineIndicator({
   }
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>{indicator}</TooltipTrigger>
-        <TooltipContent>
-          <p>{label}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>{indicator}</TooltipTrigger>
+      <TooltipContent>
+        <p>{label}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }

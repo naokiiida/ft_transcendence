@@ -1,9 +1,10 @@
 import type { Preview } from '@storybook/nextjs-vite'
 import { themes } from 'storybook/theming'
 import React, { useEffect } from 'react'
+import { TooltipProvider } from '../components/ui/tooltip'
 import '../app/globals.css'
 
-const WithDarkMode: React.FC<{ Story: React.ComponentType }> = ({ Story }) => {
+const WithProviders: React.FC<{ Story: React.ComponentType }> = ({ Story }) => {
   useEffect(() => {
     document.documentElement.classList.add('dark')
     document.documentElement.lang = 'ja'
@@ -23,10 +24,14 @@ const WithDarkMode: React.FC<{ Story: React.ComponentType }> = ({ Story }) => {
     }
   }, [])
 
-  return <Story />
+  return (
+    <TooltipProvider>
+      <Story />
+    </TooltipProvider>
+  )
 }
 
-const withDarkMode = (Story: React.ComponentType) => <WithDarkMode Story={Story} />
+const withProviders = (Story: React.ComponentType) => <WithProviders Story={Story} />
 
 const preview: Preview = {
   parameters: {
@@ -47,7 +52,7 @@ const preview: Preview = {
       theme: themes.dark,
     },
   },
-  decorators: [withDarkMode],
+  decorators: [withProviders],
 }
 
 export default preview
