@@ -3,7 +3,7 @@ import { themes } from 'storybook/theming'
 import React, { useEffect } from 'react'
 import '../app/globals.css'
 
-const withDarkMode = (Story: React.ComponentType) => {
+const WithDarkMode: React.FC<{ Story: React.ComponentType }> = ({ Story }) => {
   useEffect(() => {
     document.documentElement.classList.add('dark')
     document.documentElement.lang = 'ja'
@@ -25,6 +25,8 @@ const withDarkMode = (Story: React.ComponentType) => {
 
   return <Story />
 }
+
+const withDarkMode = (Story: React.ComponentType) => <WithDarkMode Story={Story} />
 
 const preview: Preview = {
   parameters: {
