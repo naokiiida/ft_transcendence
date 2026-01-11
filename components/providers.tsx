@@ -1,9 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 interface ProvidersProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function Providers({ children }: ProvidersProps) {
