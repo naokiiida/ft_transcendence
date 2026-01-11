@@ -121,7 +121,7 @@ ft_transcendence/
 |----------|------|
 | ランタイム | Node.js 22 |
 | フレームワーク | Next.js 15 (App Router) |
-| UI | React 19 + DaisyUI + Tailwind CSS |
+| UI | React 19 + shadcn/ui + Tailwind CSS |
 | データベース | SQLite (WAL モード) |
 | バリデーション | Zod |
 | リアルタイム通信 | WebSocket |
