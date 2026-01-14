@@ -2,7 +2,8 @@ import { Logo } from "@/components/shared/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gamepad2, Users, Trophy, Bot } from "lucide-react";
+import { Bot, Gamepad2, Trophy, Users } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -15,9 +16,11 @@ export default function Home() {
         </p>
 
         <div className="flex gap-4">
-          <Button size="lg" className="glow-primary">
-            <Gamepad2 className="mr-2 h-5 w-5" />
-            クイックマッチ
+          <Button size="lg" className="glow-primary" asChild>
+            <Link href="/game">
+              <Gamepad2 className="mr-2 h-5 w-5" />
+              クイックマッチ
+            </Link>
           </Button>
           <Button size="lg" variant="secondary">
             <Bot className="mr-2 h-5 w-5" />
