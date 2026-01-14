@@ -1,3 +1,5 @@
+// ゲーム状態、物理、ルール更新、描画。
+
 // プレーヤーの入力状態
 export type InputState = {
   up: boolean;
@@ -40,6 +42,22 @@ export type GameState = {
   winner: "player" | "cpu" | "manual" | null;
 };
 
+// 物理・ルールのみを扱い、入力はコントローラ/マッチ層から受け取る。
+export class PongEngine {
+  createState(width: number, height: number) {
+    return createGameState(width, height);
+  }
+
+  step(
+    state: GameState,
+    playerInput: InputState,
+    cpuInput: InputState,
+    dt: number
+  ) {
+    updateGameWithInputs(state, playerInput, cpuInput, dt);
+  }
+}
+
 // 定数
 const BALL_SPEED = 320;
 const BALL_SPEED_MAX = 520;
@@ -81,11 +99,21 @@ export function createGameState(width: number, height: number): GameState {
 
 // ゲーム状態の更新
 export function updateGame(state: GameState, input: InputState, dt: number) {
+  updateGameWithInputs(state, input, getCpuInput(state), dt);
+}
+
+// 両パドルの入力を受け取る汎用更新（Match から使用）。
+export function updateGameWithInputs(
+  state: GameState,
+  playerInput: InputState,
+  cpuInput: InputState,
+  dt: number
+) {
   if (state.gameOver) {
     return;
   }
-  movePlayer(state, input, dt);
-  moveCpu(state, dt);
+  movePaddle(state, state.player, playerInput, dt);
+  movePaddle(state, state.cpu, cpuInput, dt);
   moveBall(state, dt);
 }
 
@@ -136,28 +164,29 @@ export function endGame(state: GameState) {
   state.winner = "manual";
 }
 
-function movePlayer(state: GameState, input: InputState, dt: number) {
+function movePaddle(
+  state: GameState,
+  paddle: Paddle,
+  input: InputState,
+  dt: number
+) {
   if (input.up) {
-    state.player.y -= state.player.speed * dt;
+    paddle.y -= paddle.speed * dt;
   }
   if (input.down) {
-    state.player.y += state.player.speed * dt;
+    paddle.y += paddle.speed * dt;
   }
-  state.player.y = clamp(
-    state.player.y,
-    12,
-    state.height - state.player.h - 12
-  );
+  paddle.y = clamp(paddle.y, 12, state.height - paddle.h - 12);
 }
 
-function moveCpu(state: GameState, dt: number) {
+// updateGame() 用の最小限な旧CPU挙動。
+function getCpuInput(state: GameState): InputState {
   const target = state.ball.y - state.cpu.h / 2;
-  if (target > state.cpu.y + 6) {
-    state.cpu.y += state.cpu.speed * dt;
-  } else if (target < state.cpu.y - 6) {
-    state.cpu.y -= state.cpu.speed * dt;
-  }
-  state.cpu.y = clamp(state.cpu.y, 12, state.height - state.cpu.h - 12);
+  const deadZone = 6;
+  return {
+    up: target < state.cpu.y - deadZone,
+    down: target > state.cpu.y + deadZone,
+  };
 }
 
 function moveBall(state: GameState, dt: number) {
