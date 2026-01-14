@@ -12,36 +12,32 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "denoland.vscode-deno",
         "bradlc.vscode-tailwindcss",
         "esbenp.prettier-vscode",
-        "streetsidesoftware.code-spell-checker"
+        "streetsidesoftware.code-spell-checker",
+        "dbaeumer.vscode-eslint"
       ],
       "settings": {
-        "deno.enable": true,
-        "deno.lint": true,
-        "deno.unstable": true,
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "denoland.vscode-deno",
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
         "[typescript]": {
-          "editor.defaultFormatter": "denoland.vscode-deno"
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
         "[typescriptreact]": {
-          "editor.defaultFormatter": "denoland.vscode-deno"
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
         }
       }
     }
   },
 
-  "forwardPorts": [8000, 9090, 3000],
+  "forwardPorts": [3000, 9090],
   "portsAttributes": {
-    "8000": { "label": "Fresh App", "onAutoForward": "notify" },
-    "9090": { "label": "Prometheus", "onAutoForward": "silent" },
-    "3000": { "label": "Grafana", "onAutoForward": "silent" }
+    "3000": { "label": "Next.js App", "onAutoForward": "notify" },
+    "9090": { "label": "Prometheus", "onAutoForward": "silent" }
   },
 
-  "postCreateCommand": "deno cache main.ts || true",
-  "postStartCommand": "echo '🎮 ft_transcendence dev environment ready!'",
+  "postCreateCommand": "npm install",
+  "postStartCommand": "echo 'ft_transcendence dev environment ready!'",
 
-  "remoteUser": "deno"
+  "remoteUser": "node"
 }

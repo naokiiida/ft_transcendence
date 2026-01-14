@@ -333,19 +333,19 @@ export const handler = {
 
 ## 5. Additional Decisions
 
-### DaisyUI + Tailwind CSS
+### shadcn/ui + Tailwind CSS
 
-Per Fresh documentation, use the official DaisyUI plugin:
+Using shadcn/ui component library:
 
 ```typescript
 // tailwind.config.ts
-import daisyui from "daisyui";
-
 export default {
-  content: ["{routes,islands,components}/**/*.{ts,tsx}"],
-  plugins: [daisyui],
-  daisyui: {
-    themes: ["light", "dark"],
+  content: ["{app,components}/**/*.{ts,tsx}"],
+  darkMode: "class",
+  theme: {
+    extend: {
+      // Custom theme settings for shadcn/ui
+    },
   },
 };
 ```
@@ -657,7 +657,7 @@ function generateBracket(participants: string[]): TournamentMatch[] {
 | Runtime | Deno | ≥1.40 |
 | Framework | Fresh | ≥1.6 |
 | Database | SQLite via @db/sqlite | jsr:@db/sqlite@0.13 |
-| CSS | DaisyUI + Tailwind | Latest |
+| CSS | shadcn/ui + Tailwind | Latest |
 | Metrics | ts_prometheus | deno.land/x/ts_prometheus@v0.3.0 |
 | Validation | Zod | npm:zod |
 | WebSocket | Native Deno.upgradeWebSocket | Built-in |
