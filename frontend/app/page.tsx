@@ -16,15 +16,15 @@ export default function Home() {
         </p>
 
         <div className="flex gap-4">
-          <Button size="lg" className="glow-primary" asChild>
-            <Link href="/game">
-              <Gamepad2 className="mr-2 h-5 w-5" />
-              クイックマッチ
-            </Link>
+          <Button size="lg" className="glow-primary">
+            <Gamepad2 className="mr-2 h-5 w-5" />
+            クイックマッチ
           </Button>
-          <Button size="lg" variant="secondary">
-            <Bot className="mr-2 h-5 w-5" />
-            AI対戦
+          <Button size="lg" variant="secondary" asChild>
+            <Link href="/game">
+              <Bot className="mr-2 h-5 w-5" />
+              AI対戦
+            </Link>
           </Button>
         </div>
 
