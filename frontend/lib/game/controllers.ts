@@ -1,6 +1,6 @@
 //　入力生成 統一的なインターフェースと、CPUモードのロジック
 
-import type { GameState, InputState } from "./engine";
+import type { GameState, InputState } from "./state";
 
 // AI難易度設定
 export type AiDifficultyConfig = {
@@ -108,7 +108,7 @@ export class AIController implements PaddleController {
 
   constructor(
     private config: AiDifficultyConfig,
-    private side: "player" | "cpu" = "cpu" // 操作するバーの側
+    private side: "left" | "right" = "right" // 操作するバーの側
   ) {}
 
   // ゲーム状態に基づいて入力を生成。
