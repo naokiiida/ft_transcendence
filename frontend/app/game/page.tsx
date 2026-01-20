@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createGameState, endGame, renderGame } from "@/lib/game/engine";
-import type { GameState, InputState } from "@/lib/game/engine";
+import Link from "next/link";
+import { createGameState, endGame } from "@/lib/game/engine";
+import { renderGame } from "@/lib/game/renderer";
+import type { GameState, InputState } from "@/lib/game/state";
 import { PongEngine } from "@/lib/game/engine";
 import {
   DEFAULT_AI_CONFIGS,
@@ -18,8 +20,10 @@ type AiLevel = (typeof AVAILABLE_AI_LEVELS)[number]["id"];
 export default function GamePage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState | null>(null);
+  const gameOverRef = useRef(false);
   const [aiLevel, setAiLevel] = useState<AiLevel>("medium");
   const [sessionId, setSessionId] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -29,6 +33,8 @@ export default function GamePage() {
 
     const state = createGameState(canvas.width, canvas.height);
     stateRef.current = state;
+    gameOverRef.current = false;
+    setGameOver(false);
     const input: InputState = { up: false, down: false };
     const engine = new PongEngine();
     const match = new LocalMatch(engine, input, DEFAULT_AI_CONFIGS[aiLevel]);
@@ -66,6 +72,10 @@ export default function GamePage() {
       const dt = Math.min((time - lastTime) / 1000, 0.033);
       lastTime = time;
       match.tick(state, dt);
+      if (state.gameOver !== gameOverRef.current) {
+        gameOverRef.current = state.gameOver;
+        setGameOver(state.gameOver);
+      }
       renderGame(ctx, state);
       frameId = requestAnimationFrame(frame);
     };
@@ -119,6 +129,11 @@ export default function GamePage() {
           >
             終了
           </Button>
+          {gameOver ? (
+            <Button asChild variant="outline">
+              <Link href="/">トップに戻る</Link>
+            </Button>
+          ) : null}
         </div>
         <canvas
           ref={canvasRef}
