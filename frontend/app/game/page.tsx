@@ -1,12 +1,13 @@
-"use client";
+"use client"; // クライアントサイドで動作するコンポーネント
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "next/link"; // 画面遷移用リンク
 import { createGameState, endGame } from "@/lib/game/engine";
 import { renderGame } from "@/lib/game/renderer";
 import type { GameState, InputState } from "@/lib/game/state";
 import { PongEngine } from "@/lib/game/engine";
 import {
+  //
   DEFAULT_AI_CONFIGS,
   DEFAULT_AI_UNLOCKS,
   getAvailableAiLevels,
@@ -14,31 +15,46 @@ import {
 import { LocalMatch } from "@/lib/game/match";
 import { Button } from "@/components/ui/button";
 
+// AIレベルの選択肢を取得
 const AVAILABLE_AI_LEVELS = getAvailableAiLevels(DEFAULT_AI_UNLOCKS);
 type AiLevel = (typeof AVAILABLE_AI_LEVELS)[number]["id"];
 
+// ゲームページコンポーネント
 export default function GamePage() {
+  // 画面が変わらない要素
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState | null>(null);
   const gameOverRef = useRef(false);
+  // 画面が変わる要素（CPU難易度、リスタート、ゲームオーバー）
   const [aiLevel, setAiLevel] = useState<AiLevel>("medium");
   const [sessionId, setSessionId] = useState(0);
   const [gameOver, setGameOver] = useState(false);
 
+  //　useEffect
+  // React/Next.jsでは、画面の処理と、実際に動く処理は分けられてる。
+  //　JSX（return の中）
+  // 実際に動く処理（useEffect の中）
   useEffect(() => {
+    //canvas要素の取得
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // ctx(画面描画用オブジェクト)の取得
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    //  ゲームの初期化
     const state = createGameState(canvas.width, canvas.height);
     stateRef.current = state;
+    // ゲームオーバーフラグの初期化
     gameOverRef.current = false;
     setGameOver(false);
+    // 入力状態を管理するオブジェクト
     const input: InputState = { up: false, down: false };
+    // ゲームエンジンとマッチの作成
     const engine = new PongEngine();
     const match = new LocalMatch(engine, input, DEFAULT_AI_CONFIGS[aiLevel]);
 
+    // キー割当
     const keyMap: Record<string, "up" | "down"> = {
       ArrowUp: "up",
       ArrowDown: "down",
@@ -48,13 +64,13 @@ export default function GamePage() {
       S: "down",
     };
 
+    // キーイベントハンドラ 押したときと離したときで分ける
     const handleKeyDown = (event: KeyboardEvent) => {
       const action = keyMap[event.key];
       if (!action) return;
       input[action] = true;
       event.preventDefault();
     };
-
     const handleKeyUp = (event: KeyboardEvent) => {
       const action = keyMap[event.key];
       if (!action) return;
@@ -62,12 +78,15 @@ export default function GamePage() {
       event.preventDefault();
     };
 
+    // イベントリスナー登録
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 
+    // 時間管理
     let lastTime = performance.now();
     let frameId = 0;
 
+    // ゲームループ
     const frame = (time: number) => {
       const dt = Math.min((time - lastTime) / 1000, 0.033);
       lastTime = time;
@@ -80,15 +99,19 @@ export default function GamePage() {
       frameId = requestAnimationFrame(frame);
     };
 
+    //初回起動
     frameId = requestAnimationFrame(frame);
 
+    // クリーンアップ関数
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [aiLevel, sessionId]);
+  // useEffectの依存配列、ページの最初、aiLevelかsessionIdが変わったときに再実行される。
 
+  // JSX（画面の見た目）
   return (
     <div className="min-h-screen px-4 py-10">
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-4">

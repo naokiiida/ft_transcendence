@@ -108,19 +108,20 @@ export class AIController implements PaddleController {
 
   constructor(
     private config: AiDifficultyConfig,
-    private side: "left" | "right" = "right" // 操作するバーの側
+    private side: "left" | "right" = "right", // 操作するバーの側
   ) {}
 
   // ゲーム状態に基づいて入力を生成。
   getInput(state: GameState, dt: number) {
-    this.elapsedMs += dt * 1000;
+    this.elapsedMs += dt * 1000; // msに変換して加算
 
+    // 遅延時間が経過したら、保留中の入力をアクティブにする。
     if (this.elapsedMs >= this.pendingReadyAt) {
       this.activeInput = this.pendingInput;
       this.pendingReadyAt = 0;
     }
 
-    // 一定間隔で判断を下す（結果は遅延後に反映）。
+    // 指定の判断間隔ごとに新しい入力を決定する。
     if (
       this.elapsedMs - this.lastDecisionMs >=
       this.config.decisionIntervalMs
@@ -130,6 +131,8 @@ export class AIController implements PaddleController {
       const paddleCenter = paddle.y + paddle.h / 2;
       const targetY = this.getTargetY(state); // ノイズ付き目標Y座標
       let input: InputState = { up: false, down: false };
+
+      // 目標に基づいて上下の入力を決定。
       if (targetY > paddleCenter + this.config.deadZonePx) {
         input.down = true;
       } else if (targetY < paddleCenter - this.config.deadZonePx) {
@@ -138,6 +141,7 @@ export class AIController implements PaddleController {
       if (Math.random() < this.config.missChance) {
         input = { up: false, down: false };
       }
+      // 新しい入力を保留し、反応遅延時間後にアクティブにする。
       this.pendingInput = input;
       this.pendingReadyAt = this.elapsedMs + this.config.reactionDelayMs;
     }

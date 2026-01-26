@@ -1,0 +1,80 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
+import { createHash, randomBytes } from 'crypto';
+import type { User } from '../model/user.model';
+import { UsersService } from '../users/users.service';
+
+type RegisterInput = {
+  email: string;
+  password: string;
+  display_name: string;
+};
+
+/*
+IDと表示名は、簡易化のために同じにしている。
+
+
+例外処理が、HTTPのステータスコードに対応している。
+- BadRequestException: 400 Bad Request
+- ConflictException: 409 Conflict
+
+*/
+
+//このクラスはNestJSが管理する。newをせず、DIで使う。
+//与えらた処理をして指定した値を返す。newの責任は持たない。
+@Injectable()
+export class AuthService {
+  constructor(private readonly usersService: UsersService) {}
+
+  // inputは、コントローラーで受けったった登録情報
+  register(input: RegisterInput): User {
+    // 余分な空白を削除して、小文字に変換
+    const email = input.email?.trim().toLowerCase();
+    // パスワードはそのまま取得
+    const password = input.password ?? '';
+    // 余分な空白を削除
+    const displayName = input.display_name?.trim();
+
+    // どれかがかけてる、メールアドレスの形式が不正（簡易判定）、パスワードが短すぎる場合はエラー
+    if (!email || !displayName || !password) {
+      throw new BadRequestException('Missing required fields');
+    }
+    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+      throw new BadRequestException('Invalid email');
+    }
+    if (password.length < 8) {
+      throw new BadRequestException('Password too short');
+    }
+
+    //既存ユーザーとの重複チェック、同じメールや同じIDがあればエラー。
+    const id = displayName;
+    if (this.usersService.findByEmail(email)) {
+      throw new ConflictException('Email already registered');
+    }
+    if (this.usersService.findById(id)) {
+      throw new ConflictException('Display name already in use');
+    }
+
+    // パスワードをハッシュ化してユーザー作成
+    const password_hash = this.hashPassword(password);
+    const user: User = {
+      id,
+      email,
+      password_hash,
+    };
+
+    return this.usersService.create(user);
+  }
+
+  // 簡易的なパスワードハッシュ化関数
+  private hashPassword(password: string) {
+    const salt = randomBytes(16).toString('hex');
+    const hash = createHash('sha256')
+      .update(salt + password, 'utf8')
+      .digest('hex');
+    return `${salt}:${hash}`;
+  }
+}

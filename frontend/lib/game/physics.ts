@@ -21,12 +21,6 @@ export function movePaddle(
   paddle.y = clamp(paddle.y, 12, state.height - paddle.h - 12); //マージン12を確保して、それ以上にはみ出させない。
 }
 
-/*
-vxは方向速度
-rは、ボールの半径
-
-*/
-
 //ボールの移動と、衝突判定（上下と左右バー）とゴール通過時の得点処理を行う。
 export function moveBall(state: GameState, dt: number) {
   const ball = state.ball;
