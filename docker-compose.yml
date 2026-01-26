@@ -5,12 +5,12 @@
 
 services:
   # --- Main Application ---
-  fresh:
+  frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "3000:3000"
     volumes:
       - ./data:/app/data
     environment:
@@ -22,9 +22,20 @@ services:
       - pong-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.fresh.rule=Host(`pong.taiida.com`)"
-      - "traefik.http.routers.fresh.tls=true"
-      - "traefik.http.services.fresh.loadbalancer.server.port=8000"
+      - "traefik.http.routers.frontend.rule=Host(`pong.taiida.com`)"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+
+  # --- Backend API ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    networks:
+      - pong-network
 
   # --- Reverse Proxy ---
   traefik:
@@ -72,7 +83,7 @@ services:
   grafana:
     image: grafana/grafana:10.1.0
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin

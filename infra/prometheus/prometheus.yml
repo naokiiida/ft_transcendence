@@ -3,9 +3,9 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'fresh'
+  - job_name: 'frontend'
     static_configs:
-      - targets: ['dev:8000']
+      - targets: ['frontend:3000']
     metrics_path: '/api/metrics'
     scrape_interval: 10s
 
