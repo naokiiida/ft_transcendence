@@ -42,7 +42,7 @@ export class AuthService {
     if (!email || !displayName || !password) {
       throw new BadRequestException('Missing required fields');
     }
-    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       throw new BadRequestException('Invalid email');
     }
     if (password.length < 8) {
