@@ -33,6 +33,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3001:3000"
+    environment:
+      - PORT=3000
     restart: unless-stopped
     networks:
       - pong-network
