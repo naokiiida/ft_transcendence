@@ -41,7 +41,6 @@
     "@eslint/eslintrc": "^3.3.3",
     "@storybook/addon-a11y": "^10.2.1",
     "@storybook/addon-docs": "^10.2.1",
-    "@storybook/addon-onboarding": "^10.2.1",
     "@storybook/addon-vitest": "^10.2.1",
     "@storybook/nextjs-vite": "^10.2.1",
     "@types/bcryptjs": "^2.4.6",
