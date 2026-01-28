@@ -36,7 +36,7 @@ export default function LoginPage() {
     setPending(true);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
       const response = await fetch(`${apiBase}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
