@@ -1,0 +1,17 @@
+node_modules
+.next
+.env.local
+.git
+*.log
+
+# Storybook build output
+storybook-static
+
+# Test artifacts
+coverage
+playwright-report
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__

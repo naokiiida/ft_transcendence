@@ -98,6 +98,19 @@ services:
     networks:
       - pong-network
 
+  # --- Documentation ---
+  storybook:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.storybook
+    ports:
+      - "6006:80"
+    restart: unless-stopped
+    networks:
+      - pong-network
+    profiles:
+      - docs
+
 networks:
   pong-network:
     driver: bridge
