@@ -7,8 +7,9 @@ RUN apk add --no-cache \
     git \
     sqlite
 
-# Set up workspace
+# Set up workspace with proper permissions
 WORKDIR /workspace
+RUN chown -R node:node /workspace
 
 # Set node user
 USER node
