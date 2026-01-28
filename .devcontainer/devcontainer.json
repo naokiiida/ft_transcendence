@@ -30,13 +30,15 @@
     }
   },
 
-  "forwardPorts": [3000, 9090],
+  "forwardPorts": [3000, 3001, 6006, 9090],
   "portsAttributes": {
     "3000": { "label": "Next.js App", "onAutoForward": "notify" },
+    "3001": { "label": "Backend API", "onAutoForward": "notify" },
+    "6006": { "label": "Storybook", "onAutoForward": "notify" },
     "9090": { "label": "Prometheus", "onAutoForward": "silent" }
   },
 
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "cd frontend && npm install && cd ../backend && npm install",
   "postStartCommand": "echo 'ft_transcendence dev environment ready!'",
 
   "remoteUser": "node"

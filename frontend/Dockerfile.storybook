@@ -1,0 +1,32 @@
+# ============================================
+# Storybook Production Build
+# Multi-stage build for optimized static serving
+# ============================================
+
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source files
+COPY . .
+
+# Build Storybook
+RUN npm run build-storybook
+
+# ============================================
+# Production stage - nginx for static serving
+# ============================================
+FROM nginx:alpine
+
+# Copy built Storybook to nginx html directory
+COPY --from=builder /app/storybook-static /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

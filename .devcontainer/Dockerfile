@@ -10,8 +10,5 @@ RUN apk add --no-cache \
 # Set up workspace
 WORKDIR /workspace
 
-# Install pnpm for faster package management (optional)
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
 # Set node user
 USER node
