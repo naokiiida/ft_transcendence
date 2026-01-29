@@ -1,6 +1,7 @@
 //
 export interface User {
-  id: string; // ここを表示名と同じ値にする
+  uuid: string | null;
+  display_name: string;
   email: string;
   password_hash: string;
   avatar_url: string | null;

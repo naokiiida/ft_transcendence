@@ -12,25 +12,25 @@ ID
 export class UsersService {
   //DIとは、サービス自体をnewするもので、これはサービス内でnewしているのでDIではない
   private usersByEmail = new Map<string, User>();
-  private usersById = new Map<string, User>();
-  private usersPasswords = new Map<string, string>();
+  private usersByDisplayName = new Map<string, User>();
+  private usersPasswordsByDisplayName = new Map<string, string>();
 
   findByEmail(email: string) {
     return this.usersByEmail.get(email);
   }
 
-  findById(id: string) {
-    return this.usersById.get(id);
+  findByDisplayName(displayName: string) {
+    return this.usersByDisplayName.get(displayName);
   }
 
-  findPasswordHashById(id: string) {
-    return this.usersPasswords.get(id);
+  findPasswordHashByDisplayName(displayName: string) {
+    return this.usersPasswordsByDisplayName.get(displayName);
   }
 
   create(user: User) {
     this.usersByEmail.set(user.email, user);
-    this.usersById.set(user.id, user);
-    this.usersPasswords.set(user.id, user.password_hash);
+    this.usersByDisplayName.set(user.display_name, user);
+    this.usersPasswordsByDisplayName.set(user.display_name, user.password_hash);
     return user;
   }
 }

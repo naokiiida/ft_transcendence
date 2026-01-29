@@ -3,13 +3,19 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import type { User } from '../model/user.model';
 import { UsersService } from '../users/users.service';
 
 /*
-認証の今後の厳格化が必要
+【今後の修正が必要と思われる項目】
 
+認証の今後の厳格化が必要
+ハッシュ化が弱い。
+randomUUIDは可能性が低いが衝突の危険性あり。
+メールの厳密判定
+→確認メールを送る？
+→依存追加など（isEmail zod）
 */
 
 type RegisterInput = {
@@ -19,13 +25,9 @@ type RegisterInput = {
 };
 
 /*
-IDと表示名は、簡易化のために同じにしている。
-
-
 例外処理が、HTTPのステータスコードに対応している。
 - BadRequestException: 400 Bad Request
 - ConflictException: 409 Conflict
-
 */
 
 @Injectable()
@@ -52,20 +54,21 @@ export class AuthService {
       throw new BadRequestException('Password too short');
     }
 
-    //既存ユーザーとの重複チェック、同じメールや同じIDがあればエラー。
-    const id = displayName;
+    //既存ユーザーとの重複チェック、同じメールや同じ表示名があればエラー。
     if (this.usersService.findByEmail(email)) {
       throw new ConflictException('Email already registered');
     }
-    if (this.usersService.findById(id)) {
+    if (this.usersService.findByDisplayName(displayName)) {
       throw new ConflictException('Display name already in use');
     }
 
     // パスワードをハッシュ化してユーザー作成
     const password_hash = this.hashPassword(password);
     const now = new Date().toISOString();
+    const uuid = randomUUID();
     const user: User = {
-      id,
+      uuid,
+      display_name: displayName,
       email,
       password_hash,
       avatar_url: null,
