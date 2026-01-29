@@ -1,84 +1,160 @@
-"use client";
-
 import { OnlineIndicator } from "@/components/shared/online-indicator";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const matchHistory = [
+  {
+    opponent: "プレイヤーA",
+    result: "勝利",
+    score: "11-8",
+    date: "2024-04-08",
+  },
+  {
+    opponent: "プレイヤーB",
+    result: "敗北",
+    score: "7-11",
+    date: "2024-04-06",
+  },
+  {
+    opponent: "プレイヤーC",
+    result: "勝利",
+    score: "11-9",
+    date: "2024-04-02",
+  },
+];
 
 export default function UserPage() {
   return (
-    <div className="min-h-screen px-4 py-10">
-      <div className="mx-auto flex max-w-4xl flex-col gap-6">
-        {/* 基本プロフィール（現状で表示できる情報のみ） */}
-        <Card>
-          <CardHeader>
-            <CardTitle>プロフィール</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <Avatar className="h-20 w-20 border border-primary/40 shadow">
-                    <AvatarImage src="" alt="KIRIN-01" />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      KR
-                    </AvatarFallback>
-                  </Avatar>
-                  {/* オンライン状態のインジケーター */}
-                  <span className="absolute -bottom-1 -right-1 rounded-full bg-card p-1">
-                    <OnlineIndicator status="online" size="md" />
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-2xl font-semibold">KIRIN-01</h1>
-                    <Badge variant="success">オンライン</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    自己紹介はまだ設定されていません。
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <CalendarDays className="h-4 w-4" />
-                    登録: 2024/05/01
-                  </div>
-                </div>
-              </div>
-              {/* 実績が未確定でも出せる簡易ステータス */}
-              <div className="grid grid-cols-3 gap-3 text-center text-sm">
-                <div className="rounded-md border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">ELO</p>
-                  <p className="text-lg font-semibold">-</p>
-                </div>
-                <div className="rounded-md border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">戦績</p>
-                  <p className="text-lg font-semibold">0W / 0L</p>
-                </div>
-                <div className="rounded-md border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">トーナメント</p>
-                  <p className="text-lg font-semibold">未参加</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="mx-auto w-full max-w-6xl px-4 py-10">
+      <Tabs defaultValue="profile">
+        <TabsList className="mb-6">
+          <TabsTrigger value="profile">プロフィール</TabsTrigger>
+          <TabsTrigger value="record">戦績</TabsTrigger>
+          <TabsTrigger value="settings">設定</TabsTrigger>
+        </TabsList>
 
-        {/* 対戦履歴がない状態のガイド */}
-        <Card>
-          <CardHeader>
-            <CardTitle>最近の対戦</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Alert>
-              <AlertTitle>対戦履歴はまだありません</AlertTitle>
-              <AlertDescription>
-                クイックマッチやAI対戦を行うと履歴が追加されます。
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value="profile">
+          <div className="grid gap-6 md:grid-cols-[280px_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>プレイヤー情報</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src="" alt="User avatar" />
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                    <span className="absolute -bottom-1 -right-1 rounded-full border border-background bg-background p-1">
+                      <OnlineIndicator status="online" size="sm" />
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold">Player42</p>
+                    <p className="text-sm text-muted-foreground">
+                      メインサーバー
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="secondary">ランク: Platinum</Badge>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>概要</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">勝率</p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <Progress value={68} />
+                    <span className="text-sm font-semibold">68%</span>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs text-muted-foreground">勝利</p>
+                    <p className="text-xl font-semibold">24</p>
+                  </div>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs text-muted-foreground">敗北</p>
+                    <p className="text-xl font-semibold">11</p>
+                  </div>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs text-muted-foreground">連勝</p>
+                    <p className="text-xl font-semibold">5</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="record">
+          <Card>
+            <CardHeader>
+              <CardTitle>最近の試合</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>対戦相手</TableHead>
+                    <TableHead>結果</TableHead>
+                    <TableHead>スコア</TableHead>
+                    <TableHead>日時</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {matchHistory.map((match) => (
+                    <TableRow key={`${match.opponent}-${match.date}`}>
+                      <TableCell>{match.opponent}</TableCell>
+                      <TableCell>{match.result}</TableCell>
+                      <TableCell>{match.score}</TableCell>
+                      <TableCell>{match.date}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <Card className="max-w-2xl">
+            <CardHeader>
+              <CardTitle>プロフィール設定</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="displayName">表示名</Label>
+                <Input id="displayName" placeholder="Player42" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="status">ステータスメッセージ</Label>
+                <Input id="status" placeholder="Ready to play!" />
+              </div>
+              <Button type="button">保存する</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

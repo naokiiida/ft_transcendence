@@ -7,6 +7,11 @@ import { createHash, randomBytes } from 'crypto';
 import type { User } from '../model/user.model';
 import { UsersService } from '../users/users.service';
 
+/*
+認証の今後の厳格化が必要
+
+*/
+
 type RegisterInput = {
   email: string;
   password: string;
@@ -23,8 +28,6 @@ IDと表示名は、簡易化のために同じにしている。
 
 */
 
-//このクラスはNestJSが管理する。newをせず、DIで使う。
-//与えらた処理をして指定した値を返す。newの責任は持たない。
 @Injectable()
 export class AuthService {
   constructor(private readonly usersService: UsersService) {}
