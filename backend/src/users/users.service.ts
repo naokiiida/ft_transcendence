@@ -4,13 +4,10 @@ import type { User } from '../model/user.model';
 /*
 メモリに保存してるので、あとでDBに変更する予定
 
-ID
-
 */
 
 @Injectable()
 export class UsersService {
-  //DIとは、サービス自体をnewするもので、これはサービス内でnewしているのでDIではない
   private usersByEmail = new Map<string, User>();
   private usersByDisplayName = new Map<string, User>();
   private usersPasswordsByDisplayName = new Map<string, string>();

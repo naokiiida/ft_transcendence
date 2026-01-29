@@ -12,7 +12,7 @@ import { UsersService } from '../users/users.service';
 
 認証の今後の厳格化が必要
 ハッシュ化が弱い。
-randomUUIDは可能性が低いが衝突の危険性あり。
+randomUUIDは可能性は極めて極めて低いが衝突の危険性あり。DBでユニーク制約？
 メールの厳密判定
 →確認メールを送る？
 →依存追加など（isEmail zod）

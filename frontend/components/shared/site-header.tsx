@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from "@/components/shared/logo";
+import { useUser } from "@/components/auth/user-context";
 
 // コンポーネントにわたすデータの型定義　？はこのプロパティーが省略化能であることを示す
 interface SiteHeaderProps {
@@ -12,17 +13,23 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({
-  userName = "User", // デフォルト値
+  userName, // デフォルト値
   avatarUrl,
   userHref = "/user",
 }: SiteHeaderProps) {
+  const { user } = useUser();
+  const resolvedUserName = userName ?? user?.display_name ?? "Guest";
+  const resolvedAvatarUrl = avatarUrl ?? user?.avatar_url ?? undefined;
+  const resolvedHref = user ? userHref : "/login";
+  const resolvedLabel = user ? "ユーザーページ" : "ログイン";
+
   // User名の最初の（英数字）文字を大文字にして取得、例外やuserNameがない場合は"U"を使用
   /*
   漢字対応を考慮すると、将来的にはアバターを表示する。ログイン時にアバターURLを取得して
   保存する、それを参照する流れがよき。変更時には新しいURLを受け取りグローバル状態を更新する。
 　ここでは当面の対応しとて、イニシャルを表示するロジックを残しておく。
   */
-  const initial = userName?.trim()?.[0]?.toUpperCase() ?? "U";
+  const initial = resolvedUserName?.trim()?.[0]?.toUpperCase() ?? "U";
 
   /*
   ヘッダーは、サイト全体で共通の部分で、ユーザープロフィールへのリンクを含む。
@@ -36,16 +43,18 @@ export function SiteHeader({
           <Logo size="sm" />
         </Link>
         <Link
-          href={userHref}
+          href={resolvedHref}
           className="flex items-center gap-2 text-sm font-medium text-foreground transition-colors hover:text-primary"
         >
           <Avatar className="h-8 w-8">
             {/* アバターURLがある場合は画像を表示し、ない場合はイニシャルを表示 */}
-            {avatarUrl ? <AvatarImage src={avatarUrl} alt={userName} /> : null}
+            {resolvedAvatarUrl ? (
+              <AvatarImage src={resolvedAvatarUrl} alt={resolvedUserName} />
+            ) : null}
             <AvatarFallback>{initial}</AvatarFallback>
           </Avatar>
           {/* もし、画面が小さい場合は、ユーザーページのテキストを非表示にする */}
-          <span className="hidden sm:inline">ユーザーページ</span>
+          <span className="hidden sm:inline">{resolvedLabel}</span>
         </Link>
       </div>
     </header>

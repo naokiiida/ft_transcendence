@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useUser } from "@/components/auth/user-context";
 
 type RegisterPayload = {
   email: string;
@@ -16,6 +17,7 @@ type RegisterPayload = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setUserFromApi, setUser } = useUser();
   const [form, setForm] = useState<RegisterPayload>({
     email: "",
     password: "",
@@ -49,6 +51,17 @@ export default function LoginPage() {
           | null;
         const message = data?.message ?? "登録に失敗しました";
         throw new Error(message);
+      }
+
+      const data = (await response.json().catch(() => null)) as unknown;
+      if (data) {
+        setUserFromApi(data);
+      } else {
+        setUser({
+          uuid: null,
+          display_name: form.display_name,
+          avatar_url: null,
+        });
       }
 
       router.push("/");
