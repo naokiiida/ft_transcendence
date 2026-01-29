@@ -19,8 +19,10 @@ help:
 
 # frontendディレクトリに（npm run dev）と、backend(npm run start:dev)の両方を同時に実行するコマンド
 npm:
-	cd frontend && npm run dev & \
-	cd ../backend && npm run start:dev & \
+	@test -d $(CURDIR)/frontend/node_modules || (cd $(CURDIR)/frontend && npm install)
+	@test -d $(CURDIR)/backend/node_modules || (cd $(CURDIR)/backend && npm install)
+	cd $(CURDIR)/frontend && npm run dev & \
+	cd $(CURDIR)/backend && npm run start:dev & \
 	wait
 
 up:

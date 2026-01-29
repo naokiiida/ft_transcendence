@@ -63,10 +63,17 @@ export class AuthService {
 
     // パスワードをハッシュ化してユーザー作成
     const password_hash = this.hashPassword(password);
+    const now = new Date().toISOString();
     const user: User = {
       id,
       email,
       password_hash,
+      avatar_url: null,
+      wins: 0,
+      losses: 0,
+      user_score: 0,
+      created_at: now,
+      last_seen: now,
     };
 
     return this.usersService.create(user);
