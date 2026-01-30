@@ -49,6 +49,7 @@ export default function LoginPage() {
       const response = await fetch(`${apiBase}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(form),
       });
 
@@ -61,6 +62,8 @@ export default function LoginPage() {
         throw new Error(message);
       }
 
+      // レジスターのレスポインスをボディーにしているが、クッキー方式なら
+      // api/meの結果を使うべきか。
       const data = (await response.json().catch(() => null)) as unknown;
       if (data) {
         // APIレスポンスを整形して保存想定

@@ -5,8 +5,10 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useWebSocketAdapter(new WsAdapter(app));
+  // CORS設定、credentialsをtrueにしないとクッキーが送信されない
   app.enableCors({
     origin: 'http://localhost:3000',
+    credentials: true,
   });
   const envPort = process.env.PORT;
   const parsedPort = envPort ? Number(envPort) : NaN;

@@ -41,6 +41,11 @@ const matchHistory = [
   },
 ];
 
+/*
+サーバーのログアウトが失敗しても、フロントエンド側の状態はクリアする。
+だが、厳密に、サーバー側のセッションを削除できなかった場合、
+ログアウト失敗時は、エラー表示して残るのも手。
+*/
 // ユーザーページ
 export default function UserPage() {
   // UseUserからログアウト関数を取得
@@ -48,7 +53,16 @@ export default function UserPage() {
   // ルーターを取得
   const router = useRouter();
   // ログアウト処理とトップページへのリダイレクトを行う関数
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+    try {
+      await fetch(`${apiBase}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // ignore network errors; still clear local state
+    }
     logout();
     router.push("/");
   };

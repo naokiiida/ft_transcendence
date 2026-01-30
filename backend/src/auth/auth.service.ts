@@ -16,6 +16,11 @@ randomUUIDは可能性は極めて極めて低いが衝突の危険性あり。D
 メールの厳密判定
 →確認メールを送る？
 →依存追加など（isEmail zod）
+
+
+💡【極めて重要】
+ディスプレイネーム（可変）でセッション管理しているのはまずい。
+ユーザーID（uuid）で管理するように修正すること。
 */
 
 type RegisterInput = {
@@ -32,6 +37,10 @@ type RegisterInput = {
 
 @Injectable()
 export class AuthService {
+  // ブラウザからくるセッションIDとログインユーザーの対応表
+  // メモリ上に保存しているだけなので、サーバー再起動で消える、サーバー分散したら共有されない
+  private sessionsById = new Map<string, string>();
+
   constructor(private readonly usersService: UsersService) {}
 
   // inputは、コントローラーで受けったった登録情報
@@ -80,6 +89,23 @@ export class AuthService {
     };
 
     return this.usersService.create(user);
+  }
+  // ログイン状態を作成する。コントローラーで呼ばれる、ログイン証明書としてセッションIDを発行する
+  createSession(user: User) {
+    const sessionId = randomUUID();
+    this.sessionsById.set(sessionId, user.display_name);
+    return sessionId;
+  }
+
+  // セッションIDからユーザーを取得する
+  findUserBySession(sessionId: string) {
+    const displayName = this.sessionsById.get(sessionId);
+    if (!displayName) return null;
+    return this.usersService.findByDisplayName(displayName) ?? null;
+  }
+  // ログアウト時にセッション対応表から削除する
+  removeSession(sessionId: string) {
+    this.sessionsById.delete(sessionId);
   }
 
   // 簡易的なパスワードハッシュ化関数
