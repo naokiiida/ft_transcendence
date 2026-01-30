@@ -1,3 +1,5 @@
+"use client";
+
 import { OnlineIndicator } from "@/components/shared/online-indicator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { useUser } from "@/components/auth/user-context";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -37,7 +41,18 @@ const matchHistory = [
   },
 ];
 
+// ユーザーページ
 export default function UserPage() {
+  // UseUserからログアウト関数を取得
+  const { logout } = useUser();
+  // ルーターを取得
+  const router = useRouter();
+  // ログアウト処理とトップページへのリダイレクトを行う関数
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10">
       <Tabs defaultValue="profile">
@@ -72,6 +87,14 @@ export default function UserPage() {
                   </div>
                 </div>
                 <Badge variant="secondary">ランク: Platinum</Badge>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleLogout}
+                >
+                  ログアウト
+                </Button>
               </CardContent>
             </Card>
 

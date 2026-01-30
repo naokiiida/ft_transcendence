@@ -17,9 +17,12 @@ export function SiteHeader({
   avatarUrl,
   userHref = "/user",
 }: SiteHeaderProps) {
+  // グローバルなユーザー情報を取得
   const { user } = useUser();
+  // プロパティーが渡された場合はそれを使い、ない場合はコンテクストのユーザー情報を使う。
   const resolvedUserName = userName ?? user?.display_name ?? "Guest";
   const resolvedAvatarUrl = avatarUrl ?? user?.avatar_url ?? undefined;
+  // ユーザーがログインしているかどうかでリンク先とラベルを切り替え
   const resolvedHref = user ? userHref : "/login";
   const resolvedLabel = user ? "ユーザーページ" : "ログイン";
 

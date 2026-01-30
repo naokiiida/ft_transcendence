@@ -10,7 +10,9 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
+    // ログインユーザーの情報をどこでも読めるようにする。
     <UserProvider>
+      {/* ツールチップのコンテクストを提供する。 */}
       <TooltipProvider>{children}</TooltipProvider>
     </UserProvider>
   );

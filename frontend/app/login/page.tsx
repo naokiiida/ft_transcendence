@@ -18,6 +18,7 @@ type RegisterPayload = {
 export default function LoginPage() {
   const router = useRouter();
   const { setUserFromApi, setUser } = useUser();
+  // フォーム状態、エラー状態、ペンディング状態の管理
   const [form, setForm] = useState<RegisterPayload>({
     email: "",
     password: "",
@@ -26,48 +27,56 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  // フォーム入力変更時の処理
   const handleChange =
     (key: keyof RegisterPayload) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setForm((current) => ({ ...current, [key]: event.target.value }));
     };
 
+  // フォーム送信時の処理
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    // フォームのデフォルト送信を防止(ページのリロードを防ぎ、react側で通信を処理するため)
     event.preventDefault();
+    // エラー状態をクリアし、ペンディング状態に設定
     setError(null);
     setPending(true);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+      //apiへの登録リクエスト
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
       const response = await fetch(`${apiBase}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
 
+      // 失敗した場合のエラーハンドリング
       if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as
-          | { message?: string }
-          | null;
+        const data = (await response.json().catch(() => null)) as {
+          message?: string;
+        } | null;
         const message = data?.message ?? "登録に失敗しました";
         throw new Error(message);
       }
 
       const data = (await response.json().catch(() => null)) as unknown;
       if (data) {
+        // APIレスポンスを整形して保存想定
         setUserFromApi(data);
       } else {
+        // 最低限の情報でユーザーをセット
         setUser({
           uuid: null,
           display_name: form.display_name,
           avatar_url: null,
         });
       }
-
+      // 登録成功後にホームページへリダイレクト
       router.push("/");
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "登録に失敗しました";
+      const message = err instanceof Error ? err.message : "登録に失敗しました";
       setError(message);
     } finally {
       setPending(false);
