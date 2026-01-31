@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT,  -- NULL for OAuth-only users (bcrypt, cost 12)
-  display_name TEXT NOT NULL,
+  display_name TEXT UNIQUE NOT NULL,
   avatar_url TEXT,
   intra_id TEXT UNIQUE,  -- 42 intra ID for OAuth linking
   intra_username TEXT UNIQUE,  -- 42 login (for display)

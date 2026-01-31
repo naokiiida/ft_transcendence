@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { getDatabase } from '../db/database';
 import type { User, CreateUserInput } from '../model/user.model';
 
@@ -25,13 +26,23 @@ export class UsersService {
   }
 
   /**
+   * 表示名でユーザーを検索
+   */
+  findByDisplayName(displayName: string): User | null {
+    const db = getDatabase();
+    const stmt = db.prepare('SELECT * FROM users WHERE display_name = ?');
+    const row = stmt.get(displayName) as User | undefined;
+    return row ?? null;
+  }
+
+  /**
    * 新規ユーザーを作成
    * Discriminated Unionでメール認証とIntra認証を型安全に処理
    */
   create(input: CreateUserInput): User {
     const db = getDatabase();
     const now = new Date().toISOString();
-    const id = input.display_name;  // IDと表示名は同じ（簡易化）
+    const id = randomUUID();
 
     // Discriminated Union: methodで分岐
     const user: User =

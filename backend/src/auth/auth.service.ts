@@ -14,13 +14,12 @@ type RegisterInput = {
 };
 
 /*
-IDと表示名は、簡易化のために同じにしている。
-
-
-例外処理が、HTTPのステータスコードに対応している。
+例外処理がHTTPのステータスコードに対応している。
 - BadRequestException: 400 Bad Request
 - ConflictException: 409 Conflict
 
+IDはUUID v4で自動生成される。
+display_nameはユニークで、ユーザーが後から変更可能。
 */
 
 //このクラスはNestJSが管理する。newをせず、DIで使う。
@@ -49,12 +48,11 @@ export class AuthService {
       throw new BadRequestException('Password too short');
     }
 
-    //既存ユーザーとの重複チェック、同じメールや同じIDがあればエラー。
-    const id = displayName;
+    // 既存ユーザーとの重複チェック（email, display_name共にユニーク）
     if (this.usersService.findByEmail(email)) {
       throw new ConflictException('Email already registered');
     }
-    if (this.usersService.findById(id)) {
+    if (this.usersService.findByDisplayName(displayName)) {
       throw new ConflictException('Display name already in use');
     }
 
