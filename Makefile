@@ -1,6 +1,6 @@
 .PHONY: help up up-frontend down build build-no-cache logs \
 	frontend-install frontend-dev frontend-lint \
-	backend-install backend-dev backend-lint
+	backend-install backend-dev backend-lint npm \
 
 help:
 	@echo "Targets:"
@@ -16,6 +16,14 @@ help:
 	@echo "  backend-install   - npm install in ./backend"
 	@echo "  backend-dev       - npm run start:dev in ./backend"
 	@echo "  backend-lint      - npm run lint in ./backend"
+
+# frontendディレクトリに（npm run dev）と、backend(npm run start:dev)の両方を同時に実行するコマンド
+npm:
+	@test -d $(CURDIR)/frontend/node_modules || (cd $(CURDIR)/frontend && npm install)
+	@test -d $(CURDIR)/backend/node_modules || (cd $(CURDIR)/backend && npm install)
+	cd $(CURDIR)/frontend && npm run dev & \
+	cd $(CURDIR)/backend && npm run start:dev & \
+	wait
 
 up:
 	docker compose up --build

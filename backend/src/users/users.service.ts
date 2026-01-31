@@ -8,21 +8,44 @@ import type { User } from '../model/user.model';
 
 @Injectable()
 export class UsersService {
-  //DIとは、サービス自体をnewするもので、これはサービス内でnewしているのでDIではない
   private usersByEmail = new Map<string, User>();
-  private usersById = new Map<string, User>();
+  private usersByDisplayName = new Map<string, User>();
+  private usersByUuid = new Map<string, User>();
+  private usersPasswordsByUuid = new Map<string, string>();
 
   findByEmail(email: string) {
     return this.usersByEmail.get(email);
   }
 
-  findById(id: string) {
-    return this.usersById.get(id);
+  findByDisplayName(displayName: string) {
+    return this.usersByDisplayName.get(displayName);
+  }
+
+  findByUuid(uuid: string) {
+    return this.usersByUuid.get(uuid);
+  }
+
+  findPasswordHashByUuid(uuid: string) {
+    return this.usersPasswordsByUuid.get(uuid);
   }
 
   create(user: User) {
     this.usersByEmail.set(user.email, user);
-    this.usersById.set(user.id, user);
+    this.usersByDisplayName.set(user.display_name, user);
+    if (user.uuid) {
+      this.usersByUuid.set(user.uuid, user);
+      this.usersPasswordsByUuid.set(user.uuid, user.password_hash);
+    }
+    return user;
+  }
+
+  deleteByUuid(uuid: string) {
+    const user = this.usersByUuid.get(uuid);
+    if (!user) return null;
+    this.usersByUuid.delete(uuid);
+    this.usersByEmail.delete(user.email);
+    this.usersByDisplayName.delete(user.display_name);
+    this.usersPasswordsByUuid.delete(uuid);
     return user;
   }
 }

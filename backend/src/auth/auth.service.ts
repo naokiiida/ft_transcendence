@@ -2,10 +2,23 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import type { User } from '../model/user.model';
 import { UsersService } from '../users/users.service';
+
+/*
+【今後の修正が必要と思われる項目】
+
+認証の今後の厳格化が必要
+ハッシュ化が弱い。
+randomUUIDは可能性は極めて極めて低いが衝突の危険性あり。DBでユニーク制約？
+メールの厳密判定
+→確認メールを送る？
+→依存追加など（isEmail zod）
+
+*/
 
 type RegisterInput = {
   email: string;
@@ -13,20 +26,22 @@ type RegisterInput = {
   display_name: string;
 };
 
+type LoginInput = {
+  email: string;
+  password: string;
+};
 /*
-IDと表示名は、簡易化のために同じにしている。
-
-
 例外処理が、HTTPのステータスコードに対応している。
 - BadRequestException: 400 Bad Request
 - ConflictException: 409 Conflict
-
 */
 
-//このクラスはNestJSが管理する。newをせず、DIで使う。
-//与えらた処理をして指定した値を返す。newの責任は持たない。
 @Injectable()
 export class AuthService {
+  // ブラウザからくるセッションIDとログインユーザーの対応表
+  // メモリ上に保存しているだけなので、サーバー再起動で消える、サーバー分散したら共有されない
+  private sessionsById = new Map<string, string>();
+
   constructor(private readonly usersService: UsersService) {}
 
   // inputは、コントローラーで受けったった登録情報
@@ -49,24 +64,88 @@ export class AuthService {
       throw new BadRequestException('Password too short');
     }
 
-    //既存ユーザーとの重複チェック、同じメールや同じIDがあればエラー。
-    const id = displayName;
+    //既存ユーザーとの重複チェック、同じメールや同じ表示名があればエラー。
     if (this.usersService.findByEmail(email)) {
       throw new ConflictException('Email already registered');
     }
-    if (this.usersService.findById(id)) {
+    if (this.usersService.findByDisplayName(displayName)) {
       throw new ConflictException('Display name already in use');
     }
 
     // パスワードをハッシュ化してユーザー作成
     const password_hash = this.hashPassword(password);
+    const now = new Date().toISOString();
+    const uuid = randomUUID();
     const user: User = {
-      id,
+      uuid,
+      display_name: displayName,
       email,
       password_hash,
+      avatar_url: null,
+      wins: 0,
+      losses: 0,
+      user_score: 0,
+      created_at: now,
+      last_seen: now,
     };
 
     return this.usersService.create(user);
+  }
+
+  login(input: LoginInput): User {
+    const email = input.email?.trim().toLowerCase();
+    const password = input.password ?? '';
+
+    if (!email || !password) {
+      throw new BadRequestException('Missing required fields');
+    }
+
+    const user = this.usersService.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!this.verifyPassword(password, user.password_hash)) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return user;
+  }
+  // ログイン状態を作成する。コントローラーで呼ばれる、ログイン証明書としてセッションIDを発行する
+  createSession(user: User) {
+    if (!user.uuid) {
+      throw new Error('User uuid is required for session');
+    }
+    const sessionId = randomUUID();
+    this.sessionsById.set(sessionId, user.uuid);
+    return sessionId;
+  }
+
+  // セッションIDからユーザーを取得する
+  findUserBySession(sessionId: string) {
+    const uuid = this.sessionsById.get(sessionId);
+    if (!uuid) return null;
+    return this.usersService.findByUuid(uuid) ?? null;
+  }
+  // ログアウト時にセッション対応表から削除する
+  removeSession(sessionId: string) {
+    this.sessionsById.delete(sessionId);
+  }
+
+  // 指定したユーザーUUIDに関連するすべてのセッションを削除する
+  removeSessionsByUuid(uuid: string) {
+    for (const [sessionId, storedUuid] of this.sessionsById.entries()) {
+      if (storedUuid === uuid) {
+        this.sessionsById.delete(sessionId);
+      }
+    }
+  }
+
+  // ユーザー情報から公開用の情報だけを返す
+  // パスワードハッシュを含まないようにする
+  toPublicUser(user: User) {
+    const { password_hash, ...safe } = user;
+    return safe;
   }
 
   // 簡易的なパスワードハッシュ化関数
@@ -76,5 +155,14 @@ export class AuthService {
       .update(salt + password, 'utf8')
       .digest('hex');
     return `${salt}:${hash}`;
+  }
+
+  private verifyPassword(password: string, stored: string) {
+    const [salt, hash] = stored.split(':');
+    if (!salt || !hash) return false;
+    const candidate = createHash('sha256')
+      .update(salt + password, 'utf8')
+      .digest('hex');
+    return candidate === hash;
   }
 }

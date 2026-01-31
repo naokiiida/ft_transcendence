@@ -11,6 +11,9 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
+# Build tooling for native addons (better-sqlite3)
+RUN apk add --no-cache python3 make g++
+
 # Install dependencies
 RUN npm ci
 

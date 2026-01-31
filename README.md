@@ -161,7 +161,6 @@ ft_transcendence/
 - `data-model.md` - データベーススキーマ
 - `tasks.md` - 実装タスク
 - `contracts/openapi.yaml` - REST API 仕様
-- `contracts/websocket-protocol.md` - WebSocket プロトコル
 
 ## トラブルシューティング
 
@@ -197,3 +196,4 @@ docker compose build --no-cache
 2. **コミット前**: `npm run lint` を実行
 3. **型安全**: `any` 禁止、Zod でバリデーション
 4. **セキュリティ**: SQL は必ずパラメータ化クエリを使用
+ - `contracts/websocket-protocol.md` - WebSocket プロトコル
