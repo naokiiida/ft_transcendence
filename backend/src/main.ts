@@ -1,10 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useWebSocketAdapter(new WsAdapter(app));
   // CORS設定、credentialsをtrueにしないとクッキーが送信されない
   app.enableCors({
     origin: 'http://localhost:3000',

@@ -15,10 +15,14 @@ export default function Home() {
           リアルタイムマルチプレイヤー Pong とトーナメント
         </p>
 
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <Button size="lg" className="glow-primary">
             <Gamepad2 className="mr-2 h-5 w-5" />
-            クイックマッチ
+            オンライン対戦
+          </Button>
+          <Button size="lg" variant="outline">
+            <Users className="mr-2 h-5 w-5" />
+            ローカル対戦
           </Button>
           <Button size="lg" variant="secondary" asChild>
             <Link href="/game">
