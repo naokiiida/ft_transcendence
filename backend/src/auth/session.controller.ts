@@ -22,7 +22,8 @@ export class SessionController {
     if (!user) {
       throw new UnauthorizedException('Invalid session');
     }
-    return user;
+    // 公開用のユーザー情報を返す
+    return this.authService.toPublicUser(user);
   }
 }
 // 自前パーサー "a=1; ft_session=xxx; b=2"のような文字列から特定のクッキー名の値を取得

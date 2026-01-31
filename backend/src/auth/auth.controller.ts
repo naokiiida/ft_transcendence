@@ -32,7 +32,8 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       path: '/',
     });
-    return user;
+    // 公開用のユーザー情報を返す
+    return this.authService.toPublicUser(user);
   }
 
   @Post('logout')

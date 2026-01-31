@@ -99,7 +99,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     // credentials: "include"を指定して、クッキーを送信するようにする
     fetch(`${apiBase}/api/me`, { credentials: "include" })
       .then((response) => {
-        if (!response.ok) return null;
+        if (!response.ok) {
+          setUser(null);
+          return null;
+        }
         return response.json() as Promise<unknown>;
       })
       .then((payload) => {
@@ -109,18 +112,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => null);
-  }, [setUserFromApi]);
+  }, [setUserFromApi, setUser]);
 
   // ログアウトの処理を1箇所にまとめる
   const logout = useCallback(() => {
     // フロントエンド側の状態をクリア
     setUser(null);
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-    // サーバー側にもログアウトを通知
-    fetch(`${apiBase}/api/auth/logout`, {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => null);
   }, [setUser]);
 
   // コンテクストの値をメモ化して、不要な再レンダリングを防ぐ

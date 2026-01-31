@@ -10,7 +10,8 @@ import type { User } from '../model/user.model';
 export class UsersService {
   private usersByEmail = new Map<string, User>();
   private usersByDisplayName = new Map<string, User>();
-  private usersPasswordsByDisplayName = new Map<string, string>();
+  private usersByUuid = new Map<string, User>();
+  private usersPasswordsByUuid = new Map<string, string>();
 
   findByEmail(email: string) {
     return this.usersByEmail.get(email);
@@ -20,14 +21,21 @@ export class UsersService {
     return this.usersByDisplayName.get(displayName);
   }
 
-  findPasswordHashByDisplayName(displayName: string) {
-    return this.usersPasswordsByDisplayName.get(displayName);
+  findByUuid(uuid: string) {
+    return this.usersByUuid.get(uuid);
+  }
+
+  findPasswordHashByUuid(uuid: string) {
+    return this.usersPasswordsByUuid.get(uuid);
   }
 
   create(user: User) {
     this.usersByEmail.set(user.email, user);
     this.usersByDisplayName.set(user.display_name, user);
-    this.usersPasswordsByDisplayName.set(user.display_name, user.password_hash);
+    if (user.uuid) {
+      this.usersByUuid.set(user.uuid, user);
+      this.usersPasswordsByUuid.set(user.uuid, user.password_hash);
+    }
     return user;
   }
 }
