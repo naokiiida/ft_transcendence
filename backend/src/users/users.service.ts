@@ -16,12 +16,12 @@ export class UsersService {
   }
 
   /**
-   * IDでユーザーを検索
+   * UUIDでユーザーを検索
    */
-  findById(id: string): User | null {
+  findByUuid(uuid: string): User | null {
     const db = getDatabase();
-    const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
-    const row = stmt.get(id) as User | undefined;
+    const stmt = db.prepare('SELECT * FROM users WHERE uuid = ?');
+    const row = stmt.get(uuid) as User | undefined;
     return row ?? null;
   }
 
@@ -42,13 +42,13 @@ export class UsersService {
   create(input: CreateUserInput): User {
     const db = getDatabase();
     const now = new Date().toISOString();
-    const id = randomUUID();
+    const uuid = randomUUID();
 
     // Discriminated Union: methodで分岐
     const user: User =
       input.method === 'email'
         ? {
-            id,
+            uuid,
             email: input.email,
             password_hash: input.password_hash,
             display_name: input.display_name,
@@ -59,13 +59,13 @@ export class UsersService {
             oauth_refresh_token: null,
             wins: 0,
             losses: 0,
-            elo_rating: 1000,
+            user_score: 1000,
             created_at: now,
             last_seen: now,
             method: 'email',
           }
         : {
-            id,
+            uuid,
             email: input.email,
             password_hash: null,
             display_name: input.display_name,
@@ -76,7 +76,7 @@ export class UsersService {
             oauth_refresh_token: null,
             wins: 0,
             losses: 0,
-            elo_rating: 1000,
+            user_score: 1000,
             created_at: now,
             last_seen: now,
             method: 'intra',
@@ -84,9 +84,9 @@ export class UsersService {
 
     const stmt = db.prepare(`
       INSERT INTO users (
-        id, email, password_hash, display_name, avatar_url,
+        uuid, email, password_hash, display_name, avatar_url,
         intra_id, intra_username, oauth_access_token, oauth_refresh_token,
-        wins, losses, elo_rating, created_at, last_seen, method
+        wins, losses, user_score, created_at, last_seen, method
       ) VALUES (
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?,
@@ -95,7 +95,7 @@ export class UsersService {
     `);
 
     stmt.run(
-      user.id,
+      user.uuid,
       user.email,
       user.password_hash,
       user.display_name,
@@ -106,7 +106,7 @@ export class UsersService {
       user.oauth_refresh_token,
       user.wins,
       user.losses,
-      user.elo_rating,
+      user.user_score,
       user.created_at,
       user.last_seen,
       user.method,
@@ -116,11 +116,24 @@ export class UsersService {
   }
 
   /**
+   * UUIDでユーザーを削除
+   */
+  deleteByUuid(uuid: string): User | null {
+    const db = getDatabase();
+    const user = this.findByUuid(uuid);
+    if (!user) return null;
+
+    const stmt = db.prepare('DELETE FROM users WHERE uuid = ?');
+    stmt.run(uuid);
+    return user;
+  }
+
+  /**
    * last_seen を更新
    */
-  updateLastSeen(id: string): void {
+  updateLastSeen(uuid: string): void {
     const db = getDatabase();
-    const stmt = db.prepare('UPDATE users SET last_seen = ? WHERE id = ?');
-    stmt.run(new Date().toISOString(), id);
+    const stmt = db.prepare('UPDATE users SET last_seen = ? WHERE uuid = ?');
+    stmt.run(new Date().toISOString(), uuid);
   }
 }
