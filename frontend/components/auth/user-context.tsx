@@ -15,6 +15,9 @@ type UserProfile = {
   uuid: string | null;
   display_name: string;
   avatar_url: string | null;
+  wins: number;
+  losses: number;
+  user_score: number;
 };
 
 // コンテクストの値の型定義、読む、保存、APIから保存、消すの役割を持つ。
@@ -41,8 +44,27 @@ function normalizeUser(payload: unknown): UserProfile | null {
   const uuid = typeof candidate.uuid === "string" ? candidate.uuid : null;
   const avatarUrl =
     typeof candidate.avatar_url === "string" ? candidate.avatar_url : null;
+  const wins =
+    typeof candidate.wins === "number" && Number.isFinite(candidate.wins)
+      ? candidate.wins
+      : 0;
+  const losses =
+    typeof candidate.losses === "number" && Number.isFinite(candidate.losses)
+      ? candidate.losses
+      : 0;
+  const userScore =
+    typeof candidate.user_score === "number" && Number.isFinite(candidate.user_score)
+      ? candidate.user_score
+      : 0;
 
-  return { uuid, display_name: displayName, avatar_url: avatarUrl };
+  return {
+    uuid,
+    display_name: displayName,
+    avatar_url: avatarUrl,
+    wins,
+    losses,
+    user_score: userScore,
+  };
 }
 
 // いまのログイン状態を保存する、ここらの処理の中心部分

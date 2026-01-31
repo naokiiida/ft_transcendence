@@ -60,7 +60,7 @@ const matchHistory = [
 // ユーザーページ
 export default function UserPage() {
   // UseUserからログアウト関数を取得
-  const { user, logout, refreshUser } = useUser();
+  const { user, logout, refreshUser, setUserFromApi } = useUser();
   // ルーターを取得
   const router = useRouter();
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -81,6 +81,28 @@ export default function UserPage() {
     }
     logout();
     router.push("/");
+  };
+
+  const handleTestUpdate = async (payload: {
+    winsDelta?: number;
+    lossesDelta?: number;
+    scoreDelta?: number;
+  }) => {
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+    try {
+      const response = await fetch(`${apiBase}/api/me/test-score`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) return;
+      const data = (await response.json()) as unknown;
+      setUserFromApi(data);
+    } catch {
+      // ignore network errors for test actions
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -236,6 +258,44 @@ export default function UserPage() {
                 <Input id="status" placeholder="Ready to play!" />
               </div>
               <Button type="button">保存する</Button>
+              <div className="rounded-lg border border-border p-4">
+                <p className="text-sm font-semibold">テスト用更新</p>
+                <p className="text-xs text-muted-foreground">
+                  勝利/敗北/スコアを一時的に更新します。
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => handleTestUpdate({ winsDelta: 1, scoreDelta: 2 })}
+                  >
+                    +1勝利 +2スコア
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                      handleTestUpdate({ lossesDelta: 1, scoreDelta: -2 })
+                    }
+                  >
+                    +1敗北 -2スコア
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleTestUpdate({ scoreDelta: 5 })}
+                  >
+                    +5スコア
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleTestUpdate({ scoreDelta: -5 })}
+                  >
+                    -5スコア
+                  </Button>
+                </div>
+              </div>
               <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-destructive">

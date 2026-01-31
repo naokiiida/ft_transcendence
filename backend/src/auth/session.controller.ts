@@ -1,4 +1,14 @@
-import { Controller, Delete, Get, Req, Res, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  BadRequestException,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
@@ -56,7 +66,35 @@ export class SessionController {
     });
     return { ok: true };
   }
+
+  @Post('me/test-score')
+  testScore(@Req() req: Request, @Body() body: ScoreTestRequest) {
+    const sessionId = readCookie(req.headers.cookie ?? '', SESSION_COOKIE);
+    if (!sessionId) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+    const user = this.authService.findUserBySession(sessionId);
+    if (!user) {
+      throw new UnauthorizedException('Invalid session');
+    }
+
+    const winsDelta = normalizeDelta(body.winsDelta);
+    const lossesDelta = normalizeDelta(body.lossesDelta);
+    const scoreDelta = normalizeDelta(body.scoreDelta);
+
+    user.wins = clampNonNegative(user.wins + winsDelta);
+    user.losses = clampNonNegative(user.losses + lossesDelta);
+    user.user_score = clampNonNegative(user.user_score + scoreDelta);
+
+    return this.authService.toPublicUser(user);
+  }
 }
+
+type ScoreTestRequest = {
+  winsDelta?: number;
+  lossesDelta?: number;
+  scoreDelta?: number;
+};
 // 自前パーサー "a=1; ft_session=xxx; b=2"のような文字列から特定のクッキー名の値を取得
 // cookie-parserのほうがよい。
 function readCookie(cookieHeader: string, name: string) {
@@ -68,4 +106,17 @@ function readCookie(cookieHeader: string, name: string) {
     }
   }
   return null;
+}
+
+function normalizeDelta(value: number | undefined) {
+  if (value === undefined) return 0;
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new BadRequestException('Invalid delta');
+  }
+  return value;
+}
+
+function clampNonNegative(value: number) {
+  if (value < 0) return 0;
+  return value;
 }

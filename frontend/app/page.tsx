@@ -57,11 +57,11 @@ export default function Home() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-accent" />
-              トーナメント
+              ローカル対戦
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            シングルエリミネーション形式のトーナメントに参加。ブラケット追跡とリーダーボード機能付き。
+            友達や家族と同じデバイスで対戦し、気軽に楽しめます。
           </CardContent>
         </Card>
 
@@ -73,7 +73,7 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            3段階の難易度設定と思考プロセスの可視化機能を備えたAIと練習できます。
+            3段階の難易度設定と思考プロセスの可視化機能（検討中）を備えたAIと練習できます。
           </CardContent>
         </Card>
       </div>
