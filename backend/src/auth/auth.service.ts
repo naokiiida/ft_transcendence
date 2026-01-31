@@ -107,6 +107,15 @@ export class AuthService {
     this.sessionsById.delete(sessionId);
   }
 
+  // 指定したユーザーUUIDに関連するすべてのセッションを削除する
+  removeSessionsByUuid(uuid: string) {
+    for (const [sessionId, storedUuid] of this.sessionsById.entries()) {
+      if (storedUuid === uuid) {
+        this.sessionsById.delete(sessionId);
+      }
+    }
+  }
+
   // ユーザー情報から公開用の情報だけを返す
   // パスワードハッシュを含まないようにする
   toPublicUser(user: User) {

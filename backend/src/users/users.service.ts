@@ -38,4 +38,14 @@ export class UsersService {
     }
     return user;
   }
+
+  deleteByUuid(uuid: string) {
+    const user = this.usersByUuid.get(uuid);
+    if (!user) return null;
+    this.usersByUuid.delete(uuid);
+    this.usersByEmail.delete(user.email);
+    this.usersByDisplayName.delete(user.display_name);
+    this.usersPasswordsByUuid.delete(uuid);
+    return user;
+  }
 }
