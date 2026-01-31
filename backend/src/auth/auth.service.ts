@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import type { User } from '../model/user.model';
@@ -25,6 +26,10 @@ type RegisterInput = {
   display_name: string;
 };
 
+type LoginInput = {
+  email: string;
+  password: string;
+};
 /*
 例外処理が、HTTPのステータスコードに対応している。
 - BadRequestException: 400 Bad Request
@@ -86,6 +91,26 @@ export class AuthService {
 
     return this.usersService.create(user);
   }
+
+  login(input: LoginInput): User {
+    const email = input.email?.trim().toLowerCase();
+    const password = input.password ?? '';
+
+    if (!email || !password) {
+      throw new BadRequestException('Missing required fields');
+    }
+
+    const user = this.usersService.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!this.verifyPassword(password, user.password_hash)) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return user;
+  }
   // ログイン状態を作成する。コントローラーで呼ばれる、ログイン証明書としてセッションIDを発行する
   createSession(user: User) {
     if (!user.uuid) {
@@ -130,5 +155,14 @@ export class AuthService {
       .update(salt + password, 'utf8')
       .digest('hex');
     return `${salt}:${hash}`;
+  }
+
+  private verifyPassword(password: string, stored: string) {
+    const [salt, hash] = stored.split(':');
+    if (!salt || !hash) return false;
+    const candidate = createHash('sha256')
+      .update(salt + password, 'utf8')
+      .digest('hex');
+    return candidate === hash;
   }
 }

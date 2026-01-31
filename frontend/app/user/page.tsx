@@ -60,7 +60,7 @@ const matchHistory = [
 // ユーザーページ
 export default function UserPage() {
   // UseUserからログアウト関数を取得
-  const { user, logout } = useUser();
+  const { user, logout, refreshUser } = useUser();
   // ルーターを取得
   const router = useRouter();
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -112,9 +112,9 @@ export default function UserPage() {
           <div className="grid gap-6 md:grid-cols-[280px_1fr]">
             <Card>
               <CardHeader>
-                <CardTitle>プレイヤー情報</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              <CardTitle>プレイヤー情報</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <Avatar className="h-16 w-16">
@@ -139,6 +139,14 @@ export default function UserPage() {
                   </div>
                 </div>
                 <Badge variant="secondary">ランク: Platinum</Badge>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={refreshUser}
+                >
+                  最新情報を取得
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -172,8 +180,10 @@ export default function UserPage() {
                     <p className="text-xl font-semibold">{losses}</p>
                   </div>
                   <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-muted-foreground">連勝</p>
-                    <p className="text-xl font-semibold">0</p>
+                    <p className="text-xs text-muted-foreground">スコア</p>
+                    <p className="text-xl font-semibold">
+                      {user?.user_score ?? 0}
+                    </p>
                   </div>
                 </div>
               </CardContent>

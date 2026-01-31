@@ -23,10 +23,9 @@ type UserContextValue = {
   setUser: (user: UserProfile | null) => void;
   setUserFromApi: (payload: unknown) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 };
 
-// ローカルストレージのキー
-const STORAGE_KEY = "ft_transcendence.user";
 
 // コンテクストの作成、プロパイダーなしで使われた場合に備える。
 const UserContext = createContext<UserContextValue | undefined>(undefined);
@@ -50,35 +49,11 @@ function normalizeUser(payload: unknown): UserProfile | null {
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserProfile | null>(null);
 
-  // 初回ロード時にローカルストレージからユーザー情報を復元
-  useEffect(() => {
-    // 1 . ローカルストレージからデータを取得
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try {
-      // 2 . JSONとして、パース
-      const parsed = JSON.parse(raw) as unknown;
-      // 3 . 安全性を確認して、正規化
-      const normalized = normalizeUser(parsed);
-      if (normalized) {
-        // 4 .　問題なければ、状態にセット
-        setUserState(normalized);
-      }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, []);
-
   // stateとローカルストレージの両方を更新する関数　ユーザーがあれば保存、なければ削除
   // 状態だけ変わるとか、保存だけ変わるのようなことがないようにする。
   // useCallbackでメモ化して、依存関係が変わらない限り同じ関数を使うようにする。
   const setUser = useCallback((next: UserProfile | null) => {
     setUserState(next);
-    if (next) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } else {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
   }, []);
 
   // APIレスポンスを直接信用せず、検査したものだけを保存する関数
@@ -114,6 +89,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
       .catch(() => null);
   }, [setUserFromApi, setUser]);
 
+  const refreshUser = useCallback(async () => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+    try {
+      const response = await fetch(`${apiBase}/api/me`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        setUser(null);
+        return;
+      }
+      const payload = (await response.json()) as unknown;
+      setUserFromApi(payload);
+    } catch {
+      // ignore fetch errors
+    }
+  }, [setUserFromApi, setUser]);
+
   // ログアウトの処理を1箇所にまとめる
   const logout = useCallback(() => {
     // フロントエンド側の状態をクリア
@@ -122,8 +114,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // コンテクストの値をメモ化して、不要な再レンダリングを防ぐ
   const value = useMemo(
-    () => ({ user, setUser, setUserFromApi, logout }),
-    [user, setUser, setUserFromApi, logout],
+    () => ({ user, setUser, setUserFromApi, logout, refreshUser }),
+    [user, setUser, setUserFromApi, logout, refreshUser],
   );
 
   // コンポーネントツリーにコンテクストの値を提供

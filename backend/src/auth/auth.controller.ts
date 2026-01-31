@@ -8,6 +8,11 @@ type RegisterRequest = {
   display_name: string;
 };
 
+type LoginRequest = {
+  email: string;
+  password: string;
+};
+
 // api/auth/registerが呼ばれるとAuthServiceのregisterメソッドを呼び出す
 @Controller('api/auth')
 export class AuthController {
@@ -34,6 +39,27 @@ export class AuthController {
     });
     // 公開用のユーザー情報を返す
     return this.authService.toPublicUser(user);
+  }
+
+  @Post('login')
+  login(
+    @Body() body: LoginRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = this.authService.login(body);
+    const sessionId = this.authService.createSession(user);
+    res.cookie('ft_session', sessionId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    });
+    return this.authService.toPublicUser(user);
+  }
+
+  @Post('forgot')
+  forgot() {
+    return { ok: true };
   }
 
   @Post('logout')
