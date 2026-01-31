@@ -96,6 +96,9 @@ export default function LoginPage() {
           uuid: null,
           display_name: registerForm.display_name,
           avatar_url: null,
+          wins: 0,
+          losses: 0,
+          user_score: 0,
         });
       }
 
