@@ -4,7 +4,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
-import type { User } from '../model/user.model';
+import type { User, CreateEmailUserInput } from '../model/user.model';
 import { UsersService } from '../users/users.service';
 
 type RegisterInput = {
@@ -59,18 +59,18 @@ export class AuthService {
     }
 
     // パスワードをハッシュ化してユーザー作成
-    const password_hash = this.hashPassword(password);
-    const user: User = {
-      id,
+    const createInput: CreateEmailUserInput = {
+      method: 'email',
       email,
-      password_hash,
+      password_hash: this.hashPassword(password),
+      display_name: displayName,
     };
 
-    return this.usersService.create(user);
+    return this.usersService.create(createInput);
   }
 
   // 簡易的なパスワードハッシュ化関数
-  private hashPassword(password: string) {
+  private hashPassword(password: string): string {
     const salt = randomBytes(16).toString('hex');
     const hash = createHash('sha256')
       .update(salt + password, 'utf8')
