@@ -117,15 +117,13 @@ export class UsersService {
 
   /**
    * UUIDでユーザーを削除
+   * RETURNING句で1操作にして競合状態を排除
    */
   deleteByUuid(uuid: string): User | null {
     const db = getDatabase();
-    const user = this.findByUuid(uuid);
-    if (!user) return null;
-
-    const stmt = db.prepare('DELETE FROM users WHERE uuid = ?');
-    stmt.run(uuid);
-    return user;
+    const stmt = db.prepare('DELETE FROM users WHERE uuid = ? RETURNING *');
+    const row = stmt.get(uuid) as User | undefined;
+    return row ?? null;
   }
 
   /**
