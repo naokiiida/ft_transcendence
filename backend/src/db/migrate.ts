@@ -33,8 +33,8 @@ export function runMigrations(): void {
   ensureSchemaVersionTable();
 
   const appliedVersions = getAppliedVersions();
-  // SQLファイルはsrcディレクトリにあるため、process.cwd()からの相対パスを使用
-  const migrationsDir = path.join(process.cwd(), 'src', 'db', 'migrations');
+  // __dirname はビルド後 dist/db/ を指すため、ビルド環境でも動作する
+  const migrationsDir = path.join(__dirname, 'migrations');
 
   // マイグレーションファイルを取得してソート
   const files = fs
