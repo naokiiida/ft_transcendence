@@ -18,7 +18,7 @@ export interface User {
   user_score: number; // default 1000 (旧: elo_rating)
   created_at: string; // ISO 8601
   last_seen: string; // ISO 8601
-  method: string; // 'email' or 'intra'
+  method: 'email' | 'intra';
 }
 
 /**
