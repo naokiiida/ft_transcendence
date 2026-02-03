@@ -5,7 +5,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import type { User } from '../model/user.model';
+import type {
+  User,
+  CreateEmailUserInput,
+  PublicUser,
+} from '../model/user.model';
 import { UsersService } from '../users/users.service';
 
 /*
@@ -30,10 +34,14 @@ type LoginInput = {
   email: string;
   password: string;
 };
+
 /*
-例外処理が、HTTPのステータスコードに対応している。
+例外処理がHTTPのステータスコードに対応している。
 - BadRequestException: 400 Bad Request
 - ConflictException: 409 Conflict
+
+UUIDはUUID v4で自動生成される。
+display_nameはユニークで、ユーザーが後から変更可能。
 */
 
 @Injectable()
@@ -64,7 +72,7 @@ export class AuthService {
       throw new BadRequestException('Password too short');
     }
 
-    //既存ユーザーとの重複チェック、同じメールや同じ表示名があればエラー。
+    // 既存ユーザーとの重複チェック（email, display_name共にユニーク）
     if (this.usersService.findByEmail(email)) {
       throw new ConflictException('Email already registered');
     }
@@ -73,23 +81,14 @@ export class AuthService {
     }
 
     // パスワードをハッシュ化してユーザー作成
-    const password_hash = this.hashPassword(password);
-    const now = new Date().toISOString();
-    const uuid = randomUUID();
-    const user: User = {
-      uuid,
-      display_name: displayName,
+    const createInput: CreateEmailUserInput = {
+      method: 'email',
       email,
-      password_hash,
-      avatar_url: null,
-      wins: 0,
-      losses: 0,
-      user_score: 0,
-      created_at: now,
-      last_seen: now,
+      password_hash: this.hashPassword(password),
+      display_name: displayName,
     };
 
-    return this.usersService.create(user);
+    return this.usersService.create(createInput);
   }
 
   login(input: LoginInput): User {
@@ -105,17 +104,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!this.verifyPassword(password, user.password_hash)) {
+    if (!user.password_hash || !this.verifyPassword(password, user.password_hash)) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     return user;
   }
+
   // ログイン状態を作成する。コントローラーで呼ばれる、ログイン証明書としてセッションIDを発行する
   createSession(user: User) {
-    if (!user.uuid) {
-      throw new Error('User uuid is required for session');
-    }
     const sessionId = randomUUID();
     this.sessionsById.set(sessionId, user.uuid);
     return sessionId;
@@ -127,6 +124,7 @@ export class AuthService {
     if (!uuid) return null;
     return this.usersService.findByUuid(uuid) ?? null;
   }
+
   // ログアウト時にセッション対応表から削除する
   removeSession(sessionId: string) {
     this.sessionsById.delete(sessionId);
@@ -142,14 +140,15 @@ export class AuthService {
   }
 
   // ユーザー情報から公開用の情報だけを返す
-  // パスワードハッシュを含まないようにする
-  toPublicUser(user: User) {
-    const { password_hash, ...safe } = user;
+  // パスワードハッシュとOAuthトークンを含まないようにする
+  toPublicUser(user: User): PublicUser {
+    const { password_hash, oauth_access_token, oauth_refresh_token, ...safe } =
+      user;
     return safe;
   }
 
   // 簡易的なパスワードハッシュ化関数
-  private hashPassword(password: string) {
+  private hashPassword(password: string): string {
     const salt = randomBytes(16).toString('hex');
     const hash = createHash('sha256')
       .update(salt + password, 'utf8')
@@ -157,7 +156,8 @@ export class AuthService {
     return `${salt}:${hash}`;
   }
 
-  private verifyPassword(password: string, stored: string) {
+  private verifyPassword(password: string, stored: string | null): boolean {
+    if (!stored) return false;
     const [salt, hash] = stored.split(':');
     if (!salt || !hash) return false;
     const candidate = createHash('sha256')

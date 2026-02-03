@@ -1,7 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { runMigrations } from './db/migrate';
 
 async function bootstrap() {
+  // データベースマイグレーションを実行
+  runMigrations();
+
   const app = await NestFactory.create(AppModule);
   // CORS設定、credentialsをtrueにしないとクッキーが送信されない
   app.enableCors({
