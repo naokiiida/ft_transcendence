@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { getDatabase } from '../db/database';
 import type { User, CreateUserInput } from '../model/user.model';
@@ -94,23 +94,40 @@ export class UsersService {
       )
     `);
 
-    stmt.run(
-      user.uuid,
-      user.email,
-      user.password_hash,
-      user.display_name,
-      user.avatar_url,
-      user.intra_id,
-      user.intra_username,
-      user.oauth_access_token,
-      user.oauth_refresh_token,
-      user.wins,
-      user.losses,
-      user.user_score,
-      user.created_at,
-      user.last_seen,
-      user.method,
-    );
+    try {
+      stmt.run(
+        user.uuid,
+        user.email,
+        user.password_hash,
+        user.display_name,
+        user.avatar_url,
+        user.intra_id,
+        user.intra_username,
+        user.oauth_access_token,
+        user.oauth_refresh_token,
+        user.wins,
+        user.losses,
+        user.user_score,
+        user.created_at,
+        user.last_seen,
+        user.method,
+      );
+    } catch (error: unknown) {
+      // ユニーク制約違反をドメイン固有エラーに変換
+      if (
+        error instanceof Error &&
+        error.message.includes('UNIQUE constraint failed')
+      ) {
+        if (error.message.includes('email')) {
+          throw new ConflictException('Email already registered');
+        }
+        if (error.message.includes('display_name')) {
+          throw new ConflictException('Display name already in use');
+        }
+        throw new ConflictException('User already exists');
+      }
+      throw error;
+    }
 
     return user;
   }
