@@ -5,7 +5,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import type { User, CreateEmailUserInput } from '../model/user.model';
+import type {
+  User,
+  CreateEmailUserInput,
+  PublicUser,
+} from '../model/user.model';
 import { UsersService } from '../users/users.service';
 
 /*
@@ -109,9 +113,6 @@ export class AuthService {
 
   // ログイン状態を作成する。コントローラーで呼ばれる、ログイン証明書としてセッションIDを発行する
   createSession(user: User) {
-    if (!user.uuid) {
-      throw new Error('User uuid is required for session');
-    }
     const sessionId = randomUUID();
     this.sessionsById.set(sessionId, user.uuid);
     return sessionId;
@@ -139,9 +140,10 @@ export class AuthService {
   }
 
   // ユーザー情報から公開用の情報だけを返す
-  // パスワードハッシュを含まないようにする
-  toPublicUser(user: User) {
-    const { password_hash, ...safe } = user;
+  // パスワードハッシュとOAuthトークンを含まないようにする
+  toPublicUser(user: User): PublicUser {
+    const { password_hash, oauth_access_token, oauth_refresh_token, ...safe } =
+      user;
     return safe;
   }
 
