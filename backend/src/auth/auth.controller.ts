@@ -1,4 +1,5 @@
 import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 
@@ -14,6 +15,7 @@ type LoginRequest = {
 };
 
 // api/auth/registerが呼ばれるとAuthServiceのregisterメソッドを呼び出す
+@ApiTags('auth')
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

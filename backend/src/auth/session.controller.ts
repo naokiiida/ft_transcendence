@@ -9,6 +9,7 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
@@ -16,6 +17,7 @@ import { UsersService } from '../users/users.service';
 // クッキー名を固定するための定数
 const SESSION_COOKIE = 'ft_session';
 
+@ApiTags('session')
 @Controller('api')
 export class SessionController {
   constructor(
