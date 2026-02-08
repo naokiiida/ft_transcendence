@@ -43,7 +43,4 @@ export type CreateIntraUserInput = z.infer<typeof createIntraUserSchema>;
 /**
  * 公開プロフィール（パスワードやトークンを除外）
  */
-export type PublicUser = Omit<
-  User,
-  'password_hash' | 'oauth_access_token' | 'oauth_refresh_token'
->;
+export type PublicUser = Omit<User, 'password_hash'>;

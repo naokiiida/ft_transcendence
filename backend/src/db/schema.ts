@@ -10,8 +10,6 @@ export const users = sqliteTable(
     avatar_url: text('avatar_url'),
     intra_id: text('intra_id').unique(),
     intra_username: text('intra_username').unique(),
-    oauth_access_token: text('oauth_access_token'),
-    oauth_refresh_token: text('oauth_refresh_token'),
     wins: integer('wins').notNull().default(0),
     losses: integer('losses').notNull().default(0),
     user_score: integer('user_score').notNull().default(1000),

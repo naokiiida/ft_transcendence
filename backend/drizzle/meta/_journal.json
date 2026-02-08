@@ -8,6 +8,13 @@
       "when": 1770492788997,
       "tag": "0000_careful_mandroid",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1770525861923,
+      "tag": "0001_chunky_phil_sheldon",
+      "breakpoints": true
     }
   ]
 }

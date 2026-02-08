@@ -140,10 +140,9 @@ export class AuthService {
   }
 
   // ユーザー情報から公開用の情報だけを返す
-  // パスワードハッシュとOAuthトークンを含まないようにする
+  // パスワードハッシュを含まないようにする
   toPublicUser(user: User): PublicUser {
-    const { password_hash, oauth_access_token, oauth_refresh_token, ...safe } =
-      user;
+    const { password_hash, ...safe } = user;
     return safe;
   }
 
