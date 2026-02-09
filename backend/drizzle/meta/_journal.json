@@ -15,6 +15,13 @@
       "when": 1770525861923,
       "tag": "0001_chunky_phil_sheldon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1770527043525,
+      "tag": "0002_lovely_sersi",
+      "breakpoints": true
     }
   ]
 }

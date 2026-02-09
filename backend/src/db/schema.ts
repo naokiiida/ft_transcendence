@@ -3,7 +3,7 @@ import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 export const users = sqliteTable(
   'users',
   {
-    uuid: text('uuid').primaryKey(),
+    uuid: text('uuid').primaryKey().$defaultFn(() => crypto.randomUUID()),
     email: text('email').unique().notNull(),
     password_hash: text('password_hash'),
     display_name: text('display_name').unique().notNull(),
@@ -13,13 +13,9 @@ export const users = sqliteTable(
     wins: integer('wins').notNull().default(0),
     losses: integer('losses').notNull().default(0),
     user_score: integer('user_score').notNull().default(1000),
-    created_at: text('created_at').notNull(),
-    last_seen: text('last_seen').notNull(),
+    created_at: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+    last_seen: text('last_seen').notNull().$defaultFn(() => new Date().toISOString()),
     method: text('method', { enum: ['email', 'intra'] }).notNull().default('email'),
   },
-  (table) => [
-    index('idx_user_email').on(table.email),
-    index('idx_user_intra_id').on(table.intra_id),
-    index('idx_user_score').on(table.user_score),
-  ],
+  (table) => [index('idx_user_score').on(table.user_score)],
 );

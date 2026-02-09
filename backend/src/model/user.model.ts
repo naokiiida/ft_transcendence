@@ -18,17 +18,17 @@ export type NewUser = typeof users.$inferInsert;
  */
 const createEmailUserSchema = z.object({
   method: z.literal('email'),
-  email: z.string(),
-  password_hash: z.string(),
-  display_name: z.string(),
+  email: z.email(),
+  password_hash: z.string().min(1),
+  display_name: z.string().min(1),
 });
 
 const createIntraUserSchema = z.object({
   method: z.literal('intra'),
-  email: z.string(),
-  intra_id: z.string(),
-  intra_username: z.string(),
-  display_name: z.string(),
+  email: z.email(),
+  intra_id: z.string().min(1),
+  intra_username: z.string().min(1),
+  display_name: z.string().min(1),
 });
 
 export const createUserInputSchema = z.discriminatedUnion('method', [

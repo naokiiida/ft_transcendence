@@ -2,6 +2,7 @@ import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { readCookie } from './cookie.utils';
 
 type RegisterRequest = {
   email: string;
@@ -80,15 +81,4 @@ export class AuthController {
     });
     return { ok: true };
   }
-}
-
-function readCookie(cookieHeader: string, name: string) {
-  const parts = cookieHeader.split(';');
-  for (const part of parts) {
-    const [key, ...rest] = part.trim().split('=');
-    if (key === name) {
-      return decodeURIComponent(rest.join('='));
-    }
-  }
-  return null;
 }

@@ -12,6 +12,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { readCookie } from './cookie.utils';
 import { UsersService } from '../users/users.service';
 
 // クッキー名を固定するための定数
@@ -97,19 +98,6 @@ type ScoreTestRequest = {
   lossesDelta?: number;
   scoreDelta?: number;
 };
-// 自前パーサー "a=1; ft_session=xxx; b=2"のような文字列から特定のクッキー名の値を取得
-// cookie-parserのほうがよい。
-function readCookie(cookieHeader: string, name: string) {
-  const parts = cookieHeader.split(';');
-  for (const part of parts) {
-    const [key, ...rest] = part.trim().split('=');
-    if (key === name) {
-      return decodeURIComponent(rest.join('='));
-    }
-  }
-  return null;
-}
-
 function normalizeDelta(value: number | undefined) {
   if (value === undefined) return 0;
   if (typeof value !== 'number' || Number.isNaN(value)) {

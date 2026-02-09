@@ -4,8 +4,6 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
-import { z } from 'zod';
 import { getDatabase } from '../db/database';
 import { users } from '../db/schema';
 import {
@@ -56,20 +54,24 @@ export class UsersService {
     try {
       parsed = createUserInputSchema.parse(input);
     } catch (error: unknown) {
-      if (error instanceof z.ZodError) {
-        throw new BadRequestException(error.issues[0]?.message ?? 'Invalid input');
+      if (
+        error &&
+        typeof error === 'object' &&
+        'issues' in error &&
+        Array.isArray((error as { issues: unknown[] }).issues)
+      ) {
+        const issues = (error as { issues: { message?: string }[] }).issues;
+        throw new BadRequestException(issues[0]?.message ?? 'Invalid input');
       }
       throw error;
     }
 
     const db = getDatabase();
-    const now = new Date().toISOString();
 
     try {
       return db
         .insert(users)
         .values({
-          uuid: randomUUID(),
           email: parsed.email,
           display_name: parsed.display_name,
           method: parsed.method,
@@ -78,15 +80,13 @@ export class UsersService {
           intra_id: parsed.method === 'intra' ? parsed.intra_id : null,
           intra_username:
             parsed.method === 'intra' ? parsed.intra_username : null,
-          created_at: now,
-          last_seen: now,
         })
         .returning()
         .get();
     } catch (error: unknown) {
       if (
         error instanceof Error &&
-        error.message.includes('UNIQUE constraint failed')
+        (error as { code?: string }).code === 'SQLITE_CONSTRAINT_UNIQUE'
       ) {
         if (error.message.includes('email')) {
           throw new ConflictException('Email already registered');
