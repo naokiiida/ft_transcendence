@@ -7,6 +7,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  NotFoundException,
   UsePipes,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -86,7 +87,7 @@ export class SessionController {
 
     const updated = this.usersService.recordGameResult(user.uuid, body);
     if (!updated) {
-      throw new UnauthorizedException('User not found');
+      throw new NotFoundException('User not found');
     }
     return this.authService.toPublicUser(updated);
   }

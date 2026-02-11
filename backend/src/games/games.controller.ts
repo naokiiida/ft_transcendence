@@ -5,7 +5,6 @@ import {
   Query,
   Req,
   UnauthorizedException,
-  UsePipes,
   NotFoundException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -29,6 +28,18 @@ export class GamesController {
     private readonly authService: AuthService,
   ) {}
 
+  // GET /api/games/history/:userId — ユーザーの対戦履歴
+  // NOTE: :id ワイルドカードより先に定義する（ルート優先順位）
+  @Get('history/:userId')
+  getMatchHistory(
+    @Req() req: Request,
+    @Param('userId') userId: string,
+    @Query(new ZodValidationPipe(matchHistoryQuerySchema)) query: MatchHistoryQuery,
+  ) {
+    this.requireAuth(req);
+    return this.gamesService.getMatchHistory(userId, query.limit, query.offset);
+  }
+
   // GET /api/games/:id — ゲーム詳細
   @Get(':id')
   getGame(@Req() req: Request, @Param('id') id: string) {
@@ -38,18 +49,6 @@ export class GamesController {
       throw new NotFoundException('Game not found');
     }
     return game;
-  }
-
-  // GET /api/games/history/:userId — ユーザーの対戦履歴
-  @Get('history/:userId')
-  @UsePipes(new ZodValidationPipe(matchHistoryQuerySchema))
-  getMatchHistory(
-    @Req() req: Request,
-    @Param('userId') userId: string,
-    @Query() query: MatchHistoryQuery,
-  ) {
-    this.requireAuth(req);
-    return this.gamesService.getMatchHistory(userId, query.limit, query.offset);
   }
 
   private requireAuth(req: Request) {

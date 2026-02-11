@@ -3,7 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { eq, and, gt } from 'drizzle-orm';
 import { getDatabase } from '../db/database';
 import { sessions } from '../db/schema';
@@ -121,7 +121,10 @@ export class AuthService {
     const candidate = createHash('sha256')
       .update(salt + password, 'utf8')
       .digest('hex');
-    return candidate === hash;
+    const candidateBuf = Buffer.from(candidate, 'utf8');
+    const hashBuf = Buffer.from(hash, 'utf8');
+    if (candidateBuf.length !== hashBuf.length) return false;
+    return timingSafeEqual(candidateBuf, hashBuf);
   }
 }
 

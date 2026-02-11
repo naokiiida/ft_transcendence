@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, or, desc, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/database';
 import { games, users } from '../db/schema';
@@ -21,7 +21,7 @@ export class GamesService {
   createGame(input: CreateGameInput): Game {
     const parsed = createGameSchema.safeParse(input);
     if (!parsed.success) {
-      throw new Error(parsed.error.issues[0]?.message ?? 'Invalid game input');
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? 'Invalid game input');
     }
     const data = parsed.data;
 
@@ -54,17 +54,29 @@ export class GamesService {
   completeGame(input: CompleteGameInput): Game {
     const parsed = completeGameSchema.safeParse(input);
     if (!parsed.success) {
-      throw new Error(parsed.error.issues[0]?.message ?? 'Invalid completion input');
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? 'Invalid completion input');
     }
     const data = parsed.data;
 
     const db = getDatabase();
-    const game = this.findById(data.game_id);
-    if (!game) {
-      throw new NotFoundException('Game not found');
-    }
 
     return db.transaction((tx) => {
+      // TOCTOU防止: トランザクション内でゲームを取得
+      const game = tx.select().from(games).where(eq(games.id, data.game_id)).get();
+      if (!game) {
+        throw new NotFoundException('Game not found');
+      }
+
+      // 状態遷移チェック: playing → completed のみ許可
+      if (game.status !== 'playing') {
+        throw new BadRequestException(`Cannot complete game in '${game.status}' status`);
+      }
+
+      // winner_id が player1_id または player2_id のいずれかであることを検証
+      if (data.winner_id && data.winner_id !== game.player1_id && data.winner_id !== game.player2_id) {
+        throw new BadRequestException('winner_id must be one of the players');
+      }
+
       // 1. games テーブルを更新
       const completed = tx
         .update(games)
@@ -140,10 +152,18 @@ export class GamesService {
   }
 
   /**
-   * ゲームのステータスを更新（playing開始など）
+   * ゲームのステータスを更新（playing開始）
+   * waiting → playing のみ許可
    */
-  startGame(gameId: string): Game | null {
+  startGame(gameId: string): Game {
     const db = getDatabase();
+    const game = this.findById(gameId);
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+    if (game.status !== 'waiting') {
+      throw new BadRequestException(`Cannot start game in '${game.status}' status`);
+    }
     return db
       .update(games)
       .set({
@@ -152,6 +172,6 @@ export class GamesService {
       })
       .where(eq(games.id, gameId))
       .returning()
-      .get() ?? null;
+      .get();
   }
 }

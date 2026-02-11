@@ -95,5 +95,8 @@ export const friendships = sqliteTable(
     index('idx_friendship_addressee').on(table.addressee_id),
     unique('uq_friendship_pair').on(table.requester_id, table.addressee_id),
     check('chk_no_self_friend', sql`${table.requester_id} != ${table.addressee_id}`),
+    // 双方向重複防止: 常に requester_id < addressee_id を強制
+    // サービス層で INSERT 前に ID 順ソートすること
+    check('chk_ordered_ids', sql`${table.requester_id} < ${table.addressee_id}`),
   ],
 );

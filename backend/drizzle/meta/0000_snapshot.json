@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "bfd23ade-5503-4079-abe9-49dffd858002",
+  "id": "2a9b60a4-8b24-4be1-8b25-a3c00b2eae2d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "friendships": {
@@ -108,6 +108,10 @@
         "chk_no_self_friend": {
           "name": "chk_no_self_friend",
           "value": "\"friendships\".\"requester_id\" != \"friendships\".\"addressee_id\""
+        },
+        "chk_ordered_ids": {
+          "name": "chk_ordered_ids",
+          "value": "\"friendships\".\"requester_id\" < \"friendships\".\"addressee_id\""
         }
       }
     },
