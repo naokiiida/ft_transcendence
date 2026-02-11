@@ -3,13 +3,14 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/database';
 import { users } from '../db/schema';
 import {
   createUserInputSchema,
   type User,
   type CreateUserInput,
+  type GameResult,
 } from '../model/user.model';
 
 @Injectable()
@@ -50,21 +51,13 @@ export class UsersService {
    * .returning() で INSERT 結果を直接取得
    */
   create(input: CreateUserInput): User {
-    let parsed: CreateUserInput;
-    try {
-      parsed = createUserInputSchema.parse(input);
-    } catch (error: unknown) {
-      if (
-        error &&
-        typeof error === 'object' &&
-        'issues' in error &&
-        Array.isArray((error as { issues: unknown[] }).issues)
-      ) {
-        const issues = (error as { issues: { message?: string }[] }).issues;
-        throw new BadRequestException(issues[0]?.message ?? 'Invalid input');
-      }
-      throw error;
+    const result = createUserInputSchema.safeParse(input);
+    if (!result.success) {
+      throw new BadRequestException(
+        result.error.issues[0]?.message ?? 'Invalid input',
+      );
     }
+    const parsed = result.data;
 
     const db = getDatabase();
 
@@ -109,6 +102,24 @@ export class UsersService {
     return (
       db.delete(users).where(eq(users.uuid, uuid)).returning().get() ?? null
     );
+  }
+
+  /**
+   * ゲーム結果を記録（wins/losses/score を原子的に更新）
+   */
+  recordGameResult(uuid: string, input: GameResult): User | null {
+    const db = getDatabase();
+    const { result, score_delta } = input;
+
+    const setValues = result === 'win'
+      ? { wins: sql`${users.wins} + 1`, user_score: sql`MAX(0, ${users.user_score} + ${score_delta})` }
+      : { losses: sql`${users.losses} + 1`, user_score: sql`MAX(0, ${users.user_score} - ${score_delta})` };
+
+    return db.update(users)
+      .set(setValues)
+      .where(eq(users.uuid, uuid))
+      .returning()
+      .get() ?? null;
   }
 
   /**

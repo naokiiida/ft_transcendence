@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, check } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
 export const users = sqliteTable(
   'users',
@@ -17,5 +18,9 @@ export const users = sqliteTable(
     last_seen: text('last_seen').notNull().$defaultFn(() => new Date().toISOString()),
     method: text('method', { enum: ['email', 'intra'] }).notNull().default('email'),
   },
-  (table) => [index('idx_user_score').on(table.user_score)],
+  (table) => [
+    index('idx_user_score').on(table.user_score),
+    check('chk_email_auth', sql`${table.method} != 'email' OR ${table.password_hash} IS NOT NULL`),
+    check('chk_intra_auth', sql`${table.method} != 'intra' OR (${table.intra_id} IS NOT NULL AND ${table.intra_username} IS NOT NULL)`),
+  ],
 );

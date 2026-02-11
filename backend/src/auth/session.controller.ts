@@ -1,6 +1,5 @@
 import {
   Body,
-  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -8,12 +7,15 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  UsePipes,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { readCookie } from './cookie.utils';
 import { UsersService } from '../users/users.service';
+import { gameResultSchema, type GameResult } from '../model/user.model';
+import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 
 // クッキー名を固定するための定数
 const SESSION_COOKIE = 'ft_session';
@@ -71,7 +73,8 @@ export class SessionController {
   }
 
   @Post('me/test-score')
-  testScore(@Req() req: Request, @Body() body: ScoreTestRequest) {
+  @UsePipes(new ZodValidationPipe(gameResultSchema))
+  testScore(@Req() req: Request, @Body() body: GameResult) {
     const sessionId = readCookie(req.headers.cookie ?? '', SESSION_COOKIE);
     if (!sessionId) {
       throw new UnauthorizedException('Not authenticated');
@@ -81,32 +84,10 @@ export class SessionController {
       throw new UnauthorizedException('Invalid session');
     }
 
-    const winsDelta = normalizeDelta(body.winsDelta);
-    const lossesDelta = normalizeDelta(body.lossesDelta);
-    const scoreDelta = normalizeDelta(body.scoreDelta);
-
-    user.wins = clampNonNegative(user.wins + winsDelta);
-    user.losses = clampNonNegative(user.losses + lossesDelta);
-    user.user_score = clampNonNegative(user.user_score + scoreDelta);
-
-    return this.authService.toPublicUser(user);
+    const updated = this.usersService.recordGameResult(user.uuid, body);
+    if (!updated) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.authService.toPublicUser(updated);
   }
-}
-
-type ScoreTestRequest = {
-  winsDelta?: number;
-  lossesDelta?: number;
-  scoreDelta?: number;
-};
-function normalizeDelta(value: number | undefined) {
-  if (value === undefined) return 0;
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    throw new BadRequestException('Invalid delta');
-  }
-  return value;
-}
-
-function clampNonNegative(value: number) {
-  if (value < 0) return 0;
-  return value;
 }

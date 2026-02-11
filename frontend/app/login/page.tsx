@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,32 +10,29 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/components/auth/user-context";
-
-type RegisterPayload = {
-  email: string;
-  password: string;
-  display_name: string;
-};
-
-type LoginPayload = {
-  email: string;
-  password: string;
-};
+import {
+  registerRequestSchema,
+  loginRequestSchema,
+  type RegisterRequest,
+  type LoginRequest,
+} from "@/lib/schemas/auth";
 
 type ForgotPayload = {
   email: string;
 };
 
+type FieldErrors = Record<string, string | null>;
+
 export default function LoginPage() {
   const router = useRouter();
   const { setUserFromApi, setUser } = useUser();
 
-  const [registerForm, setRegisterForm] = useState<RegisterPayload>({
+  const [registerForm, setRegisterForm] = useState<RegisterRequest>({
     email: "",
     password: "",
     display_name: "",
   });
-  const [loginForm, setLoginForm] = useState<LoginPayload>({
+  const [loginForm, setLoginForm] = useState<LoginRequest>({
     email: "",
     password: "",
   });
@@ -45,19 +43,28 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [registerErrors, setRegisterErrors] = useState<FieldErrors>({});
+  const [loginErrors, setLoginErrors] = useState<FieldErrors>({});
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
   const handleRegisterChange =
-    (key: keyof RegisterPayload) =>
+    (key: keyof RegisterRequest) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setRegisterForm((current) => ({ ...current, [key]: event.target.value }));
+      // 入力中はフィールドエラーをクリア
+      if (registerErrors[key]) {
+        setRegisterErrors((prev) => ({ ...prev, [key]: null }));
+      }
     };
 
   const handleLoginChange =
-    (key: keyof LoginPayload) =>
+    (key: keyof LoginRequest) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setLoginForm((current) => ({ ...current, [key]: event.target.value }));
+      if (loginErrors[key]) {
+        setLoginErrors((prev) => ({ ...prev, [key]: null }));
+      }
     };
 
   const handleForgotChange =
@@ -66,10 +73,42 @@ export default function LoginPage() {
       setForgotForm((current) => ({ ...current, [key]: event.target.value }));
     };
 
+  // onBlur: フィールド単位のバリデーション
+  const validateRegisterField = (key: keyof RegisterRequest) => () => {
+    const fieldSchema = registerRequestSchema.shape[key];
+    const result = fieldSchema.safeParse(registerForm[key]);
+    setRegisterErrors((prev) => ({
+      ...prev,
+      [key]: result.success ? null : (result.error.issues[0]?.message ?? null),
+    }));
+  };
+
+  const validateLoginField = (key: keyof LoginRequest) => () => {
+    const fieldSchema = loginRequestSchema.shape[key];
+    const result = fieldSchema.safeParse(loginForm[key]);
+    setLoginErrors((prev) => ({
+      ...prev,
+      [key]: result.success ? null : (result.error.issues[0]?.message ?? null),
+    }));
+  };
+
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setNotice(null);
+
+    // submit前にクライアント側バリデーション
+    const validation = registerRequestSchema.safeParse(registerForm);
+    if (!validation.success) {
+      const flat = z.flattenError(validation.error);
+      const errors: FieldErrors = {};
+      for (const [key, messages] of Object.entries(flat.fieldErrors)) {
+        errors[key] = messages?.[0] ?? null;
+      }
+      setRegisterErrors(errors);
+      return;
+    }
+
     setPending(true);
 
     try {
@@ -77,7 +116,7 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(registerForm),
+        body: JSON.stringify(validation.data),
       });
 
       if (!response.ok) {
@@ -115,6 +154,18 @@ export default function LoginPage() {
     event.preventDefault();
     setError(null);
     setNotice(null);
+
+    const validation = loginRequestSchema.safeParse(loginForm);
+    if (!validation.success) {
+      const flat = z.flattenError(validation.error);
+      const errors: FieldErrors = {};
+      for (const [key, messages] of Object.entries(flat.fieldErrors)) {
+        errors[key] = messages?.[0] ?? null;
+      }
+      setLoginErrors(errors);
+      return;
+    }
+
     setPending(true);
 
     try {
@@ -122,7 +173,7 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(loginForm),
+        body: JSON.stringify(validation.data),
       });
 
       if (!response.ok) {
@@ -203,8 +254,11 @@ export default function LoginPage() {
                       autoComplete="email"
                       value={loginForm.email}
                       onChange={handleLoginChange("email")}
-                      required
+                      onBlur={validateLoginField("email")}
                     />
+                    {loginErrors.email ? (
+                      <p className="text-sm text-destructive">{loginErrors.email}</p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">パスワード</Label>
@@ -214,8 +268,11 @@ export default function LoginPage() {
                       autoComplete="current-password"
                       value={loginForm.password}
                       onChange={handleLoginChange("password")}
-                      required
+                      onBlur={validateLoginField("password")}
                     />
+                    {loginErrors.password ? (
+                      <p className="text-sm text-destructive">{loginErrors.password}</p>
+                    ) : null}
                   </div>
                   {error ? (
                     <Alert variant="destructive">
@@ -238,8 +295,11 @@ export default function LoginPage() {
                       autoComplete="email"
                       value={registerForm.email}
                       onChange={handleRegisterChange("email")}
-                      required
+                      onBlur={validateRegisterField("email")}
                     />
+                    {registerErrors.email ? (
+                      <p className="text-sm text-destructive">{registerErrors.email}</p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-password">パスワード</Label>
@@ -249,8 +309,11 @@ export default function LoginPage() {
                       autoComplete="new-password"
                       value={registerForm.password}
                       onChange={handleRegisterChange("password")}
-                      required
+                      onBlur={validateRegisterField("password")}
                     />
+                    {registerErrors.password ? (
+                      <p className="text-sm text-destructive">{registerErrors.password}</p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-display">表示名</Label>
@@ -258,8 +321,11 @@ export default function LoginPage() {
                       id="register-display"
                       value={registerForm.display_name}
                       onChange={handleRegisterChange("display_name")}
-                      required
+                      onBlur={validateRegisterField("display_name")}
                     />
+                    {registerErrors.display_name ? (
+                      <p className="text-sm text-destructive">{registerErrors.display_name}</p>
+                    ) : null}
                   </div>
                   {error ? (
                     <Alert variant="destructive">

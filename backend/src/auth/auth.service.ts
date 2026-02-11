@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -9,40 +8,11 @@ import type {
   User,
   CreateEmailUserInput,
   PublicUser,
+  RegisterRequest,
+  LoginRequest,
 } from '../model/user.model';
 import { UsersService } from '../users/users.service';
 
-/*
-【今後の修正が必要と思われる項目】
-
-認証の今後の厳格化が必要
-ハッシュ化が弱い。
-randomUUIDは可能性は極めて極めて低いが衝突の危険性あり。DBでユニーク制約？
-メールの厳密判定
-→確認メールを送る？
-→依存追加など（isEmail zod）
-
-*/
-
-type RegisterInput = {
-  email: string;
-  password: string;
-  display_name: string;
-};
-
-type LoginInput = {
-  email: string;
-  password: string;
-};
-
-/*
-例外処理がHTTPのステータスコードに対応している。
-- BadRequestException: 400 Bad Request
-- ConflictException: 409 Conflict
-
-UUIDはUUID v4で自動生成される。
-display_nameはユニークで、ユーザーが後から変更可能。
-*/
 
 @Injectable()
 export class AuthService {
@@ -52,52 +22,30 @@ export class AuthService {
 
   constructor(private readonly usersService: UsersService) {}
 
-  // inputは、コントローラーで受けったった登録情報
-  register(input: RegisterInput): User {
-    // 余分な空白を削除して、小文字に変換
-    const email = input.email?.trim().toLowerCase();
-    // パスワードはそのまま取得
-    const password = input.password ?? '';
-    // 余分な空白を削除
-    const displayName = input.display_name?.trim();
+  // ZodValidationPipe がバリデーション+trim/toLowerCase を担当済み
+  register(input: RegisterRequest): User {
+    const { email, password, display_name } = input;
 
-    // どれかがかけてる、メールアドレスの形式が不正（簡易判定）、パスワードが短すぎる場合はエラー
-    if (!email || !displayName || !password) {
-      throw new BadRequestException('Missing required fields');
-    }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      throw new BadRequestException('Invalid email');
-    }
-    if (password.length < 8) {
-      throw new BadRequestException('Password too short');
-    }
-
-    // 既存ユーザーとの重複チェック（email, display_name共にユニーク）
+    // 既存ユーザーとの重複チェック（ビジネスロジック）
     if (this.usersService.findByEmail(email)) {
       throw new ConflictException('Email already registered');
     }
-    if (this.usersService.findByDisplayName(displayName)) {
+    if (this.usersService.findByDisplayName(display_name)) {
       throw new ConflictException('Display name already in use');
     }
 
-    // パスワードをハッシュ化してユーザー作成
     const createInput: CreateEmailUserInput = {
       method: 'email',
       email,
       password_hash: this.hashPassword(password),
-      display_name: displayName,
+      display_name,
     };
 
     return this.usersService.create(createInput);
   }
 
-  login(input: LoginInput): User {
-    const email = input.email?.trim().toLowerCase();
-    const password = input.password ?? '';
-
-    if (!email || !password) {
-      throw new BadRequestException('Missing required fields');
-    }
+  login(input: LoginRequest): User {
+    const { email, password } = input;
 
     const user = this.usersService.findByEmail(email);
     if (!user) {

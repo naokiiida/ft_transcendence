@@ -1,21 +1,32 @@
 import { z } from 'zod';
 import { users } from '../db/schema';
 
-/**
- * User エンティティ — Drizzle スキーマから導出
- * フィールド名はフロントエンドに統一: id→uuid, elo_rating→user_score
- */
+// ═══════════════════════════════════════════════════════════
+// 型定義 — Drizzle スキーマから導出（単一真実源）
+// ═══════════════════════════════════════════════════════════
+
 export type User = typeof users.$inferSelect;
-
-/**
- * INSERT 用の型 — Drizzle スキーマから導出
- */
 export type NewUser = typeof users.$inferInsert;
+export type PublicUser = Omit<User, 'password_hash'>;
 
-/**
- * 旧 DB トリガー (check_auth_consistency) の代替: Zod discriminated union
- * method に応じて必須フィールドをバリデーション
- */
+// ═══════════════════════════════════════════════════════════
+// フィールドカテゴリ
+//
+//  不変（作成時に固定）:
+//    uuid, email, method, intra_id, intra_username, created_at
+//
+//  ユーザー変更可能:
+//    display_name, avatar_url
+//
+//  システム変更可能:
+//    password_hash, wins, losses, user_score, last_seen
+//
+// ═══════════════════════════════════════════════════════════
+
+// ─── ドメインスキーマ（サービス層）──────────────────────
+
+// --- 作成: method に応じた discriminated union ---
+
 const createEmailUserSchema = z.object({
   method: z.literal('email'),
   email: z.email(),
@@ -40,7 +51,36 @@ export type CreateUserInput = z.infer<typeof createUserInputSchema>;
 export type CreateEmailUserInput = z.infer<typeof createEmailUserSchema>;
 export type CreateIntraUserInput = z.infer<typeof createIntraUserSchema>;
 
-/**
- * 公開プロフィール（パスワードやトークンを除外）
- */
-export type PublicUser = Omit<User, 'password_hash'>;
+// --- 更新: ユーザー操作 ---
+
+export const updateProfileSchema = z.object({
+  display_name: z.string().min(1).trim().optional(),
+  avatar_url: z.url().nullable().optional(),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+// --- 更新: システム操作 ---
+
+export const gameResultSchema = z.object({
+  result: z.enum(['win', 'loss']),
+  score_delta: z.number().int().nonnegative(),
+});
+export type GameResult = z.infer<typeof gameResultSchema>;
+
+// ─── HTTPスキーマ（コントローラー層）────────────────────
+
+export const registerRequestSchema = z.object({
+  email: z.email({ error: 'Invalid email' }).trim().toLowerCase(),
+  password: z.string().min(8, { error: 'Password too short' }),
+  display_name: z.string().min(1, { error: 'Display name is required' }).trim(),
+});
+
+export type RegisterRequest = z.infer<typeof registerRequestSchema>;
+
+export const loginRequestSchema = z.object({
+  email: z.email({ error: 'Invalid email' }).trim().toLowerCase(),
+  password: z.string().min(1, { error: 'Password is required' }),
+});
+
+export type LoginRequest = z.infer<typeof loginRequestSchema>;
