@@ -3,7 +3,10 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
+import { eq, and, gt } from 'drizzle-orm';
+import { getDatabase } from '../db/database';
+import { sessions } from '../db/schema';
 import type {
   User,
   CreateEmailUserInput,
@@ -13,13 +16,8 @@ import type {
 } from '../model/user.model';
 import { UsersService } from '../users/users.service';
 
-
 @Injectable()
 export class AuthService {
-  // ブラウザからくるセッションIDとログインユーザーの対応表
-  // メモリ上に保存しているだけなので、サーバー再起動で消える、サーバー分散したら共有されない
-  private sessionsById = new Map<string, string>();
-
   constructor(private readonly usersService: UsersService) {}
 
   // ZodValidationPipe がバリデーション+trim/toLowerCase を担当済み
@@ -59,42 +57,55 @@ export class AuthService {
     return user;
   }
 
-  // ログイン状態を作成する。コントローラーで呼ばれる、ログイン証明書としてセッションIDを発行する
-  createSession(user: User) {
-    const sessionId = randomUUID();
-    this.sessionsById.set(sessionId, user.uuid);
-    return sessionId;
+  // ── セッション管理（DB永続化） ─────────────────────────
+
+  // セッションを作成し、IDを返す
+  createSession(user: User): string {
+    const db = getDatabase();
+    const expiresAt = computeSessionExpiry();
+    const session = db
+      .insert(sessions)
+      .values({ user_id: user.uuid, expires_at: expiresAt })
+      .returning()
+      .get();
+
+    return session.id;
   }
 
-  // セッションIDからユーザーを取得する
-  findUserBySession(sessionId: string) {
-    const uuid = this.sessionsById.get(sessionId);
-    if (!uuid) return null;
-    return this.usersService.findByUuid(uuid) ?? null;
+  // セッションIDから有効なユーザーを取得する（期限切れチェック付き）
+  findUserBySession(sessionId: string): User | null {
+    const db = getDatabase();
+    const now = new Date().toISOString();
+
+    const session = db
+      .select()
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), gt(sessions.expires_at, now)))
+      .get();
+
+    if (!session) return null;
+    return this.usersService.findByUuid(session.user_id) ?? null;
   }
 
-  // ログアウト時にセッション対応表から削除する
-  removeSession(sessionId: string) {
-    this.sessionsById.delete(sessionId);
+  // ログアウト時にセッションを削除する
+  removeSession(sessionId: string): void {
+    const db = getDatabase();
+    db.delete(sessions).where(eq(sessions.id, sessionId)).run();
   }
 
-  // 指定したユーザーUUIDに関連するすべてのセッションを削除する
-  removeSessionsByUuid(uuid: string) {
-    for (const [sessionId, storedUuid] of this.sessionsById.entries()) {
-      if (storedUuid === uuid) {
-        this.sessionsById.delete(sessionId);
-      }
-    }
+  // 指定したユーザーの全セッションを削除する（アカウント削除時など）
+  removeSessionsByUuid(uuid: string): void {
+    const db = getDatabase();
+    db.delete(sessions).where(eq(sessions.user_id, uuid)).run();
   }
 
-  // ユーザー情報から公開用の情報だけを返す
-  // パスワードハッシュを含まないようにする
+  // ── ユーティリティ ──────────────────────────────────
+
   toPublicUser(user: User): PublicUser {
     const { password_hash, ...safe } = user;
     return safe;
   }
 
-  // 簡易的なパスワードハッシュ化関数
   private hashPassword(password: string): string {
     const salt = randomBytes(16).toString('hex');
     const hash = createHash('sha256')
@@ -112,4 +123,9 @@ export class AuthService {
       .digest('hex');
     return candidate === hash;
   }
+}
+
+// 現在時刻か7日後の ISO 8601 文字列を返す関数
+function computeSessionExpiry(): string {
+  return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 }
