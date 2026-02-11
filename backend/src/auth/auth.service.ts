@@ -10,6 +10,7 @@ import type {
   CreateEmailUserInput,
   PublicUser,
 } from '../model/user.model';
+import { MetricsService } from '../observability/metrics.service';
 import { UsersService } from '../users/users.service';
 
 /*
@@ -50,7 +51,10 @@ export class AuthService {
   // メモリ上に保存しているだけなので、サーバー再起動で消える、サーバー分散したら共有されない
   private sessionsById = new Map<string, string>();
 
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly metricsService: MetricsService,
+  ) {}
 
   // inputは、コントローラーで受けったった登録情報
   register(input: RegisterInput): User {
@@ -115,6 +119,7 @@ export class AuthService {
   createSession(user: User) {
     const sessionId = randomUUID();
     this.sessionsById.set(sessionId, user.uuid);
+    this.metricsService.activeSessionsCount.set(this.sessionsById.size);
     return sessionId;
   }
 
@@ -128,6 +133,7 @@ export class AuthService {
   // ログアウト時にセッション対応表から削除する
   removeSession(sessionId: string) {
     this.sessionsById.delete(sessionId);
+    this.metricsService.activeSessionsCount.set(this.sessionsById.size);
   }
 
   // 指定したユーザーUUIDに関連するすべてのセッションを削除する
@@ -137,6 +143,7 @@ export class AuthService {
         this.sessionsById.delete(sessionId);
       }
     }
+    this.metricsService.activeSessionsCount.set(this.sessionsById.size);
   }
 
   // ユーザー情報から公開用の情報だけを返す
