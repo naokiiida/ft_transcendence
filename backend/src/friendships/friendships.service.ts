@@ -28,55 +28,67 @@ export class FriendshipsService {
 
     const db = getDatabase();
 
-    // 相手が存在するか確認
-    const addressee = db.select().from(users).where(eq(users.uuid, addresseeId)).get();
-    if (!addressee) {
-      throw new NotFoundException('User not found');
-    }
-
-    // 既存のフレンドシップを双方向で検索
-    const existing = db
-      .select()
-      .from(friendships)
-      .where(
-        or(
-          and(eq(friendships.requester_id, requesterId), eq(friendships.addressee_id, addresseeId)),
-          and(eq(friendships.requester_id, addresseeId), eq(friendships.addressee_id, requesterId)),
-        ),
-      )
-      .get();
-
-    if (existing) {
-      if (existing.status === 'accepted') {
-        throw new ConflictException('Already friends');
+    return db.transaction((tx) => {
+      // 相手が存在するか確認
+      const addressee = tx.select().from(users).where(eq(users.uuid, addresseeId)).get();
+      if (!addressee) {
+        throw new NotFoundException('User not found');
       }
 
-      if (existing.status === 'pending') {
-        if (existing.requester_id === requesterId) {
-          throw new ConflictException('Friend request already sent');
+      // 既存のフレンドシップを双方向で検索
+      const existing = tx
+        .select()
+        .from(friendships)
+        .where(
+          or(
+            and(eq(friendships.requester_id, requesterId), eq(friendships.addressee_id, addresseeId)),
+            and(eq(friendships.requester_id, addresseeId), eq(friendships.addressee_id, requesterId)),
+          ),
+        )
+        .get();
+
+      if (existing) {
+        if (existing.status === 'accepted') {
+          throw new ConflictException('Already friends');
         }
-        // 逆方向の pending → 相互承認なので自動 accept
-        return db
+
+        if (existing.status === 'pending') {
+          if (existing.requester_id === requesterId) {
+            throw new ConflictException('Friend request already sent');
+          }
+          // 逆方向の pending → 相互承認なので自動 accept
+          return tx
+            .update(friendships)
+            .set({ status: 'accepted', updated_at: new Date().toISOString() })
+            .where(eq(friendships.id, existing.id))
+            .returning()
+            .get();
+        }
+
+        // declined → 既存レコードを UPDATE して再利用
+        return tx
           .update(friendships)
-          .set({ status: 'accepted', updated_at: new Date().toISOString() })
+          .set({
+            requester_id: requesterId,
+            addressee_id: addresseeId,
+            status: 'pending',
+            updated_at: new Date().toISOString(),
+          })
           .where(eq(friendships.id, existing.id))
           .returning()
           .get();
       }
 
-      // declined → 古いレコードを削除して新規作成を許可
-      db.delete(friendships).where(eq(friendships.id, existing.id)).run();
-    }
-
-    return db
-      .insert(friendships)
-      .values({
-        requester_id: requesterId,
-        addressee_id: addresseeId,
-        status: 'pending',
-      })
-      .returning()
-      .get();
+      return tx
+        .insert(friendships)
+        .values({
+          requester_id: requesterId,
+          addressee_id: addresseeId,
+          status: 'pending',
+        })
+        .returning()
+        .get();
+    });
   }
 
   /**
@@ -89,27 +101,29 @@ export class FriendshipsService {
     response: 'accepted' | 'declined',
   ): Friendship {
     const db = getDatabase();
-    const request = this.findById(friendshipId);
 
-    if (!request) {
-      throw new NotFoundException('Friend request not found');
-    }
-    if (request.addressee_id !== userId) {
-      throw new ForbiddenException('Only the addressee can respond to this request');
-    }
-    if (request.status !== 'pending') {
-      throw new ConflictException('This request has already been responded to');
-    }
+    return db.transaction((tx) => {
+      const request = tx.select().from(friendships).where(eq(friendships.id, friendshipId)).get();
+      if (!request) {
+        throw new NotFoundException('Friend request not found');
+      }
+      if (request.addressee_id !== userId) {
+        throw new ForbiddenException('Only the addressee can respond to this request');
+      }
+      if (request.status !== 'pending') {
+        throw new ConflictException('This request has already been responded to');
+      }
 
-    return db
-      .update(friendships)
-      .set({
-        status: response,
-        updated_at: new Date().toISOString(),
-      })
-      .where(eq(friendships.id, friendshipId))
-      .returning()
-      .get();
+      return tx
+        .update(friendships)
+        .set({
+          status: response,
+          updated_at: new Date().toISOString(),
+        })
+        .where(eq(friendships.id, friendshipId))
+        .returning()
+        .get();
+    });
   }
 
   /**
@@ -179,16 +193,18 @@ export class FriendshipsService {
    */
   removeFriend(friendshipId: string, userId: string): { success: true } {
     const db = getDatabase();
-    const friendship = this.findById(friendshipId);
 
-    if (!friendship) {
-      throw new NotFoundException('Friendship not found');
-    }
-    if (friendship.requester_id !== userId && friendship.addressee_id !== userId) {
-      throw new ForbiddenException('You are not part of this friendship');
-    }
+    db.transaction((tx) => {
+      const friendship = tx.select().from(friendships).where(eq(friendships.id, friendshipId)).get();
+      if (!friendship) {
+        throw new NotFoundException('Friendship not found');
+      }
+      if (friendship.requester_id !== userId && friendship.addressee_id !== userId) {
+        throw new ForbiddenException('You are not part of this friendship');
+      }
+      tx.delete(friendships).where(eq(friendships.id, friendshipId)).run();
+    });
 
-    db.delete(friendships).where(eq(friendships.id, friendshipId)).run();
     return { success: true };
   }
 

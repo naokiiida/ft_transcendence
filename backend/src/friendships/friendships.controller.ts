@@ -8,7 +8,6 @@ import {
   Body,
   Req,
   UnauthorizedException,
-  UsePipes,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -35,10 +34,9 @@ export class FriendshipsController {
 
   // POST /api/friendships — フレンドリクエスト送信
   @Post()
-  @UsePipes(new ZodValidationPipe(sendFriendRequestSchema))
   sendRequest(
     @Req() req: Request,
-    @Body() body: SendFriendRequestBody,
+    @Body(new ZodValidationPipe(sendFriendRequestSchema)) body: SendFriendRequestBody,
   ) {
     const user = this.requireAuth(req);
     return this.friendshipsService.sendRequest(user.uuid, body.addressee_id);
@@ -46,11 +44,10 @@ export class FriendshipsController {
 
   // PATCH /api/friendships/:id — リクエストへの応答（accept/decline）
   @Patch(':id')
-  @UsePipes(new ZodValidationPipe(respondFriendRequestSchema))
   respondToRequest(
     @Req() req: Request,
     @Param('id') id: string,
-    @Body() body: RespondFriendRequestBody,
+    @Body(new ZodValidationPipe(respondFriendRequestSchema)) body: RespondFriendRequestBody,
   ) {
     const user = this.requireAuth(req);
     return this.friendshipsService.respondToRequest(id, user.uuid, body.response);

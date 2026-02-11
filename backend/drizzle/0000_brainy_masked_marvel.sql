@@ -7,8 +7,7 @@ CREATE TABLE `friendships` (
 	`updated_at` text NOT NULL,
 	FOREIGN KEY (`requester_id`) REFERENCES `users`(`uuid`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`addressee_id`) REFERENCES `users`(`uuid`) ON UPDATE no action ON DELETE cascade,
-	CONSTRAINT "chk_no_self_friend" CHECK("friendships"."requester_id" != "friendships"."addressee_id"),
-	CONSTRAINT "chk_ordered_ids" CHECK("friendships"."requester_id" < "friendships"."addressee_id")
+	CONSTRAINT "chk_no_self_friend" CHECK("friendships"."requester_id" != "friendships"."addressee_id")
 );
 --> statement-breakpoint
 CREATE INDEX `idx_friendship_requester` ON `friendships` (`requester_id`);--> statement-breakpoint

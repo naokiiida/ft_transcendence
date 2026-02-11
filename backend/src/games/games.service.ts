@@ -94,6 +94,9 @@ export class GamesService {
 
       // 2. users テーブルの wins/losses/score を更新（online のみ）
       if (data.winner_id && game.game_type === 'online') {
+        if (!game.player2_id) {
+          throw new BadRequestException('Online game must have player2_id to complete');
+        }
         const loserId =
           data.winner_id === game.player1_id ? game.player2_id : game.player1_id;
 
@@ -157,21 +160,24 @@ export class GamesService {
    */
   startGame(gameId: string): Game {
     const db = getDatabase();
-    const game = this.findById(gameId);
-    if (!game) {
-      throw new NotFoundException('Game not found');
-    }
-    if (game.status !== 'waiting') {
-      throw new BadRequestException(`Cannot start game in '${game.status}' status`);
-    }
-    return db
-      .update(games)
-      .set({
-        status: 'playing',
-        started_at: new Date().toISOString(),
-      })
-      .where(eq(games.id, gameId))
-      .returning()
-      .get();
+
+    return db.transaction((tx) => {
+      const game = tx.select().from(games).where(eq(games.id, gameId)).get();
+      if (!game) {
+        throw new NotFoundException('Game not found');
+      }
+      if (game.status !== 'waiting') {
+        throw new BadRequestException(`Cannot start game in '${game.status}' status`);
+      }
+      return tx
+        .update(games)
+        .set({
+          status: 'playing',
+          started_at: new Date().toISOString(),
+        })
+        .where(eq(games.id, gameId))
+        .returning()
+        .get();
+    });
   }
 }

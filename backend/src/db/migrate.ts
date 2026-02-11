@@ -8,6 +8,7 @@ import { getDatabase } from './database';
  */
 export function runMigrations(): void {
   const db = getDatabase();
-  const migrationsFolder = path.join(process.cwd(), 'drizzle');
+  // __dirname = dist/db/ (prod) or src/db/ (dev) — drizzle/ is at project root
+  const migrationsFolder = path.resolve(__dirname, '..', '..', 'drizzle');
   migrate(db, { migrationsFolder });
 }
