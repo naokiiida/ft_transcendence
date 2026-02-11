@@ -1,25 +1,25 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UsePipes } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { Public } from './decorators';
+import { readCookie } from './cookie.utils';
+import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
+import {
+  registerRequestSchema,
+  loginRequestSchema,
+  type RegisterRequest,
+  type LoginRequest,
+} from '../model/user.model';
 
-type RegisterRequest = {
-  email: string;
-  password: string;
-  display_name: string;
-};
-
-type LoginRequest = {
-  email: string;
-  password: string;
-};
-
-// api/auth/registerが呼ばれるとAuthServiceのregisterメソッドを呼び出す
+@ApiTags('auth')
+@Public()
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  //bodyで受け取ったjsonをRegisterRequest型としてregisterメソッドに渡す
   @Post('register')
+  @UsePipes(new ZodValidationPipe(registerRequestSchema))
   register(
     @Body() body: RegisterRequest,
     @Res({ passthrough: true }) res: Response,
@@ -42,6 +42,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @UsePipes(new ZodValidationPipe(loginRequestSchema))
   login(
     @Body() body: LoginRequest,
     @Res({ passthrough: true }) res: Response,
@@ -78,15 +79,4 @@ export class AuthController {
     });
     return { ok: true };
   }
-}
-
-function readCookie(cookieHeader: string, name: string) {
-  const parts = cookieHeader.split(';');
-  for (const part of parts) {
-    const [key, ...rest] = part.trim().split('=');
-    if (key === name) {
-      return decodeURIComponent(rest.join('='));
-    }
-  }
-  return null;
 }

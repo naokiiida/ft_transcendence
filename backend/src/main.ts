@@ -1,4 +1,6 @@
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { apiReference } from '@scalar/nestjs-api-reference';
 import { AppModule } from './app.module';
 import { runMigrations } from './db/migrate';
 
@@ -12,6 +14,27 @@ async function bootstrap() {
     origin: 'http://localhost:3000',
     credentials: true,
   });
+
+  // OpenAPI ドキュメント生成
+  const config = new DocumentBuilder()
+    .setTitle('ft_transcendence API')
+    .setDescription('Pong game backend API')
+    .setVersion('1.0')
+    .addTag('auth', 'Authentication endpoints')
+    .addTag('session', 'Session management')
+    .addCookieAuth('ft_session')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+
+  // Scalar API Reference UI を /reference に配置
+  app.use(
+    '/reference',
+    apiReference({
+      content: document,
+      theme: 'default',
+    }),
+  );
+
   const envPort = process.env.PORT;
   const parsedPort = envPort ? Number(envPort) : NaN;
   const port = Number.isFinite(parsedPort) ? parsedPort : 3001;
