@@ -84,9 +84,8 @@ export default function UserPage() {
   };
 
   const handleTestUpdate = async (payload: {
-    winsDelta?: number;
-    lossesDelta?: number;
-    scoreDelta?: number;
+    result: "win" | "loss";
+    score_delta: number;
   }) => {
     const apiBase =
       process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -267,32 +266,16 @@ export default function UserPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => handleTestUpdate({ winsDelta: 1, scoreDelta: 2 })}
+                    onClick={() => handleTestUpdate({ result: "win", score_delta: 25 })}
                   >
-                    +1勝利 +2スコア
+                    勝利 (+25)
                   </Button>
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() =>
-                      handleTestUpdate({ lossesDelta: 1, scoreDelta: -2 })
-                    }
+                    onClick={() => handleTestUpdate({ result: "loss", score_delta: 25 })}
                   >
-                    +1敗北 -2スコア
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleTestUpdate({ scoreDelta: 5 })}
-                  >
-                    +5スコア
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleTestUpdate({ scoreDelta: -5 })}
-                  >
-                    -5スコア
+                    敗北 (-25)
                   </Button>
                 </div>
               </div>
