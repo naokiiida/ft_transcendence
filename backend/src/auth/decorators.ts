@@ -1,0 +1,16 @@
+import { SetMetadata, createParamDecorator, type ExecutionContext } from '@nestjs/common';
+import type { Request } from 'express';
+
+// ── @Public() ─────────────────────────────────────────────
+// Guard をスキップしてルートを公開にするデコレータ
+export const IS_PUBLIC_KEY = 'isPublic';
+export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+
+// ── @CurrentUser() ────────────────────────────────────────
+// Guard が req.user にセットしたユーザーを抽出するパラメータデコレータ
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest<Request>();
+    return request.user;
+  },
+);

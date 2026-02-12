@@ -1,7 +1,17 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
+import { eq, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/database';
-import type { User, CreateUserInput } from '../model/user.model';
+import { users } from '../db/schema';
+import {
+  createUserInputSchema,
+  type User,
+  type CreateUserInput,
+  type GameResult,
+} from '../model/user.model';
 
 @Injectable()
 export class UsersService {
@@ -10,9 +20,7 @@ export class UsersService {
    */
   findByEmail(email: string): User | null {
     const db = getDatabase();
-    const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-    const row = stmt.get(email) as User | undefined;
-    return row ?? null;
+    return db.select().from(users).where(eq(users.email, email)).get() ?? null;
   }
 
   /**
@@ -20,9 +28,7 @@ export class UsersService {
    */
   findByUuid(uuid: string): User | null {
     const db = getDatabase();
-    const stmt = db.prepare('SELECT * FROM users WHERE uuid = ?');
-    const row = stmt.get(uuid) as User | undefined;
-    return row ?? null;
+    return db.select().from(users).where(eq(users.uuid, uuid)).get() ?? null;
   }
 
   /**
@@ -30,93 +36,50 @@ export class UsersService {
    */
   findByDisplayName(displayName: string): User | null {
     const db = getDatabase();
-    const stmt = db.prepare('SELECT * FROM users WHERE display_name = ?');
-    const row = stmt.get(displayName) as User | undefined;
-    return row ?? null;
+    return (
+      db
+        .select()
+        .from(users)
+        .where(eq(users.display_name, displayName))
+        .get() ?? null
+    );
   }
 
   /**
    * 新規ユーザーを作成
-   * Discriminated Unionでメール認証とIntra認証を型安全に処理
+   * Zod バリデーションで認証方法の整合性を保証（旧 DB トリガーの代替）
+   * .returning() で INSERT 結果を直接取得
    */
   create(input: CreateUserInput): User {
+    const result = createUserInputSchema.safeParse(input);
+    if (!result.success) {
+      throw new BadRequestException(
+        result.error.issues[0]?.message ?? 'Invalid input',
+      );
+    }
+    const parsed = result.data;
+
     const db = getDatabase();
-    const now = new Date().toISOString();
-    const uuid = randomUUID();
-
-    // Discriminated Union: methodで分岐
-    const user: User =
-      input.method === 'email'
-        ? {
-            uuid,
-            email: input.email,
-            password_hash: input.password_hash,
-            display_name: input.display_name,
-            avatar_url: null,
-            intra_id: null,
-            intra_username: null,
-            oauth_access_token: null,
-            oauth_refresh_token: null,
-            wins: 0,
-            losses: 0,
-            user_score: 1000,
-            created_at: now,
-            last_seen: now,
-            method: 'email',
-          }
-        : {
-            uuid,
-            email: input.email,
-            password_hash: null,
-            display_name: input.display_name,
-            avatar_url: null,
-            intra_id: input.intra_id,
-            intra_username: input.intra_username,
-            oauth_access_token: null,
-            oauth_refresh_token: null,
-            wins: 0,
-            losses: 0,
-            user_score: 1000,
-            created_at: now,
-            last_seen: now,
-            method: 'intra',
-          };
-
-    const stmt = db.prepare(`
-      INSERT INTO users (
-        uuid, email, password_hash, display_name, avatar_url,
-        intra_id, intra_username, oauth_access_token, oauth_refresh_token,
-        wins, losses, user_score, created_at, last_seen, method
-      ) VALUES (
-        ?, ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?
-      )
-    `);
 
     try {
-      stmt.run(
-        user.uuid,
-        user.email,
-        user.password_hash,
-        user.display_name,
-        user.avatar_url,
-        user.intra_id,
-        user.intra_username,
-        user.oauth_access_token,
-        user.oauth_refresh_token,
-        user.wins,
-        user.losses,
-        user.user_score,
-        user.created_at,
-        user.last_seen,
-        user.method,
-      );
+      return db
+        .insert(users)
+        .values({
+          email: parsed.email,
+          display_name: parsed.display_name,
+          method: parsed.method,
+          password_hash:
+            parsed.method === 'email' ? parsed.password_hash : null,
+          intra_id: parsed.method === 'intra' ? parsed.intra_id : null,
+          intra_username:
+            parsed.method === 'intra' ? parsed.intra_username : null,
+        })
+        .returning()
+        .get();
     } catch (error: unknown) {
-      // ユニーク制約違反をドメイン固有エラーに変換
       if (
         error instanceof Error &&
-        error.message.includes('UNIQUE constraint failed')
+        (error as { code?: string }).code === 'SQLITE_CONSTRAINT_UNIQUE'
       ) {
         if (error.message.includes('email')) {
           throw new ConflictException('Email already registered');
@@ -128,8 +91,6 @@ export class UsersService {
       }
       throw error;
     }
-
-    return user;
   }
 
   /**
@@ -138,9 +99,27 @@ export class UsersService {
    */
   deleteByUuid(uuid: string): User | null {
     const db = getDatabase();
-    const stmt = db.prepare('DELETE FROM users WHERE uuid = ? RETURNING *');
-    const row = stmt.get(uuid) as User | undefined;
-    return row ?? null;
+    return (
+      db.delete(users).where(eq(users.uuid, uuid)).returning().get() ?? null
+    );
+  }
+
+  /**
+   * ゲーム結果を記録（wins/losses/score を原子的に更新）
+   */
+  recordGameResult(uuid: string, input: GameResult): User | null {
+    const db = getDatabase();
+    const { result, score_delta } = input;
+
+    const setValues = result === 'win'
+      ? { wins: sql`${users.wins} + 1`, user_score: sql`MAX(0, ${users.user_score} + ${score_delta})` }
+      : { losses: sql`${users.losses} + 1`, user_score: sql`MAX(0, ${users.user_score} - ${score_delta})` };
+
+    return db.update(users)
+      .set(setValues)
+      .where(eq(users.uuid, uuid))
+      .returning()
+      .get() ?? null;
   }
 
   /**
@@ -148,7 +127,9 @@ export class UsersService {
    */
   updateLastSeen(uuid: string): void {
     const db = getDatabase();
-    const stmt = db.prepare('UPDATE users SET last_seen = ? WHERE uuid = ?');
-    stmt.run(new Date().toISOString(), uuid);
+    db.update(users)
+      .set({ last_seen: new Date().toISOString() })
+      .where(eq(users.uuid, uuid))
+      .run();
   }
 }

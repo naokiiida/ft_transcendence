@@ -1,53 +1,86 @@
-/**
- * User エンティティ
- * data-model.md のスキーマに準拠
- * フィールド名はフロントエンドに統一: id→uuid, elo_rating→user_score
- */
-export interface User {
-  uuid: string; // UUID v4
-  email: string;
-  password_hash: string | null; // OAuth専用ユーザーはnull
-  display_name: string; // 最大32文字
-  avatar_url: string | null;
-  intra_id: string | null; // 42 intra ID
-  intra_username: string | null; // 42 login
-  oauth_access_token: string | null;
-  oauth_refresh_token: string | null;
-  wins: number; // default 0
-  losses: number; // default 0
-  user_score: number; // default 1000 (旧: elo_rating)
-  created_at: string; // ISO 8601
-  last_seen: string; // ISO 8601
-  method: 'email' | 'intra';
-}
+import { z } from 'zod';
+import { users } from '../db/schema';
 
-/**
- * ユーザー作成時の入力データ
- * 必須フィールドのみ + オプショナルフィールド
- */
-export type CreateUserInput = CreateEmailUserInput | CreateIntraUserInput;
+// ═══════════════════════════════════════════════════════════
+// 型定義 — Drizzle スキーマから導出（単一真実源）
+// ═══════════════════════════════════════════════════════════
 
-/** メール認証でのユーザー作成 */
-export interface CreateEmailUserInput {
-  method: 'email'; // リテラル型（判別子）
-  email: string;
-  password_hash: string;
-  display_name: string;
-}
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type PublicUser = Omit<User, 'password_hash'>;
 
-/** OAuth認証でのユーザー作成 */
-export interface CreateIntraUserInput {
-  method: 'intra'; // リテラル型（判別子）
-  email: string;
-  intra_id: string;
-  intra_username: string;
-  display_name: string;
-}
+// ═══════════════════════════════════════════════════════════
+// フィールドカテゴリ
+//
+//  不変（作成時に固定）:
+//    uuid, email, method, intra_id, intra_username, created_at
+//
+//  ユーザー変更可能:
+//    display_name, avatar_url
+//
+//  システム変更可能:
+//    password_hash, wins, losses, user_score, last_seen
+//
+// ═══════════════════════════════════════════════════════════
 
-/**
- * 公開プロフィール（パスワードやトークンを除外）
- */
-export type PublicUser = Omit<
-  User,
-  'password_hash' | 'oauth_access_token' | 'oauth_refresh_token'
->;
+// ─── ドメインスキーマ（サービス層）──────────────────────
+
+// --- 作成: method に応じた discriminated union ---
+
+const createEmailUserSchema = z.object({
+  method: z.literal('email'),
+  email: z.email(),
+  password_hash: z.string().min(1),
+  display_name: z.string().min(1),
+});
+
+const createIntraUserSchema = z.object({
+  method: z.literal('intra'),
+  email: z.email(),
+  intra_id: z.string().min(1),
+  intra_username: z.string().min(1),
+  display_name: z.string().min(1),
+});
+
+export const createUserInputSchema = z.discriminatedUnion('method', [
+  createEmailUserSchema,
+  createIntraUserSchema,
+]);
+
+export type CreateUserInput = z.infer<typeof createUserInputSchema>;
+export type CreateEmailUserInput = z.infer<typeof createEmailUserSchema>;
+export type CreateIntraUserInput = z.infer<typeof createIntraUserSchema>;
+
+// --- 更新: ユーザー操作 ---
+
+export const updateProfileSchema = z.object({
+  display_name: z.string().min(1).trim().optional(),
+  avatar_url: z.url().nullable().optional(),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+// --- 更新: システム操作 ---
+
+export const gameResultSchema = z.object({
+  result: z.enum(['win', 'loss']),
+  score_delta: z.number().int().nonnegative(),
+});
+export type GameResult = z.infer<typeof gameResultSchema>;
+
+// ─── HTTPスキーマ（コントローラー層）────────────────────
+
+export const registerRequestSchema = z.object({
+  email: z.email({ error: 'Invalid email' }).trim().toLowerCase(),
+  password: z.string().min(8, { error: 'Password too short' }),
+  display_name: z.string().min(1, { error: 'Display name is required' }).trim(),
+});
+
+export type RegisterRequest = z.infer<typeof registerRequestSchema>;
+
+export const loginRequestSchema = z.object({
+  email: z.email({ error: 'Invalid email' }).trim().toLowerCase(),
+  password: z.string().min(1, { error: 'Password is required' }),
+});
+
+export type LoginRequest = z.infer<typeof loginRequestSchema>;
