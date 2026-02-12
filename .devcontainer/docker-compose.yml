@@ -5,8 +5,6 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ..:/workspace:cached
-      - frontend-node-modules:/workspace/frontend/node_modules
-      - backend-node-modules:/workspace/backend/node_modules
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -54,7 +52,5 @@ networks:
     driver: bridge
 
 volumes:
-  frontend-node-modules:
-  backend-node-modules:
   prometheus-data:
   grafana-data:

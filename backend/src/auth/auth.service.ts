@@ -1,10 +1,13 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, lte, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/database';
 import { sessions } from '../db/schema';
 import type {
@@ -17,12 +20,56 @@ import type {
 import { MetricsService } from '../observability/metrics.service';
 import { UsersService } from '../users/users.service';
 
+const SESSION_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1時間
+
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(AuthService.name);
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(
     private readonly usersService: UsersService,
     private readonly metricsService: MetricsService,
   ) {}
+
+  onModuleInit() {
+    this.syncSessionMetrics();
+    this.cleanupExpiredSessions();
+    this.cleanupTimer = setInterval(
+      () => this.cleanupExpiredSessions(),
+      SESSION_CLEANUP_INTERVAL,
+    );
+  }
+
+  onModuleDestroy() {
+    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
+  }
+
+  // 起動時にDBの有効セッション数からメトリクスを同期する
+  private syncSessionMetrics(): void {
+    const db = getDatabase();
+    const now = new Date().toISOString();
+    const result = db
+      .select({ count: sql<number>`count(*)` })
+      .from(sessions)
+      .where(gt(sessions.expires_at, now))
+      .get();
+    this.metricsService.activeSessionsCount.set(result?.count ?? 0);
+  }
+
+  // 期限切れセッションを削除し、メトリクスを調整する
+  private cleanupExpiredSessions(): void {
+    const db = getDatabase();
+    const now = new Date().toISOString();
+    const expired = db
+      .delete(sessions)
+      .where(lte(sessions.expires_at, now))
+      .returning()
+      .all();
+    if (expired.length > 0) {
+      this.logger.log(`Cleaned up ${expired.length} expired session(s)`);
+    }
+  }
 
   // ZodValidationPipe がバリデーション+trim/toLowerCase を担当済み
   register(input: RegisterRequest): User {
@@ -73,6 +120,7 @@ export class AuthService {
       .returning()
       .get();
 
+    this.metricsService.activeSessionsCount.inc();
     return session.id;
   }
 
@@ -94,13 +142,15 @@ export class AuthService {
   // ログアウト時にセッションを削除する
   removeSession(sessionId: string): void {
     const db = getDatabase();
-    db.delete(sessions).where(eq(sessions.id, sessionId)).run();
+    const deleted = db.delete(sessions).where(eq(sessions.id, sessionId)).returning().get();
+    if (deleted) this.metricsService.activeSessionsCount.dec();
   }
 
   // 指定したユーザーの全セッションを削除する（アカウント削除時など）
   removeSessionsByUuid(uuid: string): void {
     const db = getDatabase();
-    db.delete(sessions).where(eq(sessions.user_id, uuid)).run();
+    const deleted = db.delete(sessions).where(eq(sessions.user_id, uuid)).returning().all();
+    this.metricsService.activeSessionsCount.dec(deleted.length);
   }
 
   // ── ユーティリティ ──────────────────────────────────

@@ -1,5 +1,8 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { sql } from 'drizzle-orm';
 import type { Response } from 'express';
+import { Public } from '../auth/decorators';
 import { getDatabase } from '../db/database';
 
 interface ComponentHealth {
@@ -23,6 +26,8 @@ interface HealthResponse {
 
 const startTime = Date.now();
 
+@ApiTags('observability')
+@Public()
 @Controller('api')
 export class HealthController {
   @Get('health')
@@ -48,7 +53,7 @@ export class HealthController {
     try {
       const start = Date.now();
       const db = getDatabase();
-      db.prepare('SELECT 1').get();
+      db.run(sql`SELECT 1`);
       return { status: 'healthy', latencyMs: Date.now() - start };
     } catch (error) {
       return {

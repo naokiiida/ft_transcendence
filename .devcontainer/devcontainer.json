@@ -25,10 +25,11 @@
     }
   },
 
-  "forwardPorts": [3000, 3001, 6006, 9090],
+  "forwardPorts": [3000, 3001, 3002, 6006, 9090],
   "portsAttributes": {
     "3000": { "label": "Next.js App", "onAutoForward": "notify" },
     "3001": { "label": "Backend API", "onAutoForward": "notify" },
+    "3002": { "label": "Grafana", "onAutoForward": "silent" },
     "6006": { "label": "Storybook", "onAutoForward": "notify" },
     "9090": { "label": "Prometheus", "onAutoForward": "silent" }
   },
