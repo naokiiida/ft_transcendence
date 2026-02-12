@@ -42,60 +42,48 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 */
 
-// ===== 仮データ（戦績） =====
-const matchHistory = [
-  {
-    opponent: "プレイヤーA",
-    result: "勝利",
-    score: "11-8",
-    date: "2024-04-08",
-  },
-  {
-    opponent: "プレイヤーB",
-    result: "敗北",
-    score: "7-11",
-    date: "2024-04-06",
-  },
-  {
-    opponent: "プレイヤーC",
-    result: "勝利",
-    score: "11-9",
-    date: "2024-04-02",
-  },
-];
+// ===== 戦績表示用 =====
+type MatchRow = {
+  id: string;
+  player1_id: string;
+  player2_id: string | null;
+  winner_id: string | null;
+  player1_score: number;
+  player2_score: number;
+  created_at: string;
+  status: string;
+};
 
-// ===== 仮データ（統計） =====
-const achievements = [
-  {
-    id: "first-win",
-    title: "初勝利",
-    description: "初めての勝利を達成する",
-    progress: 100,
-    unlocked: true,
-  },
-  {
-    id: "ten-wins",
-    title: "10勝達成",
-    description: "累計10勝を達成する",
-    progress: 70,
-    unlocked: false,
-  },
-  {
-    id: "win-streak",
-    title: "連勝街道",
-    description: "3連勝を達成する",
-    progress: 40,
-    unlocked: false,
-  },
-];
+type MatchHistoryResponse = {
+  games: MatchRow[];
+  total: number;
+  limit: number;
+  offset: number;
+};
 
-const scoreRanking = [
-  { position: 1, name: "PlayerOne", score: 480 },
-  { position: 2, name: "ShadowAce", score: 420 },
-  { position: 3, name: "Kaito", score: 395 },
-  { position: 4, name: "Luna", score: 350 },
-  { position: 5, name: "Ritsu", score: 315 },
-];
+// ===== 統計表示用 =====
+type AchievementRow = {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  unlocked: boolean;
+};
+
+type LeaderboardEntry = {
+  uuid: string;
+  display_name: string;
+  avatar_url: string | null;
+  user_score: number;
+  position: number;
+};
+
+type LeaderboardResponse = {
+  entries: LeaderboardEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+};
 
 // ===== ランク計算用の閾値 =====
 const rankTiers = [
@@ -172,6 +160,12 @@ export default function UserPage() {
   const [searchError, setSearchError] = useState<string | null>(null); //フレンド検索のエラー状態
   const [searchActionId, setSearchActionId] = useState<string | null>(null); //フレンド検索のアクションID
   const [hasSearched, setHasSearched] = useState(false); //検索が行われたかどうか
+  const [matchHistory, setMatchHistory] = useState<MatchRow[]>([]); //戦績一覧
+  const [matchLoading, setMatchLoading] = useState(false); //戦績の読み込み状態
+  const [matchError, setMatchError] = useState<string | null>(null); //戦績のエラー状態
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   // ----- ユーザー統計 -----
   const wins = user?.wins ?? 0;
   const losses = user?.losses ?? 0;
@@ -221,6 +215,41 @@ export default function UserPage() {
       return { status: "away" as const, label: "離席中" };
     }
     return { status: "offline" as const, label: "オフライン" };
+  };
+
+  const buildAchievements = () => {
+    const totalMatches = wins + losses;
+    const achievements: AchievementRow[] = [
+      {
+        id: "first-win",
+        title: "初勝利",
+        description: "初めての勝利を達成する",
+        progress: wins > 0 ? 100 : 0,
+        unlocked: wins > 0,
+      },
+      {
+        id: "ten-wins",
+        title: "10勝達成",
+        description: "累計10勝を達成する",
+        progress: Math.min(100, Math.round((wins / 10) * 100)),
+        unlocked: wins >= 10,
+      },
+      {
+        id: "veteran",
+        title: "ベテランプレイヤー",
+        description: "累計50試合を達成する",
+        progress: Math.min(100, Math.round((totalMatches / 50) * 100)),
+        unlocked: totalMatches >= 50,
+      },
+      {
+        id: "score-500",
+        title: "スコア500",
+        description: "スコアが500に到達する",
+        progress: Math.min(100, Math.round((score / 500) * 100)),
+        unlocked: score >= 500,
+      },
+    ];
+    return achievements;
   };
 
   // ----- フレンド関連: 取得 -----
@@ -298,6 +327,59 @@ export default function UserPage() {
     }
   }, [apiBase]);
 
+  const fetchMatchHistory = useCallback(async () => {
+    if (!user?.uuid) return;
+    setMatchLoading(true);
+    setMatchError(null);
+    try {
+      const response = await fetch(
+        `${apiBase}/api/games/history/${user.uuid}?limit=20&offset=0`,
+        { credentials: "include" },
+      );
+      const data = (await response.json().catch(() => null)) as unknown;
+      if (!response.ok) {
+        const message =
+          (data as { message?: string } | null)?.message ??
+          "戦績の取得に失敗しました";
+        throw new Error(message);
+      }
+      const parsed = data as MatchHistoryResponse;
+      setMatchHistory(Array.isArray(parsed?.games) ? parsed.games : []);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "戦績の取得に失敗しました";
+      setMatchError(message);
+    } finally {
+      setMatchLoading(false);
+    }
+  }, [apiBase, user?.uuid]);
+
+  const fetchLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    setLeaderboardError(null);
+    try {
+      const response = await fetch(
+        `${apiBase}/api/users/leaderboard?limit=10&offset=0`,
+        { credentials: "include" },
+      );
+      const data = (await response.json().catch(() => null)) as unknown;
+      if (!response.ok) {
+        const message =
+          (data as { message?: string } | null)?.message ??
+          "ランキングの取得に失敗しました";
+        throw new Error(message);
+      }
+      const parsed = data as LeaderboardResponse;
+      setLeaderboard(Array.isArray(parsed?.entries) ? parsed.entries : []);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "ランキングの取得に失敗しました";
+      setLeaderboardError(message);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [apiBase]);
+
   const refreshFriendData = useCallback(async () => {
     await Promise.all([
       fetchFriends(),
@@ -312,10 +394,14 @@ export default function UserPage() {
       setFriends([]);
       setPendingRequests([]);
       setSentRequests([]);
+      setMatchHistory([]);
+      setLeaderboard([]);
       return;
     }
     void refreshFriendData();
-  }, [user?.uuid, refreshFriendData]);
+    void fetchMatchHistory();
+    void fetchLeaderboard();
+  }, [user?.uuid, refreshFriendData, fetchMatchHistory, fetchLeaderboard]);
   // ログアウト処理とトップページへのリダイレクトを行う関数
   // ----- 認証/アカウント操作 -----
   const handleLogout = async () => {
@@ -1040,7 +1126,7 @@ export default function UserPage() {
                   <CardTitle>アチーブメント</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {achievements.map((achievement) => (
+                  {buildAchievements().map((achievement) => (
                     <div
                       key={achievement.id}
                       className="rounded-lg border border-border p-4"
@@ -1074,29 +1160,42 @@ export default function UserPage() {
                   <CardTitle>スコアランキング</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>順位</TableHead>
-                        <TableHead>プレイヤー</TableHead>
-                        <TableHead>スコア</TableHead>
-                        <TableHead>ランク</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {scoreRanking.map((entry) => {
-                        const rank = getRankForScore(entry.score);
-                        return (
-                          <TableRow key={entry.position}>
-                            <TableCell>{entry.position}</TableCell>
-                            <TableCell>{entry.name}</TableCell>
-                            <TableCell>{entry.score}</TableCell>
-                            <TableCell>{rank.label}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                  {leaderboardError ? (
+                    <Alert variant="destructive">
+                      <AlertDescription>{leaderboardError}</AlertDescription>
+                    </Alert>
+                  ) : null}
+                  {leaderboardLoading ? (
+                    <p className="text-sm text-muted-foreground">読み込み中...</p>
+                  ) : leaderboard.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      まだランキングがありません。
+                    </p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>順位</TableHead>
+                          <TableHead>プレイヤー</TableHead>
+                          <TableHead>スコア</TableHead>
+                          <TableHead>ランク</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {leaderboard.map((entry) => {
+                          const rank = getRankForScore(entry.user_score);
+                          return (
+                            <TableRow key={entry.uuid}>
+                              <TableCell>{entry.position}</TableCell>
+                              <TableCell>{entry.display_name}</TableCell>
+                              <TableCell>{entry.user_score}</TableCell>
+                              <TableCell>{rank.label}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -1109,26 +1208,59 @@ export default function UserPage() {
               <CardTitle>最近の試合</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>対戦相手</TableHead>
-                    <TableHead>結果</TableHead>
-                    <TableHead>スコア</TableHead>
-                    <TableHead>日時</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {matchHistory.map((match) => (
-                    <TableRow key={`${match.opponent}-${match.date}`}>
-                      <TableCell>{match.opponent}</TableCell>
-                      <TableCell>{match.result}</TableCell>
-                      <TableCell>{match.score}</TableCell>
-                      <TableCell>{match.date}</TableCell>
+              {matchError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{matchError}</AlertDescription>
+                </Alert>
+              ) : null}
+              {matchLoading ? (
+                <p className="text-sm text-muted-foreground">読み込み中...</p>
+              ) : matchHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  まだ試合履歴がありません。
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>対戦相手</TableHead>
+                      <TableHead>結果</TableHead>
+                      <TableHead>スコア</TableHead>
+                      <TableHead>日時</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {matchHistory.map((match) => {
+                      const isPlayer1 = match.player1_id === user?.uuid;
+                      const opponentId = isPlayer1
+                        ? match.player2_id
+                        : match.player1_id;
+                      const opponentLabel = opponentId
+                        ? `${opponentId.slice(0, 8)}...`
+                        : "AI/ローカル";
+                      const result =
+                        match.status !== "completed"
+                          ? "未完了"
+                          : match.winner_id === null
+                          ? "引き分け"
+                          : match.winner_id === user?.uuid
+                          ? "勝利"
+                          : "敗北";
+                      const scoreText = isPlayer1
+                        ? `${match.player1_score}-${match.player2_score}`
+                        : `${match.player2_score}-${match.player1_score}`;
+                      return (
+                        <TableRow key={match.id}>
+                          <TableCell>{opponentLabel}</TableCell>
+                          <TableCell>{result}</TableCell>
+                          <TableCell>{scoreText}</TableCell>
+                          <TableCell>{formatDateTime(match.created_at)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

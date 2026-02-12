@@ -3,6 +3,8 @@ import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 import {
+  leaderboardQuerySchema,
+  type LeaderboardQuery,
   searchUsersQuerySchema,
   type SearchUsersQuery,
   type User,
@@ -26,5 +28,13 @@ export class UsersController {
       query.limit,
       user.uuid,
     );
+  }
+
+  // GET /api/users/leaderboard?limit=20&offset=0
+  @Get('leaderboard')
+  getLeaderboard(
+    @Query(new ZodValidationPipe(leaderboardQuerySchema)) query: LeaderboardQuery,
+  ) {
+    return this.usersService.getLeaderboard(query.limit, query.offset);
   }
 }

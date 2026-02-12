@@ -97,4 +97,11 @@ export const searchUsersQuerySchema = z.object({
 
 export type SearchUsersQuery = z.infer<typeof searchUsersQuerySchema>;
 
+export const leaderboardQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+
+export type LeaderboardQuery = z.infer<typeof leaderboardQuerySchema>;
+
 export type LoginRequest = z.infer<typeof loginRequestSchema>;

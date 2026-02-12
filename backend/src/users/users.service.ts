@@ -3,7 +3,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/database';
 import { users } from '../db/schema';
 import {
@@ -161,5 +161,37 @@ export class UsersService {
       .where(and(...conditions))
       .limit(limit)
       .all();
+  }
+
+  /**
+   * スコアランキングを取得
+   */
+  getLeaderboard(limit: number, offset: number) {
+    const db = getDatabase();
+    const rows = db
+      .select({
+        uuid: users.uuid,
+        display_name: users.display_name,
+        avatar_url: users.avatar_url,
+        user_score: users.user_score,
+        position: sql<number>`RANK() OVER (ORDER BY ${users.user_score} DESC)`,
+      })
+      .from(users)
+      .orderBy(desc(users.user_score))
+      .limit(limit)
+      .offset(offset)
+      .all();
+
+    const total = db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .get();
+
+    return {
+      entries: rows,
+      total: total?.count ?? 0,
+      limit,
+      offset,
+    };
   }
 }
