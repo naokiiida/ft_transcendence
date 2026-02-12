@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -100,7 +99,7 @@ export default function LoginPage() {
     // submit前にクライアント側バリデーション
     const validation = registerRequestSchema.safeParse(registerForm);
     if (!validation.success) {
-      const flat = z.flattenError(validation.error);
+      const flat = validation.error.flatten();
       const errors: FieldErrors = {};
       for (const [key, messages] of Object.entries(flat.fieldErrors)) {
         errors[key] = messages?.[0] ?? null;
@@ -157,7 +156,7 @@ export default function LoginPage() {
 
     const validation = loginRequestSchema.safeParse(loginForm);
     if (!validation.success) {
-      const flat = z.flattenError(validation.error);
+      const flat = validation.error.flatten();
       const errors: FieldErrors = {};
       for (const [key, messages] of Object.entries(flat.fieldErrors)) {
         errors[key] = messages?.[0] ?? null;
