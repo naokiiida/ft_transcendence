@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AuthGate } from "@/components/auth/auth-gate";
 
 /*
 フレンドのオンライン、オフライン認定
@@ -615,8 +616,9 @@ export default function UserPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10">
-      <Tabs defaultValue="profile">
+    <AuthGate>
+      <div className="mx-auto w-full max-w-6xl px-4 py-10">
+        <Tabs defaultValue="profile">
         <TabsList className="mb-6">
           <TabsTrigger value="profile">プロフィール</TabsTrigger>
           <TabsTrigger value="friends">フレンド</TabsTrigger>
@@ -1346,7 +1348,8 @@ export default function UserPage() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-    </div>
+        </Tabs>
+      </div>
+    </AuthGate>
   );
 }

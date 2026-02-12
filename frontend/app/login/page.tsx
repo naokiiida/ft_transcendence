@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,9 @@ type FieldErrors = Record<string, string | null>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUserFromApi, setUser } = useUser();
+  const searchParams = useSearchParams();
+  const { setUserFromApi, setUser, isAuthenticated, isLoading } = useUser();
+  const nextPath = searchParams.get("next") || "/user";
 
   const [registerForm, setRegisterForm] = useState<RegisterRequest>({
     email: "",
@@ -46,6 +48,25 @@ export default function LoginPage() {
   const [loginErrors, setLoginErrors] = useState<FieldErrors>({});
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+  // すでにログイン済みならユーザーページへ
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace(nextPath);
+    }
+  }, [isLoading, isAuthenticated, router, nextPath]);
+
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="min-h-screen px-4 py-10">
+        <div className="mx-auto flex w-full max-w-md flex-col gap-6">
+          <p className="text-sm text-muted-foreground">
+            認証を確認しています...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleRegisterChange =
     (key: keyof RegisterRequest) =>
@@ -140,7 +161,7 @@ export default function LoginPage() {
         });
       }
 
-      router.push("/");
+      router.push(nextPath);
     } catch (err) {
       const message = err instanceof Error ? err.message : "登録に失敗しました";
       setError(message);
@@ -188,7 +209,7 @@ export default function LoginPage() {
         setUserFromApi(data);
       }
 
-      router.push("/");
+      router.push(nextPath);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "ログインに失敗しました";
