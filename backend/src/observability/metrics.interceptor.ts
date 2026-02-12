@@ -3,6 +3,7 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  HttpException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -18,15 +19,20 @@ export class MetricsInterceptor implements NestInterceptor {
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
 
+
     const startTime = process.hrtime.bigint();
     const method = request.method;
-    const route = this.normalizeRoute(request.route?.path ?? request.path);
+    const route = this.normalizeRoute(
+      request.route?.path
+        ? `${request.baseUrl}${request.route.path}`
+        : request.path,
+    );
 
     return next.handle().pipe(
       tap({
         next: () => this.record(method, route, response.statusCode, startTime),
-        error: () =>
-          this.record(method, route, response.statusCode || 500, startTime),
+        error: (err: Error) =>
+          this.record(method, route, this.extractStatus(err), startTime),
       }),
     );
   }
@@ -42,6 +48,16 @@ export class MetricsInterceptor implements NestInterceptor {
 
     this.metricsService.httpRequestsTotal.inc(labels);
     this.metricsService.httpRequestDuration.observe(labels, durationSeconds);
+  }
+
+  private extractStatus(err: unknown): number {
+    if (err instanceof HttpException) return err.getStatus();
+    if (typeof err === 'object' && err !== null) {
+      const e = err as Record<string, unknown>;
+      if (typeof e.status === 'number') return e.status;
+      if (typeof e.statusCode === 'number') return e.statusCode;
+    }
+    return 500;
   }
 
   // ルート正規化: UUID/数値IDをプレースホルダに変換してカーディナリティ爆発を防止

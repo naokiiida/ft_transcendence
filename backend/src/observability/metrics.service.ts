@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import {
   Registry,
   collectDefaultMetrics,
@@ -8,7 +8,7 @@ import {
 } from 'prom-client';
 
 @Injectable()
-export class MetricsService implements OnModuleInit {
+export class MetricsService implements OnModuleInit, OnModuleDestroy {
   private readonly registry = new Registry();
 
   // HTTP リクエストメトリクス
@@ -61,6 +61,10 @@ export class MetricsService implements OnModuleInit {
 
   onModuleInit() {
     collectDefaultMetrics({ register: this.registry });
+  }
+
+  onModuleDestroy() {
+    this.registry.clear();
   }
 
   async getMetrics(): Promise<string> {

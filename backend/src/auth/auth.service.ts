@@ -67,6 +67,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       .returning()
       .all();
     if (expired.length > 0) {
+      this.metricsService.activeSessionsCount.dec(expired.length);
       this.logger.log(`Cleaned up ${expired.length} expired session(s)`);
     }
   }
