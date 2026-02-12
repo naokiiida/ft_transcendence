@@ -151,6 +151,30 @@ export class FriendshipsService {
   }
 
   /**
+   * 送信した保留中リクエスト一覧（相手の情報付き）
+   */
+  getSentPendingRequests(userId: string) {
+    const db = getDatabase();
+    return db
+      .select({
+        id: friendships.id,
+        addressee_id: friendships.addressee_id,
+        display_name: users.display_name,
+        avatar_url: users.avatar_url,
+        created_at: friendships.created_at,
+      })
+      .from(friendships)
+      .innerJoin(users, eq(friendships.addressee_id, users.uuid))
+      .where(
+        and(
+          eq(friendships.requester_id, userId),
+          eq(friendships.status, 'pending'),
+        ),
+      )
+      .all();
+  }
+
+  /**
    * フレンド一覧（相手のプロフィール情報付き）
    */
   getFriends(userId: string) {
@@ -167,6 +191,7 @@ export class FriendshipsService {
         display_name: users.display_name,
         avatar_url: users.avatar_url,
         user_score: users.user_score,
+        last_seen: users.last_seen,
       })
       .from(friendships)
       .innerJoin(
