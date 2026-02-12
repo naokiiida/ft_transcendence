@@ -51,7 +51,7 @@ export class AuthGuard implements CanActivate {
     // last_seen は、APIリクエストと紐づけて、60秒以上の間隔があれば書き込みを行う。
     const lastSeenMs = user.last_seen ? Date.parse(user.last_seen) : NaN;
     const nowMs = Date.now();
-    if (!Number.isNaN(lastSeenMs) && nowMs - lastSeenMs >= 60_000) {
+    if (Number.isNaN(lastSeenMs) || nowMs - lastSeenMs >= 60_000) {
       this.usersService.updateLastSeen(user.uuid);
     }
     return true;
