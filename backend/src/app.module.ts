@@ -3,9 +3,16 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { GamesModule } from './games/games.module';
 import { FriendshipsModule } from './friendships/friendships.module';
+import { MatchmakingModule } from './matchmaking/matchmaking.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, GamesModule, FriendshipsModule],
+  imports: [
+    AuthModule,
+    UsersModule,
+    GamesModule,
+    FriendshipsModule,
+    MatchmakingModule,
+  ],
   controllers: [],
   providers: [],
 })

@@ -27,7 +27,7 @@ export default function Home() {
             ローカル対戦
           </Button>
           <Button size="lg" variant="secondary" asChild>
-            <Link href="/game">
+            <Link href="/game/ai">
               <Bot className="mr-2 h-5 w-5" />
               AI対戦
             </Link>
