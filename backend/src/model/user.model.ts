@@ -75,8 +75,8 @@ export const registerRequestSchema = z.object({
   password: z.string().min(8, { error: 'Password too short' }),
   display_name: z
     .string()
-    .min(1, { error: 'Display name is required' })
-    .trim(),
+    .trim()
+    .min(1, { error: 'Display name is required' }),
 });
 
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
