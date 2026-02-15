@@ -19,7 +19,7 @@ export default function Home() {
           <Button size="lg" className="glow-primary" asChild>
             <Link href="/game/online">
               <Gamepad2 className="mr-2 h-5 w-5" />
-              オンライン対戦
+              オンライン対戦【クイックマッチ】
             </Link>
           </Button>
           <Button size="lg" variant="outline">
@@ -51,7 +51,7 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            低遅延WebSocket接続で、世界中のプレイヤーと対戦できます。
+            低遅延WebSocket接続で、出会って3秒（※ 最速時）ですぐ対戦できます！
           </CardContent>
         </Card>
 
@@ -75,7 +75,7 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            3段階の難易度設定と思考プロセスの可視化機能（検討中）を備えたAIと練習できます。
+            3段階の難易度設定を備えたAIと練習できます。
           </CardContent>
         </Card>
       </div>

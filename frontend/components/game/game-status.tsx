@@ -2,11 +2,12 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Pause, Trophy, XCircle } from "lucide-react";
+import { CheckCircle, Loader2, Pause, Trophy, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type GameState =
   | "waiting"
+  | "matched"
   | "countdown"
   | "playing"
   | "paused"
@@ -49,6 +50,15 @@ export function GameStatus({
               {message || "Waiting for opponent..."}
             </p>
           </>
+        )}
+
+        {state === "matched" && (
+          <div className="flex flex-col items-center gap-3">
+            <CheckCircle className="h-12 w-12 text-primary" />
+            <p className="text-xl font-semibold">
+              {message || "Opponent found!"}
+            </p>
+          </div>
         )}
 
         {state === "countdown" && countdown !== undefined && (

@@ -62,6 +62,15 @@ export class MatchmakingService {
     return this.assignments.get(userId) ?? null;
   }
 
+  clearAssignmentByMatchId(matchId: string) {
+    for (const [userId, assignment] of this.assignments.entries()) {
+      if (assignment.matchId !== matchId) continue;
+      this.assignments.delete(userId);
+      this.assignments.delete(assignment.opponentId);
+      break;
+    }
+  }
+
   private tryMatch() {
     while (this.queue.size >= 2) {
       const [leftId, rightId] = Array.from(this.queue.keys()).slice(0, 2);

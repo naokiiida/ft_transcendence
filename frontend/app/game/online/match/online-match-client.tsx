@@ -10,15 +10,23 @@ import { renderGame } from "@/lib/game/renderer";
 import type { GameState, InputState } from "@/lib/game/state";
 
 type ServerMessage =
-  | { type: "welcome"; matchId: string; side: "left" | "right"; state: GameState }
+  | {
+      type: "welcome";
+      matchId: string;
+      side: "left" | "right";
+      state: GameState;
+      opponentName: string | null;
+    }
   | { type: "state"; tick: number; state: GameState }
   | { type: "game_over"; winner: GameState["winner"]; score: GameState["score"] }
   | { type: "player_left"; winner: "left" | "right" }
+  | { type: "match_aborted"; reason: "timeout"; message?: string }
   | { type: "error"; message?: string };
 
 type ClientMessage =
   | { type: "join"; matchId: string }
-  | { type: "input"; up: boolean; down: boolean; seq: number };
+  | { type: "input"; up: boolean; down: boolean; seq: number }
+  | { type: "ping" };
 
 export function OnlineMatchClient() {
   const router = useRouter();
@@ -36,6 +44,7 @@ export function OnlineMatchClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
   const [side, setSide] = useState<"left" | "right" | null>(null);
+  const [opponentName, setOpponentName] = useState<string | null>(null);
   const statusRef = useRef(status);
 
   useEffect(() => {
@@ -88,6 +97,7 @@ export function OnlineMatchClient() {
       if (msg.type === "welcome") {
         stateRef.current = msg.state;
         setSide(msg.side);
+        setOpponentName(msg.opponentName ?? null);
         setStatus("playing");
         return;
       }
@@ -109,6 +119,12 @@ export function OnlineMatchClient() {
       if (msg.type === "player_left") {
         setStatus("disconnected");
         setMessage("対戦相手が退出しました。");
+        return;
+      }
+
+      if (msg.type === "match_aborted") {
+        setStatus("disconnected");
+        setMessage(msg.message ?? "通信が不安定なため試合を終了しました。");
         return;
       }
 
@@ -183,6 +199,24 @@ export function OnlineMatchClient() {
     };
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!wsRef.current) return;
+      if (wsRef.current.readyState !== WebSocket.OPEN) return;
+      const payload: ClientMessage = { type: "ping" };
+      wsRef.current.send(JSON.stringify(payload));
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (status !== "disconnected" && status !== "error") return;
+    const timer = setTimeout(() => {
+      router.push("/game/online");
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [status, router]);
+
   return (
     <AuthGate>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
@@ -191,6 +225,9 @@ export function OnlineMatchClient() {
             <h1 className="text-2xl font-semibold">オンライン対戦</h1>
             <p className="text-sm text-muted-foreground">
               {side ? `あなたは ${side.toUpperCase()} 側です。` : "接続中..."}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {opponentName ? `対戦相手: ${opponentName}` : "対戦相手: 取得中..."}
             </p>
           </div>
           <Button variant="outline" onClick={() => router.push("/game/online")}>
@@ -202,13 +239,15 @@ export function OnlineMatchClient() {
           <CardHeader>
             <CardTitle>マッチ</CardTitle>
           </CardHeader>
-          <CardContent className="relative flex h-72 items-center justify-center">
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={500}
-              className="w-full max-w-4xl rounded-lg border border-border bg-black shadow"
-            />
+          <CardContent className="relative flex w-full items-center justify-center">
+            <div className="w-full max-w-4xl aspect-[8/5]">
+              <canvas
+                ref={canvasRef}
+                width={800}
+                height={500}
+                className="h-full w-full rounded-lg border border-border bg-black shadow"
+              />
+            </div>
             <GameStatus
               state={
                 status === "playing"

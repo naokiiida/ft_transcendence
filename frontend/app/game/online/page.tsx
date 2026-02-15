@@ -18,7 +18,10 @@ type MatchmakingStatus = {
   side: "left" | "right" | null;
 };
 
-type MatchPhase = "waiting" | "countdown" | "matched";
+type MatchPhase = "waiting" | "matched_notice" | "countdown" | "matched";
+
+const MATCHED_NOTICE_SECONDS = 2;
+const COUNTDOWN_SECONDS = 3;
 
 export default function OnlineGamePage() {
   const router = useRouter();
@@ -31,7 +34,7 @@ export default function OnlineGamePage() {
   const [queuedAt, setQueuedAt] = useState<number | null>(null);
   const [playersInQueue, setPlayersInQueue] = useState(0);
   const [phase, setPhase] = useState<MatchPhase>("waiting");
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [matchedAt, setMatchedAt] = useState<number | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
 
@@ -49,7 +52,7 @@ export default function OnlineGamePage() {
     }
     if (!status.in_queue && !status.matched) {
       setPhase("waiting");
-      setCountdown(3);
+      setCountdown(COUNTDOWN_SECONDS);
       setMatchedAt(null);
       setMatchId(null);
     }
@@ -135,14 +138,20 @@ export default function OnlineGamePage() {
     if (!isMatched || !matchedAt) return;
     const tick = () => {
       const elapsed = Math.floor((Date.now() - matchedAt) / 1000);
-      const remaining = Math.max(0, 3 - elapsed);
+      if (elapsed < MATCHED_NOTICE_SECONDS) {
+        setPhase("matched_notice");
+        setCountdown(COUNTDOWN_SECONDS);
+        return;
+      }
+      const countdownElapsed = elapsed - MATCHED_NOTICE_SECONDS;
+      const remaining = Math.max(0, COUNTDOWN_SECONDS - countdownElapsed);
       if (remaining > 0) {
         setPhase("countdown");
         setCountdown(remaining);
-      } else {
-        setPhase("matched");
-        setCountdown(0);
+        return;
       }
+      setPhase("matched");
+      setCountdown(0);
     };
     tick();
     const timer = setInterval(tick, 500);
@@ -161,7 +170,7 @@ export default function OnlineGamePage() {
   const handleCancel = () => {
     void leaveQueue();
     setPhase("waiting");
-    setCountdown(3);
+    setCountdown(COUNTDOWN_SECONDS);
     setMatchedAt(null);
     setMatchId(null);
     setIsMatched(false);
@@ -195,16 +204,24 @@ export default function OnlineGamePage() {
             <CardHeader>
               <CardTitle>ゲーム画面</CardTitle>
             </CardHeader>
-            <CardContent className="relative flex h-72 items-center justify-center text-sm text-muted-foreground">
-              <p>ここにゲームキャンバスが表示されます。</p>
+            <CardContent className="relative flex w-full items-center justify-center text-sm text-muted-foreground">
+              <div className="flex w-full max-w-4xl aspect-[8/5] items-center justify-center rounded-lg border border-border bg-muted/40">
+                <p>ここにゲームキャンバスが表示されます。</p>
+              </div>
               <GameStatus
-                state={phase === "waiting" ? "waiting" : "countdown"}
+                state={
+                  phase === "waiting"
+                    ? "waiting"
+                    : phase === "matched_notice"
+                      ? "matched"
+                      : "countdown"
+                }
                 message={
                   phase === "waiting"
                     ? "対戦相手を検索中..."
-                    : phase === "countdown"
-                      ? "対戦開始までカウント中"
-                      : "マッチング成立"
+                    : phase === "matched_notice"
+                      ? "対戦相手が見つかりました。"
+                      : "対戦開始までカウント中"
                 }
                 countdown={phase === "countdown" ? countdown : undefined}
               />
