@@ -4,7 +4,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import type { IncomingMessage } from 'http';
-import type { WebSocket } from 'ws';
+import type { RawData, WebSocket } from 'ws';
 import { AuthService } from '../auth/auth.service';
 import { readCookie } from '../auth/cookie.utils';
 import { MatchmakingService } from '../matchmaking/matchmaking.service';
@@ -56,12 +56,23 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.metricsService.connectedUsersCount.dec();
   }
 
-  private handleMessage(client: WebSocket, data: unknown) {
+  private handleMessage(client: WebSocket, data: RawData) {
     const info = this.connections.get(client);
     if (!info) return;
     let message: ClientMessage;
     try {
-      const text = typeof data === 'string' ? data : data.toString();
+      let text: string;
+      if (typeof data === 'string') {
+        text = data;
+      } else if (data instanceof Buffer) {
+        text = data.toString();
+      } else if (data instanceof ArrayBuffer) {
+        text = Buffer.from(data).toString();
+      } else if (Array.isArray(data)) {
+        text = Buffer.concat(data).toString();
+      } else {
+        return;
+      }
       message = JSON.parse(text) as ClientMessage;
     } catch {
       return;
