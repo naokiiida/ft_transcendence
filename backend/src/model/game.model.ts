@@ -31,17 +31,17 @@ const aiDifficulties = ['easy', 'medium', 'hard', 'EuropeanHard'] as const;
 export const createGameSchema = z.discriminatedUnion('game_type', [
   z.object({
     game_type: z.literal('ai'),
-    player1_id: z.string().uuid(),
+    player1_id: z.uuid(),
     ai_difficulty: z.enum(aiDifficulties),
   }),
   z.object({
     game_type: z.literal('online'),
-    player1_id: z.string().uuid(),
-    player2_id: z.string().uuid(),
+    player1_id: z.uuid(),
+    player2_id: z.uuid(),
   }),
   z.object({
     game_type: z.literal('local'),
-    player1_id: z.string().uuid(),
+    player1_id: z.uuid(),
   }),
 ]);
 
@@ -50,8 +50,8 @@ export type CreateGameInput = z.infer<typeof createGameSchema>;
 // --- ゲーム完了（サービス内部から呼ばれる） ---
 
 export const completeGameSchema = z.object({
-  game_id: z.string().uuid(),
-  winner_id: z.string().uuid().nullable(),
+  game_id: z.uuid(),
+  winner_id: z.uuid().nullable(),
   player1_score: z.number().int().nonnegative(),
   player2_score: z.number().int().nonnegative(),
 });
@@ -70,7 +70,7 @@ export type MatchHistoryQuery = z.infer<typeof matchHistoryQuerySchema>;
 
 // POST /api/games/ai — AI対戦開始リクエスト
 export const createAiGameRequestSchema = z.object({
-  difficulty: z.enum(aiDifficulties, { message: 'Invalid difficulty' }),
+  difficulty: z.enum(aiDifficulties, { error: 'Invalid difficulty' }),
 });
 
 export type CreateAiGameRequest = z.infer<typeof createAiGameRequestSchema>;
