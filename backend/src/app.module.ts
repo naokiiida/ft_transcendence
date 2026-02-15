@@ -5,6 +5,7 @@ import { UsersModule } from './users/users.module';
 import { GamesModule } from './games/games.module';
 import { FriendshipsModule } from './friendships/friendships.module';
 import { MatchmakingModule } from './matchmaking/matchmaking.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { MatchmakingModule } from './matchmaking/matchmaking.module';
     GamesModule,
     FriendshipsModule,
     MatchmakingModule,
+    RealtimeModule,
   ],
   controllers: [],
   providers: [],

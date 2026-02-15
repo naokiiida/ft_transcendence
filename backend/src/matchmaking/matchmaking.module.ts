@@ -8,5 +8,6 @@ import { MatchmakingService } from './matchmaking.service';
   imports: [AuthModule, UsersModule],
   controllers: [MatchmakingController],
   providers: [MatchmakingService],
+  exports: [MatchmakingService],
 })
 export class MatchmakingModule {}
