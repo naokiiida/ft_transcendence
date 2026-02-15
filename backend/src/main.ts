@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import { AppModule } from './app.module';
 import { runMigrations } from './db/migrate';
@@ -9,6 +10,7 @@ async function bootstrap() {
   runMigrations();
 
   const app = await NestFactory.create(AppModule);
+  app.useWebSocketAdapter(new WsAdapter(app));
   // CORS設定、credentialsをtrueにしないとクッキーが送信されない
   app.enableCors({
     origin: 'http://localhost:3000',

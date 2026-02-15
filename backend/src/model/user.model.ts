@@ -73,7 +73,10 @@ export type GameResult = z.infer<typeof gameResultSchema>;
 export const registerRequestSchema = z.object({
   email: z.email({ error: 'Invalid email' }).trim().toLowerCase(),
   password: z.string().min(8, { error: 'Password too short' }),
-  display_name: z.string().min(1, { error: 'Display name is required' }).trim(),
+  display_name: z
+    .string()
+    .trim()
+    .min(1, { error: 'Display name is required' }),
 });
 
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
@@ -82,5 +85,23 @@ export const loginRequestSchema = z.object({
   email: z.email({ error: 'Invalid email' }).trim().toLowerCase(),
   password: z.string().min(1, { error: 'Password is required' }),
 });
+
+export const searchUsersQuerySchema = z.object({
+  display_name: z
+    .string()
+    .trim()
+    .min(1, { error: 'Display name is required' })
+    .max(32, { error: 'Display name is too long' }),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export type SearchUsersQuery = z.infer<typeof searchUsersQuerySchema>;
+
+export const leaderboardQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+
+export type LeaderboardQuery = z.infer<typeof leaderboardQuerySchema>;
 
 export type LoginRequest = z.infer<typeof loginRequestSchema>;

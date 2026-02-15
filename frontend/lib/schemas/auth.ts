@@ -5,8 +5,8 @@ export const registerRequestSchema = z.object({
   password: z.string().min(8, { error: 'パスワードは8文字以上必要です' }),
   display_name: z
     .string()
-    .min(1, { error: '表示名を入力してください' })
-    .trim(),
+    .trim()
+    .min(1, { error: '表示名を入力してください' }),
 });
 
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
