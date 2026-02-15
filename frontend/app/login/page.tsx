@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,24 @@ type ForgotPayload = {
 type FieldErrors = Record<string, string | null>;
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen px-4 py-10">
+          <div className="mx-auto flex w-full max-w-md flex-col gap-6">
+            <p className="text-sm text-muted-foreground">
+              認証情報を読み込み中...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <LoginPageClient />
+    </Suspense>
+  );
+}
+
+function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setUserFromApi, setUser, isAuthenticated, isLoading } = useUser();
