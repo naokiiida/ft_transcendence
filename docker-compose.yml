@@ -34,6 +34,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3001:3000"
+    volumes:
+      - ./data/backend:/app/data
     environment:
       - PORT=3000
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}

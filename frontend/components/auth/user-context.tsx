@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { API_BASE, resolveApiUrl } from "@/lib/utils";
 
 // ユーザーコンテクストなので、認証情報を入れない。
 type UserProfile = {
@@ -45,7 +46,7 @@ function normalizeUser(payload: unknown): UserProfile | null {
 
   const uuid = typeof candidate.uuid === "string" ? candidate.uuid : null;
   const avatarUrl =
-    typeof candidate.avatar_url === "string" ? candidate.avatar_url : null;
+    typeof candidate.avatar_url === "string" ? (resolveApiUrl(candidate.avatar_url) ?? null) : null;
   const wins =
     typeof candidate.wins === "number" && Number.isFinite(candidate.wins)
       ? candidate.wins
@@ -117,8 +118,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // 既にログイン済みの場合はサーバーから復元する
   // ブラウザに残ってるクッキーを使って、サーバーから本人確認を行う
   useEffect(() => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-    fetch(`${apiBase}/api/me`, { credentials: "include" })
+    fetch(`${API_BASE}/api/me`, { credentials: "include" })
       .then(handleMeResponse)
       .catch(() => setUser(null))
       .finally(() => {
@@ -127,13 +127,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [handleMeResponse, setUser]);
 
   const refreshUser = useCallback(async () => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
     setIsLoading(true);
     try {
-      const response = await fetch(`${apiBase}/api/me`, {
+      const response = await fetch(`${API_BASE}/api/me`, {
         credentials: "include",
       });
-      handleMeResponse(response);
+      await handleMeResponse(response);
     } catch {
       // ignore fetch errors
     } finally {

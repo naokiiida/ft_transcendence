@@ -11,7 +11,13 @@ import {
   type User,
   type CreateUserInput,
   type GameResult,
+  type UpdateProfileInput,
 } from '../model/user.model';
+
+/** サービス層内部用 — avatar_url はアップロード経由でのみ設定 */
+type InternalProfileUpdate = UpdateProfileInput & {
+  avatar_url?: string | null;
+};
 
 @Injectable()
 export class UsersService {
@@ -120,6 +126,40 @@ export class UsersService {
       .where(eq(users.uuid, uuid))
       .returning()
       .get() ?? null;
+  }
+
+  /**
+   * プロフィールを更新（display_name, avatar_url）
+   */
+  updateProfile(uuid: string, input: InternalProfileUpdate): User | null {
+    const db = getDatabase();
+    const setValues: Record<string, unknown> = {};
+    if (input.display_name !== undefined) {
+      setValues.display_name = input.display_name;
+    }
+    if (input.avatar_url !== undefined) {
+      setValues.avatar_url = input.avatar_url;
+    }
+    if (Object.keys(setValues).length === 0) return this.findByUuid(uuid);
+
+    try {
+      return db.update(users)
+        .set(setValues)
+        .where(eq(users.uuid, uuid))
+        .returning()
+        .get() ?? null;
+    } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        (error as { code?: string }).code === 'SQLITE_CONSTRAINT_UNIQUE'
+      ) {
+        if (error.message.includes('display_name')) {
+          throw new ConflictException('Display name already in use');
+        }
+        throw new ConflictException('Update failed due to constraint violation');
+      }
+      throw error;
+    }
   }
 
   /**
