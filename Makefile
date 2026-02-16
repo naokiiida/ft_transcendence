@@ -1,6 +1,6 @@
 .PHONY: help up up-frontend down build build-no-cache logs \
 	frontend-install frontend-dev frontend-lint \
-	backend-install backend-dev backend-lint npm prod inpm\
+	backend-install backend-dev backend-lint npm prod prod-down inpm\
 
 help:
 	@echo "Targets:"
