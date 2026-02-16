@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MatchmakingQueue } from "@/components/game/matchmaking-queue";
 import { GameStatus } from "@/components/game/game-status";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AuthGate } from "@/components/auth/auth-gate";
 
 type MatchmakingStatus = {
@@ -212,7 +213,16 @@ export default function OnlineGamePage() {
   };
 
   return (
-    <AuthGate>
+    <Suspense fallback={
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+          <Skeleton className="h-[300px] rounded-xl" />
+          <Skeleton className="h-[360px] rounded-xl" />
+        </div>
+      </div>
+    }>
+      <AuthGate>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -266,6 +276,7 @@ export default function OnlineGamePage() {
           </Card>
         </div>
       </div>
-    </AuthGate>
+      </AuthGate>
+    </Suspense>
   );
 }

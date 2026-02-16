@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useUser } from "@/components/auth/user-context";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AuthGate } from "@/components/auth/auth-gate";
 
 /*
@@ -669,8 +670,17 @@ export default function UserPage() {
   );
 
   return (
-    <AuthGate>
+    <Suspense fallback={
       <div className="mx-auto w-full max-w-6xl px-4 py-10">
+        <Skeleton className="mb-6 h-10 w-64" />
+        <div className="grid gap-6 md:grid-cols-[280px_1fr]">
+          <Skeleton className="h-[300px] rounded-xl" />
+          <Skeleton className="h-[300px] rounded-xl" />
+        </div>
+      </div>
+    }>
+      <AuthGate>
+        <div className="mx-auto w-full max-w-6xl px-4 py-10">
         <Tabs defaultValue="profile">
         <TabsList className="mb-6">
           <TabsTrigger value="profile">プロフィール</TabsTrigger>
@@ -1541,6 +1551,7 @@ export default function UserPage() {
         </TabsContent>
         </Tabs>
       </div>
-    </AuthGate>
+      </AuthGate>
+    </Suspense>
   );
 }
