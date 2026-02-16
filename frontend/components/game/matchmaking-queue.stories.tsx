@@ -7,6 +7,7 @@ const meta: Meta<typeof MatchmakingQueue> = {
   tags: ["autodocs"],
   args: {
     onCancel: () => console.log("Cancel clicked"),
+    onStart: () => console.log("Start clicked"),
   },
 };
 
@@ -15,8 +16,15 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    isSearching: true,
+    isSearching: false,
     queueTime: 0,
+  },
+};
+
+export const Searching: Story = {
+  args: {
+    isSearching: true,
+    queueTime: 10,
   },
 };
 

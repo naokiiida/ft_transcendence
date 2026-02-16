@@ -28,7 +28,8 @@ export class FriendshipsController {
   @Post()
   sendRequest(
     @CurrentUser() user: User,
-    @Body(new ZodValidationPipe(sendFriendRequestSchema)) body: SendFriendRequestBody,
+    @Body(new ZodValidationPipe(sendFriendRequestSchema))
+    body: SendFriendRequestBody,
   ) {
     return this.friendshipsService.sendRequest(user.uuid, body.addressee_id);
   }
@@ -38,9 +39,14 @@ export class FriendshipsController {
   respondToRequest(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body(new ZodValidationPipe(respondFriendRequestSchema)) body: RespondFriendRequestBody,
+    @Body(new ZodValidationPipe(respondFriendRequestSchema))
+    body: RespondFriendRequestBody,
   ) {
-    return this.friendshipsService.respondToRequest(id, user.uuid, body.response);
+    return this.friendshipsService.respondToRequest(
+      id,
+      user.uuid,
+      body.response,
+    );
   }
 
   // GET /api/friendships — フレンド一覧
@@ -55,12 +61,15 @@ export class FriendshipsController {
     return this.friendshipsService.getPendingRequests(user.uuid);
   }
 
+  // GET /api/friendships/pending/sent — 送信した保留中リクエスト 送信した処理もわかるよに。
+  @Get('pending/sent')
+  getSentPendingRequests(@CurrentUser() user: User) {
+    return this.friendshipsService.getSentPendingRequests(user.uuid);
+  }
+
   // DELETE /api/friendships/:id — フレンド解除
   @Delete(':id')
-  removeFriend(
-    @CurrentUser() user: User,
-    @Param('id') id: string,
-  ) {
+  removeFriend(@CurrentUser() user: User, @Param('id') id: string) {
     return this.friendshipsService.removeFriend(id, user.uuid);
   }
 }

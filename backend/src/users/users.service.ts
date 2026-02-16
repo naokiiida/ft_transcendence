@@ -3,7 +3,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/database';
 import { users } from '../db/schema';
 import {
@@ -131,5 +131,67 @@ export class UsersService {
       .set({ last_seen: new Date().toISOString() })
       .where(eq(users.uuid, uuid))
       .run();
+  }
+
+  /**
+   * 表示名でユーザーを検索（部分一致）
+   */
+  searchByDisplayName(query: string, limit: number, excludeUuid?: string | null) {
+    const db = getDatabase();
+    const normalized = query.trim();
+    if (!normalized) return [];
+
+    const escaped = normalized.replace(/[%_]/g, '\\$&');
+    const pattern = `%${escaped}%`;
+    const conditions = [
+      sql`${users.display_name} LIKE ${pattern} ESCAPE '\\'`,
+    ];
+
+    if (excludeUuid) {
+      conditions.push(sql`${users.uuid} != ${excludeUuid}`);
+    }
+
+    return db
+      .select({
+        uuid: users.uuid,
+        display_name: users.display_name,
+        avatar_url: users.avatar_url,
+      })
+      .from(users)
+      .where(and(...conditions))
+      .limit(limit)
+      .all();
+  }
+
+  /**
+   * スコアランキングを取得
+   */
+  getLeaderboard(limit: number, offset: number) {
+    const db = getDatabase();
+    const rows = db
+      .select({
+        uuid: users.uuid,
+        display_name: users.display_name,
+        avatar_url: users.avatar_url,
+        user_score: users.user_score,
+        position: sql<number>`RANK() OVER (ORDER BY ${users.user_score} DESC)`,
+      })
+      .from(users)
+      .orderBy(desc(users.user_score))
+      .limit(limit)
+      .offset(offset)
+      .all();
+
+    const total = db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .get();
+
+    return {
+      entries: rows,
+      total: total?.count ?? 0,
+      limit,
+      offset,
+    };
   }
 }

@@ -23,6 +23,8 @@ type UserProfile = {
 // コンテクストの値の型定義、読む、保存、APIから保存、消すの役割を持つ。
 type UserContextValue = {
   user: UserProfile | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
   setUser: (user: UserProfile | null) => void;
   setUserFromApi: (payload: unknown) => void;
   logout: () => void;
@@ -70,6 +72,7 @@ function normalizeUser(payload: unknown): UserProfile | null {
 // いまのログイン状態を保存する、ここらの処理の中心部分
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // stateとローカルストレージの両方を更新する関数　ユーザーがあれば保存、なければ削除
   // 状態だけ変わるとか、保存だけ変わるのようなことがないようにする。
@@ -105,11 +108,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
           setUserFromApi(payload);
         }
       })
-      .catch(() => setUser(null));
+      .catch(() => setUser(null))
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [setUserFromApi, setUser]);
 
   const refreshUser = useCallback(async () => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+    setIsLoading(true);
     try {
       const response = await fetch(`${apiBase}/api/me`, {
         credentials: "include",
@@ -122,6 +129,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
     } catch {
       // ignore fetch errors
+    } finally {
+      setIsLoading(false);
     }
   }, [setUserFromApi, setUser]);
 
@@ -129,12 +138,21 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     // フロントエンド側の状態をクリア
     setUser(null);
+    setIsLoading(false);
   }, [setUser]);
 
   // コンテクストの値をメモ化して、不要な再レンダリングを防ぐ
   const value = useMemo(
-    () => ({ user, setUser, setUserFromApi, logout, refreshUser }),
-    [user, setUser, setUserFromApi, logout, refreshUser],
+    () => ({
+      user,
+      isAuthenticated: Boolean(user),
+      isLoading,
+      setUser,
+      setUserFromApi,
+      logout,
+      refreshUser,
+    }),
+    [user, isLoading, setUser, setUserFromApi, logout, refreshUser],
   );
 
   // コンポーネントツリーにコンテクストの値を提供
