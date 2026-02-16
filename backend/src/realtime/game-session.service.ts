@@ -26,11 +26,13 @@ type GameSession = {
   completed: boolean;
   tickTimer: ReturnType<typeof setInterval> | null;
   broadcastTimer: ReturnType<typeof setInterval> | null;
+  joinTimeout: ReturnType<typeof setTimeout> | null;
 };
 
 const TICK_RATE = 30;
 const BROADCAST_RATE = 15;
 const HEARTBEAT_TIMEOUT_MS = 5000;
+const JOIN_TIMEOUT_MS = 60000;
 
 @Injectable()
 export class GameSessionService {
@@ -53,6 +55,7 @@ export class GameSessionService {
     };
     this.userIndex.set(userId, { matchId, side });
     if (this.isReady(session) && !session.started) {
+      this.clearJoinTimeout(session);
       this.startSession(session);
     }
     return session;
@@ -98,7 +101,14 @@ export class GameSessionService {
       completed: false,
       tickTimer: null,
       broadcastTimer: null,
+      joinTimeout: null,
     };
+    session.joinTimeout = setTimeout(() => {
+      if (session.started) return;
+      if (!this.isReady(session)) {
+        this.stopSession(matchId);
+      }
+    }, JOIN_TIMEOUT_MS);
     this.sessions.set(matchId, session);
     return session;
   }
@@ -170,6 +180,7 @@ export class GameSessionService {
   private stopSession(matchId: string) {
     const session = this.sessions.get(matchId);
     if (!session) return;
+    this.clearJoinTimeout(session);
     if (session.tickTimer) clearInterval(session.tickTimer);
     if (session.broadcastTimer) clearInterval(session.broadcastTimer);
     session.tickTimer = null;
@@ -179,6 +190,12 @@ export class GameSessionService {
     }
     this.matchmakingService.clearAssignmentByMatchId(matchId);
     this.sessions.delete(matchId);
+  }
+
+  private clearJoinTimeout(session: GameSession) {
+    if (!session.joinTimeout) return;
+    clearTimeout(session.joinTimeout);
+    session.joinTimeout = null;
   }
 
   private handleHeartbeatTimeout(session: GameSession) {
