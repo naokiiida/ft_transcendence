@@ -129,7 +129,9 @@ export default function OnlineGamePage() {
   useEffect(() => {
     if (!isSearching) return;
     const poll = setInterval(() => {
-      void fetchStatus();
+      void fetchStatus().catch(() => {
+        // polling errors are non-fatal; next poll will retry
+      });
     }, 5000);
     return () => clearInterval(poll);
   }, [isSearching, fetchStatus]);
