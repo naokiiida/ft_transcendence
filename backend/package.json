@@ -4,7 +4,8 @@
     "onlyBuiltDependencies": [
       "better-sqlite3",
       "bcrypt",
-      "@nestjs/core"
+      "@nestjs/core",
+      "sharp"
     ]
   },
   "version": "0.0.1",
@@ -36,6 +37,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-ws": "^11.0.1",
     "@nestjs/swagger": "^11.2.6",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.0.1",
     "@scalar/nestjs-api-reference": "^1.0.23",
     "bcrypt": "^6.0.0",
@@ -44,6 +46,7 @@
     "prom-client": "^15.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.34.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -56,6 +59,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.0.0",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
     "@types/ws": "^8.18.1",

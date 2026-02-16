@@ -8,7 +8,7 @@ import {
   Body,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from '../auth/decorators';
+import { CurrentUser, RequireUser } from '../auth/decorators';
 import { FriendshipsService } from './friendships.service';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 import {
@@ -20,6 +20,7 @@ import {
 import type { User } from '../model/user.model';
 
 @ApiTags('friendships')
+@RequireUser()
 @Controller('api/friendships')
 export class FriendshipsController {
   constructor(private readonly friendshipsService: FriendshipsService) {}

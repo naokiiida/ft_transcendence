@@ -25,6 +25,7 @@ async function bootstrap() {
     .addTag('auth', 'Authentication endpoints')
     .addTag('session', 'Session management')
     .addCookieAuth('ft_session')
+    .addApiKey({ type: 'apiKey', name: 'X-API-Key', in: 'header' }, 'api-key')
     .build();
   const document = SwaggerModule.createDocument(app, config);
 

@@ -17,6 +17,7 @@ help:
 	@echo "  backend-dev       - npm run start:dev in ./backend"
 	@echo "  backend-lint      - npm run lint in ./backend"
 	@echo "  prod              - production deploy (cloudflared + traefik)"
+	@echo "  prod-down         - production down --remove-orphans"
 
 # frontendディレクトリに（npm run dev）と、backend(npm run start:dev)の両方を同時に実行するコマンド
 
