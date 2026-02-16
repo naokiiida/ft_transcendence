@@ -2,22 +2,27 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Users, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MatchmakingQueueProps {
   isSearching: boolean;
+  isBusy?: boolean;
+  isMatched?: boolean;
   queueTime?: number;
   playersInQueue?: number;
+  onStart?: () => void;
   onCancel: () => void;
   className?: string;
 }
 
 export function MatchmakingQueue({
   isSearching,
+  isBusy = false,
+  isMatched = false,
   queueTime = 0,
   playersInQueue,
+  onStart,
   onCancel,
   className,
 }: MatchmakingQueueProps) {
@@ -31,8 +36,10 @@ export function MatchmakingQueue({
     <Card className={cn("w-full max-w-md", className)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          Finding Opponent
+          <Loader2
+            className={cn("h-5 w-5 text-primary", isSearching && "animate-spin")}
+          />
+          {isSearching ? "Finding Opponent" : "Matchmaking"}
         </CardTitle>
       </CardHeader>
 
@@ -54,28 +61,35 @@ export function MatchmakingQueue({
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="flex flex-col gap-1">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          </div>
-          <div className="text-center text-sm text-muted-foreground">vs</div>
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 animate-pulse rounded-full" />
-            <div className="flex flex-col gap-1">
-              <Skeleton className="h-4 w-24 animate-pulse" />
-              <Skeleton className="h-3 w-16 animate-pulse" />
-            </div>
-          </div>
+        <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          {isMatched
+            ? "マッチ成立。対戦準備中です。"
+            : isSearching
+              ? "対戦相手を検索中です。"
+              : "検索開始を押してマッチングを開始します。"}
         </div>
 
-        <Button variant="outline" onClick={onCancel} className="w-full">
-          <X className="mr-2 h-4 w-4" />
-          Cancel
-        </Button>
+        {!isSearching && !isMatched && (
+          <Button
+            onClick={onStart}
+            className="w-full"
+            disabled={isBusy || !onStart}
+          >
+            検索開始
+          </Button>
+        )}
+
+        {isSearching && (
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            className="w-full"
+            disabled={isBusy}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Cancel
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

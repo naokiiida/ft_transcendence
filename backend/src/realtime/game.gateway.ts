@@ -3,12 +3,14 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
+import type { OnModuleDestroy } from '@nestjs/common';
 import type { IncomingMessage } from 'http';
 import type { RawData, WebSocket } from 'ws';
 import { AuthService } from '../auth/auth.service';
 import { readCookie } from '../auth/cookie.utils';
 import { MatchmakingService } from '../matchmaking/matchmaking.service';
 import { MetricsService } from '../observability/metrics.service';
+import { UsersService } from '../users/users.service';
 import { GameSessionService } from './game-session.service';
 
 type ConnectionInfo = {
@@ -19,18 +21,46 @@ type ConnectionInfo = {
 
 type ClientMessage =
   | { type: 'join'; matchId: string }
-  | { type: 'input'; up: boolean; down: boolean; seq?: number };
+  | { type: 'input'; up: boolean; down: boolean; seq?: number }
+  | { type: 'ping' };
 
 @WebSocketGateway({ path: '/api/ws' })
-export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class GameGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
+{
   private readonly connections = new Map<WebSocket, ConnectionInfo>();
+  private readonly matchDissolvedHandler: (payload: {
+    opponentId: string;
+    matchId: string;
+    reason: 'opponent_left';
+  }) => void;
 
   constructor(
     private readonly authService: AuthService,
     private readonly matchmakingService: MatchmakingService,
     private readonly sessionService: GameSessionService,
     private readonly metricsService: MetricsService,
-  ) {}
+    private readonly usersService: UsersService,
+  ) {
+    this.matchDissolvedHandler = (payload: {
+      opponentId: string;
+      matchId: string;
+      reason: 'opponent_left';
+    }) => {
+      this.notifyMatchDissolved(payload);
+    };
+    this.matchmakingService.events.on(
+      'match_dissolved',
+      this.matchDissolvedHandler,
+    );
+  }
+
+  onModuleDestroy() {
+    this.matchmakingService.events.off(
+      'match_dissolved',
+      this.matchDissolvedHandler,
+    );
+  }
 
   handleConnection(client: WebSocket, request: IncomingMessage) {
     const sessionId = readCookie(request.headers.cookie, 'ft_session');
@@ -89,6 +119,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         up: Boolean(message.up),
         down: Boolean(message.down),
       });
+      return;
+    }
+
+    if (message.type === 'ping') {
+      if (!info.matchId || !info.side) return;
+      this.sessionService.recordHeartbeat(info.matchId, info.side);
     }
   }
 
@@ -108,16 +144,36 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       info.userId,
       client,
     );
+    const opponent = this.usersService.findByUuid(assignment.opponentId);
     this.safeSend(client, {
       type: 'welcome',
       matchId,
       side: assignment.side,
       state: session.state,
+      opponentName: opponent?.display_name ?? null,
     });
   }
 
   private safeSend(client: WebSocket, payload: unknown) {
     if (client.readyState !== 1) return;
     client.send(JSON.stringify(payload));
+  }
+
+  private notifyMatchDissolved(payload: {
+    opponentId: string;
+    matchId: string;
+    reason: 'opponent_left';
+  }) {
+    this.sessionService.removePlayerByUser(payload.opponentId);
+    for (const [client, info] of this.connections.entries()) {
+      if (info.userId !== payload.opponentId) continue;
+      if (info.matchId !== payload.matchId) continue;
+      this.safeSend(client, {
+        type: 'match_dissolved',
+        reason: payload.reason,
+        message: 'Match canceled by opponent.',
+      });
+      return;
+    }
   }
 }

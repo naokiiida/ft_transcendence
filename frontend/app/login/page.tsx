@@ -44,7 +44,10 @@ function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setUserFromApi, setUser, isAuthenticated, isLoading } = useUser();
-  const nextPath = searchParams.get("next") || "/user";
+  const rawNext = searchParams.get("next") || "/user";
+  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//")
+    ? rawNext
+    : "/user";
 
   const [registerForm, setRegisterForm] = useState<RegisterRequest>({
     email: "",

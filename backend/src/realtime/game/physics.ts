@@ -88,7 +88,7 @@ function hitsPaddle(ball: Ball, paddle: Paddle) {
 function reflectFromPaddle(ball: Ball, paddle: Paddle, direction: 1 | -1) {
   const center = paddle.y + paddle.h / 2;
   const offset = (ball.y - center) / (paddle.h / 2);
-  const angle = offset * 0.7;
+  const angle = clamp(offset, -1, 1) * 0.7;
   const speed = clamp(
     Math.hypot(ball.vx, ball.vy) + 18,
     BALL_SPEED,
