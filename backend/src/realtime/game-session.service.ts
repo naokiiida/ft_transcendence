@@ -230,13 +230,8 @@ export class GameSessionService {
       return false;
     }
     try {
-      const game = this.gamesService.createGame({
-        game_type: 'online',
-        player1_id: leftId,
-        player2_id: rightId,
-      });
+      const game = this.gamesService.createAndStartOnlineGame(leftId, rightId);
       session.gameId = game.id;
-      this.gamesService.startGame(game.id);
       return true;
     } catch {
       this.broadcast(session, {

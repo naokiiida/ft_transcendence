@@ -40,6 +40,34 @@ export class GamesService {
   }
 
   /**
+   * オンライン対戦の作成＋開始を1トランザクションで実行
+   */
+  createAndStartOnlineGame(player1Id: string, player2Id: string): Game {
+    const db = getDatabase();
+    return db.transaction((tx) => {
+      const game = tx
+        .insert(games)
+        .values({
+          player1_id: player1Id,
+          player2_id: player2Id,
+          game_type: 'online',
+          status: 'waiting',
+        })
+        .returning()
+        .get();
+      return tx
+        .update(games)
+        .set({
+          status: 'playing',
+          started_at: new Date().toISOString(),
+        })
+        .where(eq(games.id, game.id))
+        .returning()
+        .get();
+    });
+  }
+
+  /**
    * ゲームIDで検索
    */
   findById(gameId: string): Game | null {
