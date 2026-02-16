@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Patch,
   Post,
@@ -39,6 +40,8 @@ const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 @RequireUser()
 @Controller('api')
 export class SessionController {
+  private readonly logger = new Logger(SessionController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
@@ -60,8 +63,9 @@ export class SessionController {
   ) {
     this.usersService.deleteByUuid(user.uuid);
     this.authService.removeSessionsByUuid(user.uuid);
-    const avatarPath = path.join(AVATAR_DIR, `${user.uuid}.webp`);
-    fs.promises.unlink(avatarPath).catch(() => {}); // ENOENT無視
+    const userAvatarDir = path.join(AVATAR_DIR, user.uuid);
+    fs.promises.rm(userAvatarDir, { recursive: true, force: true })
+      .catch((err) => this.logger.warn(`Avatar cleanup failed for ${user.uuid}`, err));
     res.cookie('ft_session', '', {
       httpOnly: true,
       sameSite: 'lax',
@@ -104,10 +108,14 @@ export class SessionController {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-    if (!fs.existsSync(AVATAR_DIR)) {
-      fs.mkdirSync(AVATAR_DIR, { recursive: true });
-    }
-    const destPath = path.join(AVATAR_DIR, `${user.uuid}.webp`);
+    const userAvatarDir = path.join(AVATAR_DIR, user.uuid);
+    await fs.promises.mkdir(userAvatarDir, { recursive: true });
+    const existingFiles = await fs.promises.readdir(userAvatarDir);
+    await Promise.all(
+      existingFiles.map((f) => fs.promises.unlink(path.join(userAvatarDir, f))),
+    );
+    const timestamp = Date.now();
+    const destPath = path.join(userAvatarDir, `${timestamp}.webp`);
     try {
       await sharp(file.buffer)
         .resize(256, 256, { fit: 'cover' })
@@ -116,7 +124,7 @@ export class SessionController {
     } catch {
       throw new BadRequestException('Invalid image file');
     }
-    const avatarUrl = `/api/avatars/${user.uuid}.webp`;
+    const avatarUrl = `/api/avatars/${user.uuid}/${timestamp}.webp`;
     const updated = this.usersService.updateProfile(user.uuid, { avatar_url: avatarUrl });
     if (!updated) {
       throw new NotFoundException('User not found');
@@ -124,20 +132,27 @@ export class SessionController {
     return this.authService.toPublicUser(updated);
   }
 
-  @Get('avatars/:filename')
+  @Get('avatars/:uuid/:filename')
   @Public()
   getAvatar(
+    @Param('uuid') uuid: string,
     @Param('filename') filename: string,
     @Res() res: Response,
   ) {
-    if (!/^[a-f0-9-]+\.webp$/.test(filename)) {
+    if (!/^[a-f0-9-]+$/.test(uuid)) {
       throw new NotFoundException('Avatar not found');
     }
-    const filePath = path.join(AVATAR_DIR, filename);
+    if (!/^\d+\.webp$/.test(filename)) {
+      throw new NotFoundException('Avatar not found');
+    }
+    const filePath = path.join(AVATAR_DIR, uuid, filename);
+    if (!path.resolve(filePath).startsWith(path.resolve(AVATAR_DIR))) {
+      throw new NotFoundException('Avatar not found');
+    }
     if (!fs.existsSync(filePath)) {
       throw new NotFoundException('Avatar not found');
     }
-    res.setHeader('Cache-Control', 'no-cache, max-age=0, must-revalidate');
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
     res.setHeader('Content-Type', 'image/webp');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.sendFile(filePath);
