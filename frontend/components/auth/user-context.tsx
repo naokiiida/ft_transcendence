@@ -94,23 +94,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // /api/me のレスポンスを判定してユーザー状態を更新するヘルパー
   const handleMeResponse = useCallback(
-    (response: Response) => {
+    async (response: Response) => {
       if (!response.ok) {
         setUser(null);
         return;
       }
-      (response.json() as Promise<unknown>).then((payload) => {
-        if (
-          payload &&
-          typeof payload === "object" &&
-          "guest" in payload &&
-          (payload as Record<string, unknown>).guest === true
-        ) {
-          setUser(null);
-        } else {
-          setUserFromApi(payload);
-        }
-      });
+      const payload: unknown = await response.json();
+      if (
+        payload &&
+        typeof payload === "object" &&
+        "guest" in payload &&
+        (payload as Record<string, unknown>).guest === true
+      ) {
+        setUser(null);
+      } else {
+        setUserFromApi(payload);
+      }
     },
     [setUser, setUserFromApi],
   );
