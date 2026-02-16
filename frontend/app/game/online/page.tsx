@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MatchmakingQueue } from "@/components/game/matchmaking-queue";
 import { GameStatus } from "@/components/game/game-status";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuthGate } from "@/components/auth/auth-gate";
 
@@ -26,7 +25,7 @@ const COUNTDOWN_SECONDS = 3;
 export default function OnlineGamePage() {
   const router = useRouter();
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-  const [isSearching, setIsSearching] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,10 +122,6 @@ export default function OnlineGamePage() {
   }, [isSearching, queuedAt]);
 
   useEffect(() => {
-    void joinQueue();
-  }, [joinQueue]);
-
-  useEffect(() => {
     if (!isSearching) return;
     const poll = setInterval(() => {
       void fetchStatus().catch(() => {
@@ -188,17 +183,16 @@ export default function OnlineGamePage() {
               マッチング待機中はステータスが表示されます。
             </p>
           </div>
-          <Button variant="outline" onClick={joinQueue} disabled={isBusy}>
-            再検索
-          </Button>
         </div>
         {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <MatchmakingQueue
             isSearching={isSearching}
+            isBusy={isBusy}
             queueTime={queueTime}
             playersInQueue={playersInQueue}
+            onStart={joinQueue}
             onCancel={handleCancel}
           />
 
@@ -220,7 +214,9 @@ export default function OnlineGamePage() {
                 }
                 message={
                   phase === "waiting"
-                    ? "対戦相手を検索中..."
+                    ? isSearching
+                      ? "対戦相手を検索中..."
+                      : "検索開始してください。"
                     : phase === "matched_notice"
                       ? "対戦相手が見つかりました。"
                       : "対戦開始までカウント中"
