@@ -45,8 +45,10 @@ function normalizeUser(payload: unknown): UserProfile | null {
   if (!displayName) return null;
 
   const uuid = typeof candidate.uuid === "string" ? candidate.uuid : null;
-  const avatarUrl =
+  const rawAvatarUrl =
     typeof candidate.avatar_url === "string" ? (resolveApiUrl(candidate.avatar_url) ?? null) : null;
+  // Cache busting: アバターURLが同一でもブラウザに新しい画像を取得させる
+  const avatarUrl = rawAvatarUrl ? `${rawAvatarUrl.split("?")[0]}?v=${Date.now()}` : null;
   const wins =
     typeof candidate.wins === "number" && Number.isFinite(candidate.wins)
       ? candidate.wins
