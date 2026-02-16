@@ -11,12 +11,13 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
-import { CurrentUser } from './decorators';
+import { CurrentUser, RequireUser } from './decorators';
 import { UsersService } from '../users/users.service';
 import { gameResultSchema, type GameResult, type User } from '../model/user.model';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 
 @ApiTags('session')
+@RequireUser()
 @Controller('api')
 export class SessionController {
   constructor(

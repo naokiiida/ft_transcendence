@@ -14,3 +14,9 @@ export const CurrentUser = createParamDecorator(
     return request.user;
   },
 );
+
+// ── @RequireUser() ────────────────────────────────────────
+// API キー認証では user が null になる。
+// このデコレータが付いたルートはセッション認証（user 必須）を要求する。
+export const REQUIRE_USER_KEY = 'requireUser';
+export const RequireUser = () => SetMetadata(REQUIRE_USER_KEY, true);
