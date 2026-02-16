@@ -48,3 +48,6 @@ coverage/
 
 *storybook.log
 storybook-static
+
+# Lock files (npm only)
+pnpm-lock.yaml

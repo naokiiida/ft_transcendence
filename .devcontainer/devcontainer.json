@@ -34,7 +34,7 @@
     "9090": { "label": "Prometheus", "onAutoForward": "silent" }
   },
 
-  "postCreateCommand": "cd frontend && npm install && cd ../backend && npm install",
+  "postCreateCommand": "cd frontend && npm ci && cd ../backend && npm ci",
   "postStartCommand": "echo 'ft_transcendence dev environment ready!'",
 
   "remoteUser": "node"
