@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { resolveApiUrl } from "@/lib/utils";
 
 // ユーザーコンテクストなので、認証情報を入れない。
 type UserProfile = {
@@ -45,7 +46,7 @@ function normalizeUser(payload: unknown): UserProfile | null {
 
   const uuid = typeof candidate.uuid === "string" ? candidate.uuid : null;
   const avatarUrl =
-    typeof candidate.avatar_url === "string" ? candidate.avatar_url : null;
+    typeof candidate.avatar_url === "string" ? (resolveApiUrl(candidate.avatar_url) ?? null) : null;
   const wins =
     typeof candidate.wins === "number" && Number.isFinite(candidate.wins)
       ? candidate.wins

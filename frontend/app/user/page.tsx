@@ -23,6 +23,7 @@ import { useUser } from "@/components/auth/user-context";
 import { useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { AvatarUpload } from "@/components/shared/avatar-upload";
+import { resolveApiUrl } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -876,7 +877,7 @@ export default function UserPage() {
                                 <Avatar className="h-10 w-10">
                                   {friend.avatar_url ? (
                                     <AvatarImage
-                                      src={friend.avatar_url}
+                                      src={resolveApiUrl(friend.avatar_url)}
                                       alt={friend.display_name}
                                     />
                                   ) : null}
@@ -940,7 +941,7 @@ export default function UserPage() {
                                       <Avatar className="h-16 w-16">
                                         {friend.avatar_url ? (
                                           <AvatarImage
-                                            src={friend.avatar_url}
+                                            src={resolveApiUrl(friend.avatar_url)}
                                             alt={friend.display_name}
                                           />
                                         ) : null}
@@ -1123,7 +1124,7 @@ export default function UserPage() {
                           <Avatar className="h-10 w-10">
                             {request.avatar_url ? (
                               <AvatarImage
-                                src={request.avatar_url}
+                                src={resolveApiUrl(request.avatar_url)}
                                 alt={request.display_name}
                               />
                             ) : null}
@@ -1220,7 +1221,7 @@ export default function UserPage() {
                             <Avatar className="h-10 w-10">
                               {result.avatar_url ? (
                                 <AvatarImage
-                                  src={result.avatar_url}
+                                  src={resolveApiUrl(result.avatar_url)}
                                   alt={result.display_name}
                                 />
                               ) : null}
@@ -1292,7 +1293,7 @@ export default function UserPage() {
                           <Avatar className="h-10 w-10">
                             {request.avatar_url ? (
                               <AvatarImage
-                                src={request.avatar_url}
+                                src={resolveApiUrl(request.avatar_url)}
                                 alt={request.display_name}
                               />
                             ) : null}
