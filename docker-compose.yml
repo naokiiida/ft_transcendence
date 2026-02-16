@@ -1,6 +1,7 @@
 # ============================================
-# ft_transcendence Production Stack
-# Single command: docker compose up --build
+# ft_transcendence Stack
+# Dev:  docker compose up --build
+# Prod: docker compose --profile production up --build
 # ============================================
 
 services:
@@ -9,12 +10,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     ports:
       - "3000:3000"
     volumes:
       - ./data:/app/data
-    environment:
-      - DENO_ENV=production
     env_file:
       - .env
     restart: unless-stopped
@@ -22,8 +23,8 @@ services:
       - pong-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`pong.taiida.com`)"
-      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN:-pong.taiida.com}`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
 
   # --- Backend API ---
@@ -35,6 +36,7 @@ services:
       - "3001:3000"
     environment:
       - PORT=3000
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
     healthcheck:
       test: ["CMD", "node", "-e", "const http=require('http');http.get('http://localhost:3000/api/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
       interval: 30s
@@ -44,28 +46,37 @@ services:
     restart: unless-stopped
     networks:
       - pong-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`${DOMAIN:-pong.taiida.com}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
 
   # --- Reverse Proxy ---
   traefik:
     image: traefik:v3.0
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./infra/traefik:/etc/traefik:ro
-      - traefik-certs:/letsencrypt
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=admin@taiida.com"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    restart: unless-stopped
+    networks:
+      - pong-network
+    profiles:
+      - production
+
+  # --- Cloudflare Tunnel ---
+  cloudflared:
+    image: cloudflare/cloudflared:2026.2.0
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - traefik
     restart: unless-stopped
     networks:
       - pong-network
@@ -123,6 +134,5 @@ networks:
     driver: bridge
 
 volumes:
-  traefik-certs:
   prometheus-data:
   grafana-data:

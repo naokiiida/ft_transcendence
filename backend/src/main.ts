@@ -13,7 +13,7 @@ async function bootstrap() {
   app.useWebSocketAdapter(new WsAdapter(app));
   // CORS設定、credentialsをtrueにしないとクッキーが送信されない
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: true,
   });
 
@@ -29,9 +29,9 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
 
-  // Scalar API Reference UI を /reference に配置
+  // Scalar API Reference UI を /api/reference に配置
   app.use(
-    '/reference',
+    '/api/reference',
     apiReference({
       content: document,
       theme: 'default',

@@ -9,10 +9,9 @@ import {
 import { Reflector } from '@nestjs/core';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import type { Request } from 'express';
-import { IS_PUBLIC_KEY, REQUIRE_USER_KEY } from './decorators';
+import { IS_PUBLIC_KEY, IS_OPTIONAL_AUTH_KEY, REQUIRE_USER_KEY } from './decorators';
 import { readCookie } from './cookie.utils';
 import { AuthService } from './auth.service';
-import { UsersService } from '../users/users.service';
 
 /*
 ログインしているユーザーにのみAPIを使わせる。
@@ -32,7 +31,6 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly authService: AuthService,
-    private readonly usersService: UsersService,
   ) {
     if (!process.env.API_KEY) {
       this.logger.warn(`Generated API key: ${API_KEY}`);
@@ -40,12 +38,14 @@ export class AuthGuard implements CanActivate {
   }
 
   canActivate(context: ExecutionContext): boolean {
-    // @Public() が付いていればスキップ認証不要なプロセスの場合は、スキップする。
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const handlers = [context.getHandler(), context.getClass()];
+
+    // @Public() が付いていればスキップ
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, handlers);
     if (isPublic) return true;
+
+    const isOptional = this.reflector.getAllAndOverride<boolean>(IS_OPTIONAL_AUTH_KEY, handlers);
+    const requireUser = this.reflector.getAllAndOverride<boolean>(REQUIRE_USER_KEY, handlers);
 
     const request = context.switchToHttp().getRequest<Request>();
 
@@ -55,11 +55,6 @@ export class AuthGuard implements CanActivate {
       const user = this.authService.findUserBySession(sessionId);
       if (user) {
         request.user = user;
-        const lastSeenMs = user.last_seen ? Date.parse(user.last_seen) : NaN;
-        const nowMs = Date.now();
-        if (Number.isNaN(lastSeenMs) || nowMs - lastSeenMs >= 60_000) {
-          this.usersService.updateLastSeen(user.uuid);
-        }
         return true;
       }
     }
@@ -67,21 +62,14 @@ export class AuthGuard implements CanActivate {
     // 2) API キー認証を試行
     const apiKey = request.headers['x-api-key'] as string | undefined;
     if (apiKey && this.isValidApiKey(apiKey)) {
-      request.user = null as any;
-
-      // @RequireUser() が付いている場合、API キーではアクセス不可
-      const requireUser = this.reflector.getAllAndOverride<boolean>(
-        REQUIRE_USER_KEY,
-        [context.getHandler(), context.getClass()],
-      );
       if (requireUser) {
-        throw new ForbiddenException(
-          'This endpoint requires session authentication. API key access is not allowed.',
-        );
+        throw new ForbiddenException('This endpoint requires session authentication');
       }
-
       return true;
     }
+
+    // 3) 認証なし
+    if (isOptional) return true;
 
     throw new UnauthorizedException('Not authenticated');
   }

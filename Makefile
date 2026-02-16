@@ -1,6 +1,6 @@
 .PHONY: help up up-frontend down build build-no-cache logs \
 	frontend-install frontend-dev frontend-lint \
-	backend-install backend-dev backend-lint npm  inpm\
+	backend-install backend-dev backend-lint npm prod prod-down inpm\
 
 help:
 	@echo "Targets:"
@@ -16,6 +16,8 @@ help:
 	@echo "  backend-install   - npm install in ./backend"
 	@echo "  backend-dev       - npm run start:dev in ./backend"
 	@echo "  backend-lint      - npm run lint in ./backend"
+	@echo "  prod              - production deploy (cloudflared + traefik)"
+	@echo "  prod-down         - production down --remove-orphans"
 
 # frontendディレクトリに（npm run dev）と、backend(npm run start:dev)の両方を同時に実行するコマンド
 
@@ -68,3 +70,9 @@ backend-dev:
 
 backend-lint:
 	cd backend && npm run lint
+
+prod:
+	docker compose --profile production up --build
+
+prod-down:
+	docker compose --profile production down --remove-orphans
