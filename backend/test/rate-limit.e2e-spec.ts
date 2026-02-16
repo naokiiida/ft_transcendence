@@ -35,8 +35,8 @@ describe('Rate Limiting (e2e)', () => {
 
   it('リミット超過 (100 req/min) で 429 Too Many Requests を返す', async () => {
     const server = app.getHttpServer();
-    // 順次リクエストでリミットを消費（前のテストの1回分を含む）
-    for (let i = 0; i < 99; i++) {
+    // 100回リクエストを送信してリミットを消費
+    for (let i = 0; i < 100; i++) {
       await request(server).get('/api/health');
     }
 

@@ -1,11 +1,9 @@
-import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
 import { MatchmakingService } from './matchmaking.service';
 import type { MatchmakingStatus } from './matchmaking.service';
-import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser, RequireUser } from '../auth/decorators';
 import type { User } from '../model/user.model';
 
-@UseGuards(AuthGuard)
 @RequireUser()
 @Controller('api/matchmaking')
 export class MatchmakingController {
