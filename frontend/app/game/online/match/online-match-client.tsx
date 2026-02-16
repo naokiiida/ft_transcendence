@@ -18,9 +18,17 @@ type ServerMessage =
       opponentName: string | null;
     }
   | { type: "state"; tick: number; state: GameState }
-  | { type: "game_over"; winner: GameState["winner"]; score: GameState["score"] }
+  | {
+      type: "game_over";
+      winner: GameState["winner"];
+      score: GameState["score"];
+    }
   | { type: "player_left"; winner: "left" | "right" }
-  | { type: "match_aborted"; reason: "timeout" | "no_opponent"; message?: string }
+  | {
+      type: "match_aborted";
+      reason: "timeout" | "no_opponent";
+      message?: string;
+    }
   | { type: "match_dissolved"; reason: "opponent_left"; message?: string }
   | { type: "error"; message?: string };
 
@@ -100,7 +108,10 @@ export function OnlineMatchClient() {
         stateRef.current = msg.state;
         setSide(msg.side);
         setOpponentName(msg.opponentName ?? null);
-        updateStatus("playing");
+        updateStatus("waiting");
+        setMessage(
+          "開始前に対戦相手が離席しました。マッチングに戻るボタンを押してください。",
+        );
         return;
       }
 
@@ -113,7 +124,11 @@ export function OnlineMatchClient() {
       if (msg.type === "game_over") {
         updateStatus("finished");
         const label =
-          msg.winner === "left" ? "Left" : msg.winner === "right" ? "Right" : null;
+          msg.winner === "left"
+            ? "Left"
+            : msg.winner === "right"
+              ? "Right"
+              : null;
         setWinner(label);
         return;
       }
@@ -240,7 +255,9 @@ export function OnlineMatchClient() {
               {side ? `あなたは ${side.toUpperCase()} 側です。` : "接続中..."}
             </p>
             <p className="text-sm text-muted-foreground">
-              {opponentName ? `対戦相手: ${opponentName}` : "対戦相手: 取得中..."}
+              {opponentName
+                ? `対戦相手: ${opponentName}`
+                : "対戦相手: 取得中..."}
             </p>
           </div>
           <Button variant="outline" onClick={() => router.push("/game/online")}>
