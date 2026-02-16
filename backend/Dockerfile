@@ -14,5 +14,6 @@ COPY --from=builder /app/package.json /app/package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
+RUN mkdir -p /app/data/avatars
 EXPOSE 3000
 CMD ["node", "dist/main"]

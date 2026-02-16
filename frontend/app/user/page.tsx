@@ -22,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { useUser } from "@/components/auth/user-context";
 import { useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
+import { AvatarUpload } from "@/components/shared/avatar-upload";
 import {
   Table,
   TableBody,
@@ -178,6 +179,11 @@ export default function UserPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  // ----- プロフィール設定 -----
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState(false);
   // ----- ユーザー統計 -----
   const wins = user?.wins ?? 0;
   const losses = user?.losses ?? 0;
@@ -470,6 +476,45 @@ export default function UserPage() {
     }
     logout();
     router.push("/");
+  };
+
+  // ----- プロフィール設定: 初期値と保存 -----
+  useEffect(() => {
+    if (user?.display_name) {
+      setEditDisplayName(user.display_name);
+    }
+  }, [user?.display_name]);
+
+  const handleSaveProfile = async () => {
+    if (profileSaving) return;
+    setProfileSaving(true);
+    setProfileError(null);
+    setProfileSuccess(false);
+    try {
+      const response = await fetch(`${apiBase}/api/me/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ display_name: editDisplayName.trim() }),
+      });
+      const data = (await response.json().catch(() => null)) as unknown;
+      if (!response.ok) {
+        const message =
+          (data as { message?: string } | null)?.message ??
+          "プロフィールの更新に失敗しました";
+        throw new Error(message);
+      }
+      setUserFromApi(data);
+      setProfileSuccess(true);
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "プロフィールの更新に失敗しました";
+      setProfileError(message);
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const handleTestUpdate = async (payload: {
@@ -1473,16 +1518,40 @@ export default function UserPage() {
             <CardHeader>
               <CardTitle>プロフィール設定</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              <div className="flex justify-center">
+                <AvatarUpload
+                  currentAvatarUrl={user?.avatar_url ?? null}
+                  displayName={user?.display_name ?? "U"}
+                  onUploadSuccess={setUserFromApi}
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="displayName">表示名</Label>
-                <Input id="displayName" placeholder="Player42" />
+                <Input
+                  id="displayName"
+                  placeholder="Player42"
+                  value={editDisplayName}
+                  onChange={(e) => {
+                    setEditDisplayName(e.target.value);
+                    setProfileSuccess(false);
+                    setProfileError(null);
+                  }}
+                />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="status">ステータスメッセージ</Label>
-                <Input id="status" placeholder="Ready to play!" />
-              </div>
-              <Button type="button">保存する</Button>
+              <Button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={profileSaving || !editDisplayName.trim()}
+              >
+                {profileSaving ? "保存中..." : "保存する"}
+              </Button>
+              {profileError ? (
+                <p className="text-sm text-destructive">{profileError}</p>
+              ) : null}
+              {profileSuccess ? (
+                <p className="text-sm text-green-600">プロフィールを更新しました</p>
+              ) : null}
               <div className="rounded-lg border border-border p-4">
                 <p className="text-sm font-semibold">テスト用更新</p>
                 <p className="text-xs text-muted-foreground">

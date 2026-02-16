@@ -55,7 +55,7 @@ export type CreateIntraUserInput = z.infer<typeof createIntraUserSchema>;
 
 export const updateProfileSchema = z.object({
   display_name: z.string().min(1).trim().optional(),
-  avatar_url: z.url().nullable().optional(),
+  avatar_url: z.string().nullable().optional(),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
