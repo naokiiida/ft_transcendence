@@ -95,20 +95,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
     // credentials: "include"を指定して、クッキーを送信するようにする
     fetch(`${apiBase}/api/me`, { credentials: "include" })
-      .then((response) => {
-        if (!response.ok) {
-          setUser(null);
-          return null;
-        }
-        return response.json() as Promise<unknown>;
-      })
+      .then((response) => response.json() as Promise<unknown>)
       .then((payload) => {
-        if (payload) {
-          // 安全に検査してから保存
+        if (payload && typeof payload === "object" && "guest" in payload) {
+          // 未認証: ゲストプロフィール
+          setUser(null);
+        } else {
+          // 認証済み: ユーザー情報を検査して保存
           setUserFromApi(payload);
         }
       })
-      .catch(() => null);
+      .catch(() => setUser(null));
   }, [setUserFromApi, setUser]);
 
   const refreshUser = useCallback(async () => {
@@ -117,12 +114,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${apiBase}/api/me`, {
         credentials: "include",
       });
-      if (!response.ok) {
-        setUser(null);
-        return;
-      }
       const payload = (await response.json()) as unknown;
-      setUserFromApi(payload);
+      if (payload && typeof payload === "object" && "guest" in payload) {
+        setUser(null);
+      } else {
+        setUserFromApi(payload);
+      }
     } catch {
       // ignore fetch errors
     }

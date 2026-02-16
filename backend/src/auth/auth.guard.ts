@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { IS_PUBLIC_KEY } from './decorators';
+import { IS_PUBLIC_KEY, IS_OPTIONAL_AUTH_KEY } from './decorators';
 import { readCookie } from './cookie.utils';
 import { AuthService } from './auth.service';
 
@@ -18,21 +18,25 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
+    const handlers = [context.getHandler(), context.getClass()];
+
     // @Public() が付いていればスキップ
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, handlers);
     if (isPublic) return true;
+
+    // @OptionalAuth() なら認証を試みるが、失敗しても通す
+    const isOptional = this.reflector.getAllAndOverride<boolean>(IS_OPTIONAL_AUTH_KEY, handlers);
 
     const request = context.switchToHttp().getRequest<Request>();
     const sessionId = readCookie(request.headers.cookie ?? '', 'ft_session');
     if (!sessionId) {
+      if (isOptional) return true;
       throw new UnauthorizedException('Not authenticated');
     }
 
     const user = this.authService.findUserBySession(sessionId);
     if (!user) {
+      if (isOptional) return true;
       throw new UnauthorizedException('Invalid session');
     }
 
