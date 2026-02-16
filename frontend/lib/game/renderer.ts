@@ -2,7 +2,12 @@ import type { GameState } from "./state";
 
 type Paddle = GameState["left"];
 
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState) {
+type RenderOptions = {
+  leftName?: string;
+  rightName?: string;
+};
+
+export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, options: RenderOptions = {}) {
   ctx.fillStyle = "#0b0b0b";
   ctx.fillRect(0, 0, state.width, state.height); // 背景塗りつぶし
 
@@ -33,6 +38,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState) {
     36,
   );
 
+  const leftName = options.leftName ?? "Left player";
+  const rightName = options.rightName ?? "Right player";
+
   // ゲームオーバー表示
   if (state.gameOver) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
@@ -42,7 +50,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState) {
     ctx.fillText("GAME OVER", state.width / 2, state.height / 2 - 10);
     ctx.fillStyle = "#e5e7eb";
     ctx.font = "18px 'DotGothic16', monospace";
-    const label = formatWinnerLabel(state.winner);
+    const label = formatWinnerLabel(state.winner, leftName, rightName);
     ctx.fillText(label, state.width / 2, state.height / 2 + 24);
   }
 }
@@ -52,12 +60,13 @@ function drawPaddle(ctx: CanvasRenderingContext2D, paddle: Paddle) {
   ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
 }
 
-function formatWinnerLabel(winner: GameState["winner"]) {
+function formatWinnerLabel(winner: GameState["winner"], leftName: string, rightName: string) {
   if (!winner) return "Winner: -";
-  const labels: Record<NonNullable<GameState["winner"]>, string> = {
-    left: "Player",
-    right: "CPU",
-    manual_end: "Manual End",
-  };
-  return `Winner: ${labels[winner]}`;
+
+  if (winner === "manual_end") {
+    return "Game Aborted";
+  }
+
+  const winnerName = winner === "left" ? leftName : rightName;
+  return `Winner: ${winnerName}`;
 }

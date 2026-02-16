@@ -71,7 +71,8 @@ export function OnlineMatchClient() {
     const frame = () => {
       const state = stateRef.current;
       if (state) {
-        renderGame(ctx, state);
+        // should change label to player name
+        renderGame(ctx, state, {leftName: "Left player", rightName: "Right player"});
       }
       frameId = requestAnimationFrame(frame);
     };

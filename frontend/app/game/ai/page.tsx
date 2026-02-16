@@ -52,6 +52,10 @@ export default function GamePage() {
     const input: InputState = { up: false, down: false };
     // ゲームエンジンとマッチの作成
     const engine = new PongEngine();
+
+    const currentConfig = DEFAULT_AI_CONFIGS[aiLevel];
+    const cpuName = currentConfig.name;
+
     const match = new LocalMatch(engine, input, DEFAULT_AI_CONFIGS[aiLevel]);
 
     // キー割当
@@ -95,7 +99,7 @@ export default function GamePage() {
         gameOverRef.current = state.gameOver;
         setGameOver(state.gameOver);
       }
-      renderGame(ctx, state);
+      renderGame(ctx, state, {leftName: "Player", rightName: "CPU(" + cpuName + ")"});
       frameId = requestAnimationFrame(frame);
     };
 

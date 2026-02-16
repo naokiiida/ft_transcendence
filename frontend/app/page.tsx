@@ -22,9 +22,11 @@ export default function Home() {
               オンライン対戦【クイックマッチ】
             </Link>
           </Button>
-          <Button size="lg" variant="outline">
-            <Users className="mr-2 h-5 w-5" />
-            ローカル対戦
+          <Button size="lg" variant="outline" asChild>
+            <Link href="/game/local">
+              <Users className="mr-2 h-5 w-5" />
+              ローカル対戦
+            </Link>
           </Button>
           <Button size="lg" variant="secondary" asChild>
             <Link href="/game/ai">
