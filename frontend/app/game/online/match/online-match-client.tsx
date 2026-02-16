@@ -110,7 +110,7 @@ export function OnlineMatchClient() {
         setOpponentName(msg.opponentName ?? null);
         updateStatus("waiting");
         setMessage(
-          "開始前に対戦相手が離席しました。マッチングに戻るボタンを押してください。",
+          "対戦準備中です。長い時間この画面が表示される場合は、マッチングに戻るボタンを押してください。",
         );
         return;
       }
