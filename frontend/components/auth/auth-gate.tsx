@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@/components/auth/user-context";
 
 interface AuthGateProps {
@@ -12,15 +12,18 @@ interface AuthGateProps {
 export function AuthGate({ children, redirectTo = "/login" }: AuthGateProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useUser();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      const next = pathname ? encodeURIComponent(pathname) : "";
+      const query = searchParams?.toString();
+      const fullPath = pathname && query ? `${pathname}?${query}` : pathname ?? "";
+      const next = fullPath ? encodeURIComponent(fullPath) : "";
       const target = next ? `${redirectTo}?next=${next}` : redirectTo;
       router.replace(target);
     }
-  }, [isLoading, isAuthenticated, redirectTo, router, pathname]);
+  }, [isLoading, isAuthenticated, redirectTo, router, pathname, searchParams]);
 
   if (isLoading) {
     return (
