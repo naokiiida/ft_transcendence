@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 
 export interface MatchmakingStatus {
@@ -13,6 +14,7 @@ export interface MatchmakingStatus {
 
 @Injectable()
 export class MatchmakingService {
+  readonly events = new EventEmitter();
   private readonly queue = new Map<string, number>();
   private readonly assignments = new Map<
     string,
@@ -40,6 +42,11 @@ export class MatchmakingService {
       if (!this.queue.has(assignment.opponentId)) {
         this.queue.set(assignment.opponentId, Date.now());
       }
+      this.events.emit('match_dissolved', {
+        opponentId: assignment.opponentId,
+        matchId: assignment.matchId,
+        reason: 'opponent_left',
+      });
     }
     return this.status(userId);
   }

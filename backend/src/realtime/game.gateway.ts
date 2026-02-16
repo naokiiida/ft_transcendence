@@ -33,7 +33,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly sessionService: GameSessionService,
     private readonly metricsService: MetricsService,
     private readonly usersService: UsersService,
-  ) {}
+  ) {
+    this.matchmakingService.events.on(
+      'match_dissolved',
+      (payload: { opponentId: string; matchId: string; reason: 'opponent_left' }) => {
+        this.notifyMatchDissolved(payload);
+      },
+    );
+  }
 
   handleConnection(client: WebSocket, request: IncomingMessage) {
     const sessionId = readCookie(request.headers.cookie, 'ft_session');
@@ -130,5 +137,22 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private safeSend(client: WebSocket, payload: unknown) {
     if (client.readyState !== 1) return;
     client.send(JSON.stringify(payload));
+  }
+
+  private notifyMatchDissolved(payload: {
+    opponentId: string;
+    matchId: string;
+    reason: 'opponent_left';
+  }) {
+    for (const [client, info] of this.connections.entries()) {
+      if (info.userId !== payload.opponentId) continue;
+      if (info.matchId !== payload.matchId) continue;
+      this.safeSend(client, {
+        type: 'match_dissolved',
+        reason: payload.reason,
+        message: 'Match canceled by opponent.',
+      });
+      return;
+    }
   }
 }

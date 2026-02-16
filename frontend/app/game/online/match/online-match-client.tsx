@@ -21,6 +21,7 @@ type ServerMessage =
   | { type: "game_over"; winner: GameState["winner"]; score: GameState["score"] }
   | { type: "player_left"; winner: "left" | "right" }
   | { type: "match_aborted"; reason: "timeout"; message?: string }
+  | { type: "match_dissolved"; reason: "opponent_left"; message?: string }
   | { type: "error"; message?: string };
 
 type ClientMessage =
@@ -125,6 +126,12 @@ export function OnlineMatchClient() {
       if (msg.type === "match_aborted") {
         setStatus("disconnected");
         setMessage(msg.message ?? "通信が不安定なため試合を終了しました。");
+        return;
+      }
+
+      if (msg.type === "match_dissolved") {
+        setStatus("disconnected");
+        setMessage(msg.message ?? "対戦相手がマッチングをキャンセルしました。");
         return;
       }
 
