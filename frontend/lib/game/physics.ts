@@ -100,7 +100,7 @@ function hitsPaddle(ball: Ball, paddle: Paddle) {
 function reflectFromPaddle(ball: Ball, paddle: Paddle, direction: 1 | -1) {
   const center = paddle.y + paddle.h / 2;
   const offset = (ball.y - center) / (paddle.h / 2); // -1 〜 +1 の範囲に正規化された衝突位置
-  const angle = offset * 0.7; // 反射角度（最大±0.7ラジアン、約40度）
+  const angle = clamp(offset, -1, 1) * 0.7; // 反射角度（最大±0.7ラジアン、約40度）
   const speed = clamp(
     Math.hypot(ball.vx, ball.vy) + 18, // 今の速度に少し足して、でも最低と最高の間に収める。
     BALL_SPEED,

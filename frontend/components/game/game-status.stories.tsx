@@ -37,6 +37,16 @@ export const 待機中メッセージ付き: Story = {
 };
 
 /**
+ * マッチング成立
+ */
+export const マッチング成立: Story = {
+  args: {
+    state: "matched",
+    message: "対戦相手が見つかりました。",
+  },
+};
+
+/**
  * カウントダウン3秒
  */
 export const カウントダウン3: Story = {
@@ -143,6 +153,9 @@ export const 全状態一覧: Story = {
     <div className="grid grid-cols-2 gap-4">
       <div className="relative h-48 bg-card rounded-lg">
         <GameStatus state="waiting" />
+      </div>
+      <div className="relative h-48 bg-card rounded-lg">
+        <GameStatus state="matched" message="対戦相手が見つかりました。" />
       </div>
       <div className="relative h-48 bg-card rounded-lg">
         <GameStatus state="countdown" countdown={3} />

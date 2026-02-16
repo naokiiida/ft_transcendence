@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MatchmakingQueue } from "@/components/game/matchmaking-queue";
 import { GameStatus } from "@/components/game/game-status";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuthGate } from "@/components/auth/auth-gate";
 
@@ -16,14 +15,20 @@ type MatchmakingStatus = {
   matched_at: number | null;
   match_id: string | null;
   side: "left" | "right" | null;
+  notice_reason: "opponent_left" | null;
+  notice_match_id: string | null;
+  notice_at: number | null;
 };
 
-type MatchPhase = "waiting" | "countdown" | "matched";
+type MatchPhase = "waiting" | "matched_notice" | "countdown" | "matched";
+
+const MATCHED_NOTICE_SECONDS = 2;
+const COUNTDOWN_SECONDS = 3;
 
 export default function OnlineGamePage() {
   const router = useRouter();
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-  const [isSearching, setIsSearching] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,9 +36,20 @@ export default function OnlineGamePage() {
   const [queuedAt, setQueuedAt] = useState<number | null>(null);
   const [playersInQueue, setPlayersInQueue] = useState(0);
   const [phase, setPhase] = useState<MatchPhase>("waiting");
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [matchedAt, setMatchedAt] = useState<number | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
+  const [lastNoticeAt, setLastNoticeAt] = useState<number | null>(null);
+  const isMatchedRef = useRef(isMatched);
+  const matchIdRef = useRef(matchId);
+
+  useEffect(() => {
+    isMatchedRef.current = isMatched;
+  }, [isMatched]);
+
+  useEffect(() => {
+    matchIdRef.current = matchId;
+  }, [matchId]);
 
   const applyStatus = useCallback((status: MatchmakingStatus) => {
     setIsSearching(status.in_queue);
@@ -47,13 +63,21 @@ export default function OnlineGamePage() {
     } else {
       setQueueTime(0);
     }
-    if (!status.in_queue && !status.matched) {
+    if (!status.matched) {
       setPhase("waiting");
-      setCountdown(3);
+      setCountdown(COUNTDOWN_SECONDS);
       setMatchedAt(null);
       setMatchId(null);
     }
-  }, []);
+    if (
+      status.notice_reason === "opponent_left" &&
+      status.notice_at !== null &&
+      (lastNoticeAt === null || status.notice_at > lastNoticeAt)
+    ) {
+      setError("対戦相手がマッチングをキャンセルしました。");
+      setLastNoticeAt(status.notice_at);
+    }
+  }, [lastNoticeAt]);
 
   const fetchStatus = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/matchmaking/status`, {
@@ -120,29 +144,37 @@ export default function OnlineGamePage() {
   }, [isSearching, queuedAt]);
 
   useEffect(() => {
-    void joinQueue();
-  }, [joinQueue]);
-
-  useEffect(() => {
-    if (!isSearching) return;
+    if (!isSearching && !isMatched) return;
+    const intervalMs = isMatched ? 1000 : 5000;
+    void fetchStatus().catch(() => {
+      // polling errors are non-fatal; next poll will retry
+    });
     const poll = setInterval(() => {
-      void fetchStatus();
-    }, 5000);
+      void fetchStatus().catch(() => {
+        // polling errors are non-fatal; next poll will retry
+      });
+    }, intervalMs);
     return () => clearInterval(poll);
-  }, [isSearching, fetchStatus]);
+  }, [isSearching, isMatched, fetchStatus]);
 
   useEffect(() => {
     if (!isMatched || !matchedAt) return;
     const tick = () => {
       const elapsed = Math.floor((Date.now() - matchedAt) / 1000);
-      const remaining = Math.max(0, 3 - elapsed);
+      if (elapsed < MATCHED_NOTICE_SECONDS) {
+        setPhase("matched_notice");
+        setCountdown(COUNTDOWN_SECONDS);
+        return;
+      }
+      const countdownElapsed = elapsed - MATCHED_NOTICE_SECONDS;
+      const remaining = Math.max(0, COUNTDOWN_SECONDS - countdownElapsed);
       if (remaining > 0) {
         setPhase("countdown");
         setCountdown(remaining);
-      } else {
-        setPhase("matched");
-        setCountdown(0);
+        return;
       }
+      setPhase("matched");
+      setCountdown(0);
     };
     tick();
     const timer = setInterval(tick, 500);
@@ -153,15 +185,27 @@ export default function OnlineGamePage() {
     if (phase !== "matched") return;
     if (!matchId) return;
     const timer = setTimeout(() => {
-      router.push(`/game/online/match?matchId=${encodeURIComponent(matchId)}`);
+      void fetchStatus()
+        .then(() => {
+          if (!isMatchedRef.current) return;
+          const currentMatchId = matchIdRef.current;
+          if (!currentMatchId) return;
+          router.push(
+            `/game/online/match?matchId=${encodeURIComponent(currentMatchId)}`,
+          );
+        })
+        .catch(() => {
+          setError("ステータス確認に失敗しました。");
+          setPhase("waiting");
+        });
     }, 500);
     return () => clearTimeout(timer);
-  }, [phase, matchId, router]);
+  }, [phase, matchId, router, fetchStatus]);
 
   const handleCancel = () => {
     void leaveQueue();
     setPhase("waiting");
-    setCountdown(3);
+    setCountdown(COUNTDOWN_SECONDS);
     setMatchedAt(null);
     setMatchId(null);
     setIsMatched(false);
@@ -177,17 +221,17 @@ export default function OnlineGamePage() {
               マッチング待機中はステータスが表示されます。
             </p>
           </div>
-          <Button variant="outline" onClick={joinQueue} disabled={isBusy}>
-            再検索
-          </Button>
         </div>
         {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <MatchmakingQueue
             isSearching={isSearching}
+            isMatched={isMatched}
+            isBusy={isBusy}
             queueTime={queueTime}
             playersInQueue={playersInQueue}
+            onStart={joinQueue}
             onCancel={handleCancel}
           />
 
@@ -195,16 +239,26 @@ export default function OnlineGamePage() {
             <CardHeader>
               <CardTitle>ゲーム画面</CardTitle>
             </CardHeader>
-            <CardContent className="relative flex h-72 items-center justify-center text-sm text-muted-foreground">
-              <p>ここにゲームキャンバスが表示されます。</p>
+            <CardContent className="relative flex w-full items-center justify-center text-sm text-muted-foreground">
+              <div className="flex w-full max-w-4xl aspect-[8/5] items-center justify-center rounded-lg border border-border bg-muted/40">
+                <p>ここにゲームキャンバスが表示されます。</p>
+              </div>
               <GameStatus
-                state={phase === "waiting" ? "waiting" : "countdown"}
+                state={
+                  phase === "waiting"
+                    ? "waiting"
+                    : phase === "matched_notice"
+                      ? "matched"
+                      : "countdown"
+                }
                 message={
                   phase === "waiting"
-                    ? "対戦相手を検索中..."
-                    : phase === "countdown"
-                      ? "対戦開始までカウント中"
-                      : "マッチング成立"
+                    ? isSearching
+                      ? "対戦相手を検索中..."
+                      : "検索開始してください。"
+                    : phase === "matched_notice"
+                      ? "対戦相手が見つかりました。"
+                      : "対戦開始までカウント中"
                 }
                 countdown={phase === "countdown" ? countdown : undefined}
               />

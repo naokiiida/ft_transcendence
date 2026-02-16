@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 
 export interface MatchmakingStatus {
@@ -9,10 +10,14 @@ export interface MatchmakingStatus {
   matched_at: number | null;
   match_id: string | null;
   side: 'left' | 'right' | null;
+  notice_reason: 'opponent_left' | null;
+  notice_match_id: string | null;
+  notice_at: number | null;
 }
 
 @Injectable()
 export class MatchmakingService {
+  readonly events = new EventEmitter();
   private readonly queue = new Map<string, number>();
   private readonly assignments = new Map<
     string,
@@ -23,8 +28,14 @@ export class MatchmakingService {
       matchedAt: number;
     }
   >();
+  private readonly dissolvedNotices = new Map<
+    string,
+    { matchId: string; reason: 'opponent_left'; createdAt: number }
+  >();
+  private readonly noticeTtlMs = 30000;
 
   join(userId: string): MatchmakingStatus {
+    this.dissolvedNotices.delete(userId);
     if (this.assignments.has(userId)) return this.status(userId);
     if (!this.queue.has(userId)) this.queue.set(userId, Date.now());
     this.tryMatch();
@@ -40,6 +51,16 @@ export class MatchmakingService {
       if (!this.queue.has(assignment.opponentId)) {
         this.queue.set(assignment.opponentId, Date.now());
       }
+      this.dissolvedNotices.set(assignment.opponentId, {
+        matchId: assignment.matchId,
+        reason: 'opponent_left',
+        createdAt: Date.now(),
+      });
+      this.events.emit('match_dissolved', {
+        opponentId: assignment.opponentId,
+        matchId: assignment.matchId,
+        reason: 'opponent_left',
+      });
     }
     return this.status(userId);
   }
@@ -47,6 +68,11 @@ export class MatchmakingService {
   status(userId: string): MatchmakingStatus {
     const queuedAt = this.queue.get(userId) ?? null;
     const assignment = this.assignments.get(userId) ?? null;
+    const notice = this.dissolvedNotices.get(userId) ?? null;
+    if (notice && Date.now() - notice.createdAt > this.noticeTtlMs) {
+      this.dissolvedNotices.delete(userId);
+    }
+    const activeNotice = this.dissolvedNotices.get(userId) ?? null;
     return {
       in_queue: queuedAt !== null,
       players_in_queue: this.queue.size,
@@ -55,11 +81,23 @@ export class MatchmakingService {
       matched_at: assignment?.matchedAt ?? null,
       match_id: assignment?.matchId ?? null,
       side: assignment?.side ?? null,
+      notice_reason: activeNotice?.reason ?? null,
+      notice_match_id: activeNotice?.matchId ?? null,
+      notice_at: activeNotice?.createdAt ?? null,
     };
   }
 
   getAssignment(userId: string) {
     return this.assignments.get(userId) ?? null;
+  }
+
+  clearAssignmentByMatchId(matchId: string) {
+    for (const [userId, assignment] of this.assignments.entries()) {
+      if (assignment.matchId !== matchId) continue;
+      this.assignments.delete(userId);
+      this.assignments.delete(assignment.opponentId);
+      break;
+    }
   }
 
   private tryMatch() {
