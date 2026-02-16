@@ -82,7 +82,7 @@ export default function GamePage() {
         gameOverRef.current = state.gameOver;
         setGameOver(state.gameOver);
       }
-      renderGame(ctx, state);
+      renderGame(ctx, state, {leftName: "Left player", rightName: "Right player"});
       frameId = requestAnimationFrame(frame);
     };
 
