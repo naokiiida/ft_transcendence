@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState, type ChangeEvent } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { API_BASE } from "@/lib/utils";
 
 interface AvatarUploadProps {
   currentAvatarUrl: string | null;
@@ -23,7 +24,6 @@ export function AvatarUpload({
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
   const uploadFile = useCallback(
     async (file: File) => {
@@ -33,7 +33,7 @@ export function AvatarUpload({
         const formData = new FormData();
         formData.append("avatar", file);
 
-        const response = await fetch(`${apiBase}/api/me/avatar`, {
+        const response = await fetch(`${API_BASE}/api/me/avatar`, {
           method: "POST",
           credentials: "include",
           body: formData,
@@ -61,12 +61,13 @@ export function AvatarUpload({
         });
       }
     },
-    [apiBase, onUploadSuccess],
+    [onUploadSuccess],
   );
 
   const handleFileSelect = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
+      e.target.value = "";
       if (!file) return;
 
       if (file.size > MAX_FILE_SIZE) {

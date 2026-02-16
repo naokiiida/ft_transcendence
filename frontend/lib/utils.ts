@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 /**
  * 相対APIパス（/api/...）をバックエンドの完全URLに解決する。
@@ -14,6 +14,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
  */
 export function resolveApiUrl(path: string | null | undefined): string | undefined {
   if (!path) return undefined;
-  if (path.startsWith("http")) return path;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
   return `${API_BASE}${path}`;
 }

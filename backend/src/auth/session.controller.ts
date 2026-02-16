@@ -14,11 +14,12 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
+import sharp from 'sharp';
 import { AuthService } from './auth.service';
 import { CurrentUser, OptionalAuth, Public, RequireUser } from './decorators';
 import { UsersService } from '../users/users.service';
@@ -59,6 +60,8 @@ export class SessionController {
   ) {
     this.usersService.deleteByUuid(user.uuid);
     this.authService.removeSessionsByUuid(user.uuid);
+    const avatarPath = path.join(AVATAR_DIR, `${user.uuid}.webp`);
+    fs.promises.unlink(avatarPath).catch(() => {}); // ENOENT無視
     res.cookie('ft_session', '', {
       httpOnly: true,
       sameSite: 'lax',
@@ -75,28 +78,16 @@ export class SessionController {
     @CurrentUser() user: User,
     @Body() body: UpdateProfileInput,
   ) {
-    const { avatar_url: _ignored, ...profileFields } = body;
-    const updated = this.usersService.updateProfile(user.uuid, profileFields);
+    const updated = this.usersService.updateProfile(user.uuid, body);
     if (!updated) {
       throw new NotFoundException('User not found');
     }
     return this.authService.toPublicUser(updated);
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('me/avatar')
   @UseInterceptors(FileInterceptor('avatar', {
-    storage: diskStorage({
-      destination: (_req, _file, cb) => {
-        if (!fs.existsSync(AVATAR_DIR)) {
-          fs.mkdirSync(AVATAR_DIR, { recursive: true });
-        }
-        cb(null, AVATAR_DIR);
-      },
-      filename: (req, _file, cb) => {
-        const user = (req as unknown as { user: User }).user;
-        cb(null, `${user.uuid}.webp`);
-      },
-    }),
     limits: { fileSize: 2 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
       if (ALLOWED_MIMES.includes(file.mimetype)) {
@@ -106,12 +97,24 @@ export class SessionController {
       }
     },
   }))
-  uploadAvatar(
+  async uploadAvatar(
     @CurrentUser() user: User,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
+    }
+    if (!fs.existsSync(AVATAR_DIR)) {
+      fs.mkdirSync(AVATAR_DIR, { recursive: true });
+    }
+    const destPath = path.join(AVATAR_DIR, `${user.uuid}.webp`);
+    try {
+      await sharp(file.buffer)
+        .resize(256, 256, { fit: 'cover' })
+        .webp({ quality: 80 })
+        .toFile(destPath);
+    } catch {
+      throw new BadRequestException('Invalid image file');
     }
     const avatarUrl = `/api/avatars/${user.uuid}.webp`;
     const updated = this.usersService.updateProfile(user.uuid, { avatar_url: avatarUrl });
@@ -135,6 +138,8 @@ export class SessionController {
       throw new NotFoundException('Avatar not found');
     }
     res.setHeader('Cache-Control', 'no-cache, max-age=0, must-revalidate');
+    res.setHeader('Content-Type', 'image/webp');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.sendFile(filePath);
   }
 

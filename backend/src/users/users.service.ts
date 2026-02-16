@@ -14,6 +14,11 @@ import {
   type UpdateProfileInput,
 } from '../model/user.model';
 
+/** サービス層内部用 — avatar_url はアップロード経由でのみ設定 */
+type InternalProfileUpdate = UpdateProfileInput & {
+  avatar_url?: string | null;
+};
+
 @Injectable()
 export class UsersService {
   /**
@@ -126,7 +131,7 @@ export class UsersService {
   /**
    * プロフィールを更新（display_name, avatar_url）
    */
-  updateProfile(uuid: string, input: UpdateProfileInput): User | null {
+  updateProfile(uuid: string, input: InternalProfileUpdate): User | null {
     const db = getDatabase();
     const setValues: Record<string, unknown> = {};
     if (input.display_name !== undefined) {
