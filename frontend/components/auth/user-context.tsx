@@ -95,27 +95,39 @@ export function UserProvider({ children }: { children: ReactNode }) {
     [setUser],
   );
 
+  // /api/me のレスポンスを判定してユーザー状態を更新するヘルパー
+  const handleMeResponse = useCallback(
+    async (response: Response) => {
+      if (!response.ok) {
+        setUser(null);
+        return;
+      }
+      const payload: unknown = await response.json();
+      if (
+        payload &&
+        typeof payload === "object" &&
+        "guest" in payload &&
+        (payload as Record<string, unknown>).guest === true
+      ) {
+        setUser(null);
+      } else {
+        setUserFromApi(payload);
+      }
+    },
+    [setUser, setUserFromApi],
+  );
+
   // 既にログイン済みの場合はサーバーから復元する
   // ブラウザに残ってるクッキーを使って、サーバーから本人確認を行う
   useEffect(() => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-    // credentials: "include"を指定して、クッキーを送信するようにする
     fetch(`${apiBase}/api/me`, { credentials: "include" })
-      .then((response) => response.json() as Promise<unknown>)
-      .then((payload) => {
-        if (payload && typeof payload === "object" && "guest" in payload) {
-          // 未認証: ゲストプロフィール
-          setUser(null);
-        } else {
-          // 認証済み: ユーザー情報を検査して保存
-          setUserFromApi(payload);
-        }
-      })
+      .then(handleMeResponse)
       .catch(() => setUser(null))
       .finally(() => {
         setIsLoading(false);
       });
-  }, [setUserFromApi, setUser]);
+  }, [handleMeResponse, setUser]);
 
   const refreshUser = useCallback(async () => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -124,18 +136,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${apiBase}/api/me`, {
         credentials: "include",
       });
-      const payload = (await response.json()) as unknown;
-      if (payload && typeof payload === "object" && "guest" in payload) {
-        setUser(null);
-      } else {
-        setUserFromApi(payload);
-      }
+      handleMeResponse(response);
     } catch {
       // ignore fetch errors
     } finally {
       setIsLoading(false);
     }
-  }, [setUserFromApi, setUser]);
+  }, [handleMeResponse]);
 
   // ログアウトの処理を1箇所にまとめる
   const logout = useCallback(() => {

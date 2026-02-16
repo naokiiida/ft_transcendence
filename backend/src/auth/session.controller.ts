@@ -20,7 +20,7 @@ import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AuthService } from './auth.service';
-import { CurrentUser, OptionalAuth, Public } from './decorators';
+import { CurrentUser, OptionalAuth, Public, RequireUser } from './decorators';
 import { UsersService } from '../users/users.service';
 import {
   gameResultSchema,

@@ -9,10 +9,9 @@ import {
 import { Reflector } from '@nestjs/core';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import type { Request } from 'express';
-import { IS_PUBLIC_KEY, IS_OPTIONAL_AUTH_KEY } from './decorators';
+import { IS_PUBLIC_KEY, IS_OPTIONAL_AUTH_KEY, REQUIRE_USER_KEY } from './decorators';
 import { readCookie } from './cookie.utils';
 import { AuthService } from './auth.service';
-import { UsersService } from '../users/users.service';
 
 /*
 ログインしているユーザーにのみAPIを使わせる。
@@ -32,7 +31,6 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly authService: AuthService,
-    private readonly usersService: UsersService,
   ) {
     if (!process.env.API_KEY) {
       this.logger.warn(`Generated API key: ${API_KEY}`);
@@ -46,23 +44,32 @@ export class AuthGuard implements CanActivate {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, handlers);
     if (isPublic) return true;
 
-    // @OptionalAuth() なら認証を試みるが、失敗しても通す
     const isOptional = this.reflector.getAllAndOverride<boolean>(IS_OPTIONAL_AUTH_KEY, handlers);
+    const requireUser = this.reflector.getAllAndOverride<boolean>(REQUIRE_USER_KEY, handlers);
 
     const request = context.switchToHttp().getRequest<Request>();
 
     // 1) セッション認証を試行
     const sessionId = readCookie(request.headers.cookie ?? '', 'ft_session');
-    if (!sessionId) {
-      if (isOptional) return true;
-      throw new UnauthorizedException('Not authenticated');
+    if (sessionId) {
+      const user = this.authService.findUserBySession(sessionId);
+      if (user) {
+        request.user = user;
+        return true;
+      }
     }
 
-    const user = this.authService.findUserBySession(sessionId);
-    if (!user) {
-      if (isOptional) return true;
-      throw new UnauthorizedException('Invalid session');
+    // 2) API キー認証を試行
+    const apiKey = request.headers['x-api-key'] as string | undefined;
+    if (apiKey && this.isValidApiKey(apiKey)) {
+      if (requireUser) {
+        throw new ForbiddenException('This endpoint requires session authentication');
+      }
+      return true;
     }
+
+    // 3) 認証なし
+    if (isOptional) return true;
 
     throw new UnauthorizedException('Not authenticated');
   }
