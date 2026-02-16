@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, or, desc, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/sqlite-core';
 import { getDatabase } from '../db/database';
 import { games, users } from '../db/schema';
 import {
@@ -131,9 +132,25 @@ export class GamesService {
   getMatchHistory(userId: string, limit: number, offset: number) {
     const db = getDatabase();
 
+    const player1 = alias(users, 'player1');
+    const player2 = alias(users, 'player2');
+
     const rows = db
-      .select()
+      .select({
+        id: games.id,
+        player1_id: games.player1_id,
+        player2_id: games.player2_id,
+        winner_id: games.winner_id,
+        player1_score: games.player1_score,
+        player2_score: games.player2_score,
+        created_at: games.created_at,
+        status: games.status,
+        player1_display_name: player1.display_name,
+        player2_display_name: player2.display_name,
+      })
       .from(games)
+      .leftJoin(player1, eq(games.player1_id, player1.uuid))
+      .leftJoin(player2, eq(games.player2_id, player2.uuid))
       .where(or(eq(games.player1_id, userId), eq(games.player2_id, userId)))
       .orderBy(desc(games.created_at))
       .limit(limit)

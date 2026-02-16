@@ -53,6 +53,8 @@ type MatchRow = {
   player2_score: number;
   created_at: string;
   status: string;
+  player1_display_name?: string | null;
+  player2_display_name?: string | null;
 };
 
 type MatchHistoryResponse = {
@@ -164,6 +166,14 @@ export default function UserPage() {
   const [matchHistory, setMatchHistory] = useState<MatchRow[]>([]); //戦績一覧
   const [matchLoading, setMatchLoading] = useState(false); //戦績の読み込み状態
   const [matchError, setMatchError] = useState<string | null>(null); //戦績のエラー状態
+  const [friendProfileId, setFriendProfileId] = useState<string | null>(null);
+  const [friendProfileHistory, setFriendProfileHistory] = useState<MatchRow[]>(
+    [],
+  );
+  const [friendProfileLoading, setFriendProfileLoading] = useState(false);
+  const [friendProfileError, setFriendProfileError] = useState<string | null>(
+    null,
+  );
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
@@ -355,6 +365,37 @@ export default function UserPage() {
     }
   }, [apiBase, user?.uuid]);
 
+  const fetchFriendMatchHistory = useCallback(
+    async (friendId: string) => {
+      setFriendProfileLoading(true);
+      setFriendProfileError(null);
+      try {
+        const response = await fetch(
+          `${apiBase}/api/games/history/${friendId}?limit=5&offset=0`,
+          { credentials: "include" },
+        );
+        const data = (await response.json().catch(() => null)) as unknown;
+        if (!response.ok) {
+          const message =
+            (data as { message?: string } | null)?.message ??
+            "戦績の取得に失敗しました";
+          throw new Error(message);
+        }
+        const parsed = data as MatchHistoryResponse;
+        setFriendProfileHistory(
+          Array.isArray(parsed?.games) ? parsed.games : [],
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "戦績の取得に失敗しました";
+        setFriendProfileError(message);
+      } finally {
+        setFriendProfileLoading(false);
+      }
+    },
+    [apiBase],
+  );
+
   const fetchLeaderboard = useCallback(async () => {
     setLeaderboardLoading(true);
     setLeaderboardError(null);
@@ -403,6 +444,18 @@ export default function UserPage() {
     void fetchMatchHistory();
     void fetchLeaderboard();
   }, [user?.uuid, refreshFriendData, fetchMatchHistory, fetchLeaderboard]);
+
+  const openFriendProfile = (friendId: string) => {
+    setFriendProfileId(friendId);
+    setFriendProfileHistory([]);
+    void fetchFriendMatchHistory(friendId);
+  };
+
+  const closeFriendProfile = () => {
+    setFriendProfileId(null);
+    setFriendProfileHistory([]);
+    setFriendProfileError(null);
+  };
   // ログアウト処理とトップページへのリダイレクトを行う関数
   // ----- 認証/アカウント操作 -----
   const handleLogout = async () => {
@@ -804,45 +857,180 @@ export default function UserPage() {
                             <TableCell>{friend.user_score}</TableCell>
                             <TableCell>{friendRank.label}</TableCell>
                             <TableCell className="text-right">
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="destructive" size="sm">
-                                    解除
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>フレンド解除</DialogTitle>
-                                    <DialogDescription>
-                                      {friend.display_name}{" "}
-                                      をフレンドから解除しますか？
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <DialogFooter>
-                                    <DialogClose asChild>
-                                      <Button variant="outline">
-                                        キャンセル
-                                      </Button>
-                                    </DialogClose>
-                                    <DialogClose asChild>
-                                      <Button
-                                        variant="destructive"
-                                        onClick={() =>
-                                          handleRemoveFriend(
-                                            friend.friendship_id,
-                                          )
-                                        }
-                                        disabled={removingFriendId !== null}
-                                      >
-                                        {removingFriendId ===
-                                        friend.friendship_id
-                                          ? "解除中..."
-                                          : "解除する"}
-                                      </Button>
-                                    </DialogClose>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
+                              <div className="flex items-center justify-end gap-2">
+                                <Dialog
+                                  onOpenChange={(open) => {
+                                    if (open) {
+                                      openFriendProfile(friend.friend_id);
+                                    } else {
+                                      closeFriendProfile();
+                                    }
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      プロフィール
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>
+                                        {friend.display_name}
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        フレンドのプロフィール情報です。
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="flex items-center gap-4">
+                                      <Avatar className="h-16 w-16">
+                                        {friend.avatar_url ? (
+                                          <AvatarImage
+                                            src={friend.avatar_url}
+                                            alt={friend.display_name}
+                                          />
+                                        ) : null}
+                                        <AvatarFallback>
+                                          {friend.display_name
+                                            .trim()?.[0]
+                                            ?.toUpperCase() ?? "F"}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="space-y-1">
+                                        <p className="text-sm text-muted-foreground">
+                                          スコア
+                                        </p>
+                                        <p className="text-lg font-semibold">
+                                          {friend.user_score}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                          ランク: {friendRank.label}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          最終: {formatDateTime(friend.last_seen)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <p className="text-sm font-medium">
+                                        最近の戦績
+                                      </p>
+                                      {friendProfileId !== friend.friend_id ? (
+                                        <p className="text-sm text-muted-foreground">
+                                          読み込み中...
+                                        </p>
+                                      ) : friendProfileError ? (
+                                        <Alert variant="destructive">
+                                          <AlertDescription>
+                                            {friendProfileError}
+                                          </AlertDescription>
+                                        </Alert>
+                                      ) : friendProfileLoading ? (
+                                        <p className="text-sm text-muted-foreground">
+                                          読み込み中...
+                                        </p>
+                                      ) : friendProfileHistory.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                          まだ戦績はありません。
+                                        </p>
+                                      ) : (
+                                        <div className="space-y-2">
+                                          {friendProfileHistory.map((match) => {
+                                            const isPlayer1 =
+                                              match.player1_id === friend.friend_id;
+                                            const opponentId = isPlayer1
+                                              ? match.player2_id
+                                              : match.player1_id;
+                                            const friendScore = isPlayer1
+                                              ? match.player1_score
+                                              : match.player2_score;
+                                            const opponentScore = isPlayer1
+                                              ? match.player2_score
+                                              : match.player1_score;
+                                            const result = match.winner_id
+                                              ? match.winner_id ===
+                                                friend.friend_id
+                                                ? "勝ち"
+                                                : "負け"
+                                              : "中断";
+                                            const opponentDisplayName = isPlayer1
+                                              ? match.player2_display_name
+                                              : match.player1_display_name;
+                                            const opponentLabel =
+                                              opponentDisplayName?.trim() ||
+                                              (opponentId
+                                                ? `${opponentId.slice(0, 8)}...`
+                                                : "AI/Local");
+                                            return (
+                                              <div
+                                                key={match.id}
+                                                className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
+                                              >
+                                                <div>
+                                                  <p className="font-medium">
+                                                    {result}
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground">
+                                                    vs {opponentLabel}
+                                                  </p>
+                                                </div>
+                                                <div className="text-sm font-mono">
+                                                  {friendScore} - {opponentScore}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <DialogFooter>
+                                      <DialogClose asChild>
+                                        <Button variant="outline">
+                                          閉じる
+                                        </Button>
+                                      </DialogClose>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="destructive" size="sm">
+                                      解除
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>フレンド解除</DialogTitle>
+                                      <DialogDescription>
+                                        {friend.display_name}{" "}
+                                        をフレンドから解除しますか？
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <DialogFooter>
+                                      <DialogClose asChild>
+                                        <Button variant="outline">
+                                          キャンセル
+                                        </Button>
+                                      </DialogClose>
+                                      <DialogClose asChild>
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() =>
+                                            handleRemoveFriend(
+                                              friend.friendship_id,
+                                            )
+                                          }
+                                          disabled={removingFriendId !== null}
+                                        >
+                                          {removingFriendId ===
+                                          friend.friendship_id
+                                            ? "解除中..."
+                                            : "解除する"}
+                                        </Button>
+                                      </DialogClose>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -1237,9 +1425,12 @@ export default function UserPage() {
                       const opponentId = isPlayer1
                         ? match.player2_id
                         : match.player1_id;
-                      const opponentLabel = opponentId
-                        ? `${opponentId.slice(0, 8)}...`
-                        : "AI/ローカル";
+                      const opponentDisplayName = isPlayer1
+                        ? match.player2_display_name
+                        : match.player1_display_name;
+                      const opponentLabel =
+                        opponentDisplayName?.trim() ||
+                        (opponentId ? `${opponentId.slice(0, 8)}...` : "AI/ローカル");
                       const result =
                         match.status !== "completed"
                           ? "未完了"
