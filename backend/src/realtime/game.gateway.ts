@@ -12,6 +12,7 @@ import { MatchmakingService } from '../matchmaking/matchmaking.service';
 import { MetricsService } from '../observability/metrics.service';
 import { UsersService } from '../users/users.service';
 import { GameSessionService } from './game-session.service';
+import { ChatService } from './chat.service';
 
 type ConnectionInfo = {
   userId: string;
@@ -22,7 +23,8 @@ type ConnectionInfo = {
 type ClientMessage =
   | { type: 'join'; matchId: string }
   | { type: 'input'; up: boolean; down: boolean; seq?: number }
-  | { type: 'ping' };
+  | { type: 'ping' }
+  | { type: 'chat_message'; content: string };
 
 @WebSocketGateway({ path: '/api/ws' })
 export class GameGateway
@@ -41,6 +43,7 @@ export class GameGateway
     private readonly sessionService: GameSessionService,
     private readonly metricsService: MetricsService,
     private readonly usersService: UsersService,
+    private readonly chatService: ChatService,
   ) {
     this.matchDissolvedHandler = (payload: {
       opponentId: string;
@@ -80,6 +83,7 @@ export class GameGateway
   handleDisconnect(client: WebSocket) {
     const info = this.connections.get(client);
     if (!info) return;
+    this.chatService.clearUser(info.userId);
     this.sessionService.removePlayerByUser(info.userId);
     this.connections.delete(client);
     this.metricsService.websocketConnections.dec();
@@ -125,6 +129,11 @@ export class GameGateway
     if (message.type === 'ping') {
       if (!info.matchId || !info.side) return;
       this.sessionService.recordHeartbeat(info.matchId, info.side);
+      return;
+    }
+
+    if (message.type === 'chat_message') {
+      this.handleChatMessage(client, info, message);
     }
   }
 
@@ -151,6 +160,36 @@ export class GameGateway
       side: assignment.side,
       state: session.state,
       opponentName: opponent?.display_name ?? null,
+    });
+  }
+
+  private handleChatMessage(
+    client: WebSocket,
+    info: ConnectionInfo,
+    raw: { type: 'chat_message'; content: string },
+  ) {
+    if (!info.matchId || !info.side) return;
+
+    const result = this.chatService.validate(info.userId, raw);
+    if (!result.ok) {
+      this.safeSend(client, {
+        type: 'error',
+        code: result.error.includes('Rate limited') ? 'RATE_LIMITED' : 'INVALID_MESSAGE',
+        message: result.error,
+      });
+      return;
+    }
+
+    const sender = this.usersService.findByUuid(info.userId);
+    this.sessionService.broadcastToMatch(info.matchId, {
+      type: 'chat_received',
+      game_id: info.matchId,
+      sender: {
+        id: info.userId,
+        display_name: sender?.display_name ?? 'Unknown',
+      },
+      content: result.content,
+      timestamp: Date.now(),
     });
   }
 

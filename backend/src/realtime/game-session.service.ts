@@ -270,6 +270,12 @@ export class GameSessionService {
     }
   }
 
+  broadcastToMatch(matchId: string, payload: unknown): void {
+    const session = this.sessions.get(matchId);
+    if (!session) return;
+    this.broadcast(session, payload);
+  }
+
   private broadcast(session: GameSession, payload: unknown) {
     const message = JSON.stringify(payload);
     const targets = [session.players.left?.socket, session.players.right?.socket];
