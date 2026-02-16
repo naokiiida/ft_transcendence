@@ -35,6 +35,7 @@ const AVATAR_DIR = path.join(process.cwd(), 'data', 'avatars');
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 @ApiTags('session')
+@RequireUser()
 @Controller('api')
 export class SessionController {
   constructor(
