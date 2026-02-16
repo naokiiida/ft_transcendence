@@ -17,6 +17,7 @@ import { gameResultSchema, type GameResult, type User } from '../model/user.mode
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 
 @ApiTags('session')
+@RequireUser()
 @Controller('api')
 export class SessionController {
   constructor(

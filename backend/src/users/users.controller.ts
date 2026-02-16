@@ -20,13 +20,13 @@ export class UsersController {
   // GET /api/users/search?display_name=foo&limit=10
   @Get('search')
   searchUsers(
-    @CurrentUser() user: User,
+    @CurrentUser() user: User | null,
     @Query(new ZodValidationPipe(searchUsersQuerySchema)) query: SearchUsersQuery,
   ) {
     return this.usersService.searchByDisplayName(
       query.display_name,
       query.limit,
-      user.uuid,
+      user?.uuid ?? null,
     );
   }
 
