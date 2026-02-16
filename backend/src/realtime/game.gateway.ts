@@ -3,6 +3,7 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
+import type { OnModuleDestroy } from '@nestjs/common';
 import type { IncomingMessage } from 'http';
 import type { RawData, WebSocket } from 'ws';
 import { AuthService } from '../auth/auth.service';
@@ -24,8 +25,15 @@ type ClientMessage =
   | { type: 'ping' };
 
 @WebSocketGateway({ path: '/api/ws' })
-export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class GameGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
+{
   private readonly connections = new Map<WebSocket, ConnectionInfo>();
+  private readonly matchDissolvedHandler: (payload: {
+    opponentId: string;
+    matchId: string;
+    reason: 'opponent_left';
+  }) => void;
 
   constructor(
     private readonly authService: AuthService,
@@ -34,11 +42,23 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly metricsService: MetricsService,
     private readonly usersService: UsersService,
   ) {
+    this.matchDissolvedHandler = (payload: {
+      opponentId: string;
+      matchId: string;
+      reason: 'opponent_left';
+    }) => {
+      this.notifyMatchDissolved(payload);
+    };
     this.matchmakingService.events.on(
       'match_dissolved',
-      (payload: { opponentId: string; matchId: string; reason: 'opponent_left' }) => {
-        this.notifyMatchDissolved(payload);
-      },
+      this.matchDissolvedHandler,
+    );
+  }
+
+  onModuleDestroy() {
+    this.matchmakingService.events.off(
+      'match_dissolved',
+      this.matchDissolvedHandler,
     );
   }
 

@@ -32,8 +32,10 @@ export class MatchmakingService {
     string,
     { matchId: string; reason: 'opponent_left'; createdAt: number }
   >();
+  private readonly noticeTtlMs = 30000;
 
   join(userId: string): MatchmakingStatus {
+    this.dissolvedNotices.delete(userId);
     if (this.assignments.has(userId)) return this.status(userId);
     if (!this.queue.has(userId)) this.queue.set(userId, Date.now());
     this.tryMatch();
@@ -67,9 +69,10 @@ export class MatchmakingService {
     const queuedAt = this.queue.get(userId) ?? null;
     const assignment = this.assignments.get(userId) ?? null;
     const notice = this.dissolvedNotices.get(userId) ?? null;
-    if (notice) {
+    if (notice && Date.now() - notice.createdAt > this.noticeTtlMs) {
       this.dissolvedNotices.delete(userId);
     }
+    const activeNotice = this.dissolvedNotices.get(userId) ?? null;
     return {
       in_queue: queuedAt !== null,
       players_in_queue: this.queue.size,
@@ -78,9 +81,9 @@ export class MatchmakingService {
       matched_at: assignment?.matchedAt ?? null,
       match_id: assignment?.matchId ?? null,
       side: assignment?.side ?? null,
-      notice_reason: notice?.reason ?? null,
-      notice_match_id: notice?.matchId ?? null,
-      notice_at: notice?.createdAt ?? null,
+      notice_reason: activeNotice?.reason ?? null,
+      notice_match_id: activeNotice?.matchId ?? null,
+      notice_at: activeNotice?.createdAt ?? null,
     };
   }
 

@@ -39,6 +39,7 @@ export default function OnlineGamePage() {
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [matchedAt, setMatchedAt] = useState<number | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
+  const [lastNoticeAt, setLastNoticeAt] = useState<number | null>(null);
   const isMatchedRef = useRef(isMatched);
   const matchIdRef = useRef(matchId);
 
@@ -68,10 +69,15 @@ export default function OnlineGamePage() {
       setMatchedAt(null);
       setMatchId(null);
     }
-    if (status.notice_reason === "opponent_left") {
+    if (
+      status.notice_reason === "opponent_left" &&
+      status.notice_at !== null &&
+      (lastNoticeAt === null || status.notice_at > lastNoticeAt)
+    ) {
       setError("対戦相手がマッチングをキャンセルしました。");
+      setLastNoticeAt(status.notice_at);
     }
-  }, []);
+  }, [lastNoticeAt]);
 
   const fetchStatus = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/matchmaking/status`, {
