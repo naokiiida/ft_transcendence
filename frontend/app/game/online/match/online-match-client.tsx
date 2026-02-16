@@ -20,7 +20,7 @@ type ServerMessage =
   | { type: "state"; tick: number; state: GameState }
   | { type: "game_over"; winner: GameState["winner"]; score: GameState["score"] }
   | { type: "player_left"; winner: "left" | "right" }
-  | { type: "match_aborted"; reason: "timeout"; message?: string }
+  | { type: "match_aborted"; reason: "timeout" | "no_opponent"; message?: string }
   | { type: "match_dissolved"; reason: "opponent_left"; message?: string }
   | { type: "error"; message?: string };
 
@@ -48,9 +48,10 @@ export function OnlineMatchClient() {
   const [opponentName, setOpponentName] = useState<string | null>(null);
   const statusRef = useRef(status);
 
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
+  const updateStatus = (next: typeof status) => {
+    statusRef.current = next;
+    setStatus(next);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -73,7 +74,7 @@ export function OnlineMatchClient() {
 
   useEffect(() => {
     if (!matchId) {
-      setStatus("error");
+      updateStatus("error");
       setMessage("matchId が見つかりません。");
       return;
     }
@@ -82,7 +83,7 @@ export function OnlineMatchClient() {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      setStatus("waiting");
+      updateStatus("waiting");
       const join: ClientMessage = { type: "join", matchId };
       ws.send(JSON.stringify(join));
     };
@@ -99,18 +100,18 @@ export function OnlineMatchClient() {
         stateRef.current = msg.state;
         setSide(msg.side);
         setOpponentName(msg.opponentName ?? null);
-        setStatus("playing");
+        updateStatus("playing");
         return;
       }
 
       if (msg.type === "state") {
         stateRef.current = msg.state;
-        setStatus("playing");
+        updateStatus("playing");
         return;
       }
 
       if (msg.type === "game_over") {
-        setStatus("finished");
+        updateStatus("finished");
         const label =
           msg.winner === "left" ? "Left" : msg.winner === "right" ? "Right" : null;
         setWinner(label);
@@ -118,25 +119,30 @@ export function OnlineMatchClient() {
       }
 
       if (msg.type === "player_left") {
-        setStatus("disconnected");
+        updateStatus("disconnected");
         setMessage("対戦相手が退出しました。");
         return;
       }
 
       if (msg.type === "match_aborted") {
-        setStatus("disconnected");
-        setMessage(msg.message ?? "通信が不安定なため試合を終了しました。");
+        updateStatus("disconnected");
+        setMessage(
+          msg.message ??
+            (msg.reason === "no_opponent"
+              ? "相手が参加しなかったため試合を終了しました。"
+              : "通信が不安定なため試合を終了しました。"),
+        );
         return;
       }
 
       if (msg.type === "match_dissolved") {
-        setStatus("disconnected");
+        updateStatus("disconnected");
         setMessage(msg.message ?? "対戦相手がマッチングをキャンセルしました。");
         return;
       }
 
       if (msg.type === "error") {
-        setStatus("error");
+        updateStatus("error");
         setMessage(msg.message ?? "エラーが発生しました。");
       }
     };
@@ -144,7 +150,7 @@ export function OnlineMatchClient() {
     ws.onclose = () => {
       if (statusRef.current === "finished") return;
       if (statusRef.current === "disconnected") return;
-      setStatus("error");
+      updateStatus("error");
       setMessage("接続が切断されました。");
     };
 

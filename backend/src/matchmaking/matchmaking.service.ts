@@ -10,6 +10,9 @@ export interface MatchmakingStatus {
   matched_at: number | null;
   match_id: string | null;
   side: 'left' | 'right' | null;
+  notice_reason: 'opponent_left' | null;
+  notice_match_id: string | null;
+  notice_at: number | null;
 }
 
 @Injectable()
@@ -24,6 +27,10 @@ export class MatchmakingService {
       opponentId: string;
       matchedAt: number;
     }
+  >();
+  private readonly dissolvedNotices = new Map<
+    string,
+    { matchId: string; reason: 'opponent_left'; createdAt: number }
   >();
 
   join(userId: string): MatchmakingStatus {
@@ -42,6 +49,11 @@ export class MatchmakingService {
       if (!this.queue.has(assignment.opponentId)) {
         this.queue.set(assignment.opponentId, Date.now());
       }
+      this.dissolvedNotices.set(assignment.opponentId, {
+        matchId: assignment.matchId,
+        reason: 'opponent_left',
+        createdAt: Date.now(),
+      });
       this.events.emit('match_dissolved', {
         opponentId: assignment.opponentId,
         matchId: assignment.matchId,
@@ -54,6 +66,10 @@ export class MatchmakingService {
   status(userId: string): MatchmakingStatus {
     const queuedAt = this.queue.get(userId) ?? null;
     const assignment = this.assignments.get(userId) ?? null;
+    const notice = this.dissolvedNotices.get(userId) ?? null;
+    if (notice) {
+      this.dissolvedNotices.delete(userId);
+    }
     return {
       in_queue: queuedAt !== null,
       players_in_queue: this.queue.size,
@@ -62,6 +78,9 @@ export class MatchmakingService {
       matched_at: assignment?.matchedAt ?? null,
       match_id: assignment?.matchId ?? null,
       side: assignment?.side ?? null,
+      notice_reason: notice?.reason ?? null,
+      notice_match_id: notice?.matchId ?? null,
+      notice_at: notice?.createdAt ?? null,
     };
   }
 

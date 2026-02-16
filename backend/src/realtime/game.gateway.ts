@@ -144,6 +144,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     matchId: string;
     reason: 'opponent_left';
   }) {
+    this.sessionService.removePlayerByUser(payload.opponentId);
     for (const [client, info] of this.connections.entries()) {
       if (info.userId !== payload.opponentId) continue;
       if (info.matchId !== payload.matchId) continue;

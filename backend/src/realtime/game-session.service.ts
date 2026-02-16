@@ -106,6 +106,11 @@ export class GameSessionService {
     session.joinTimeout = setTimeout(() => {
       if (session.started) return;
       if (!this.isReady(session)) {
+        this.broadcast(session, {
+          type: 'match_aborted',
+          reason: 'no_opponent',
+          message: 'Opponent did not join in time.',
+        });
         this.stopSession(matchId);
       }
     }, JOIN_TIMEOUT_MS);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MatchmakingQueue } from "@/components/game/matchmaking-queue";
 import { GameStatus } from "@/components/game/game-status";
@@ -15,6 +15,9 @@ type MatchmakingStatus = {
   matched_at: number | null;
   match_id: string | null;
   side: "left" | "right" | null;
+  notice_reason: "opponent_left" | null;
+  notice_match_id: string | null;
+  notice_at: number | null;
 };
 
 type MatchPhase = "waiting" | "matched_notice" | "countdown" | "matched";
@@ -36,6 +39,16 @@ export default function OnlineGamePage() {
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [matchedAt, setMatchedAt] = useState<number | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
+  const isMatchedRef = useRef(isMatched);
+  const matchIdRef = useRef(matchId);
+
+  useEffect(() => {
+    isMatchedRef.current = isMatched;
+  }, [isMatched]);
+
+  useEffect(() => {
+    matchIdRef.current = matchId;
+  }, [matchId]);
 
   const applyStatus = useCallback((status: MatchmakingStatus) => {
     setIsSearching(status.in_queue);
@@ -49,11 +62,14 @@ export default function OnlineGamePage() {
     } else {
       setQueueTime(0);
     }
-    if (!status.in_queue && !status.matched) {
+    if (!status.matched) {
       setPhase("waiting");
       setCountdown(COUNTDOWN_SECONDS);
       setMatchedAt(null);
       setMatchId(null);
+    }
+    if (status.notice_reason === "opponent_left") {
+      setError("対戦相手がマッチングをキャンセルしました。");
     }
   }, []);
 
@@ -122,14 +138,18 @@ export default function OnlineGamePage() {
   }, [isSearching, queuedAt]);
 
   useEffect(() => {
-    if (!isSearching) return;
+    if (!isSearching && !isMatched) return;
+    const intervalMs = isMatched ? 1000 : 5000;
+    void fetchStatus().catch(() => {
+      // polling errors are non-fatal; next poll will retry
+    });
     const poll = setInterval(() => {
       void fetchStatus().catch(() => {
         // polling errors are non-fatal; next poll will retry
       });
-    }, 5000);
+    }, intervalMs);
     return () => clearInterval(poll);
-  }, [isSearching, fetchStatus]);
+  }, [isSearching, isMatched, fetchStatus]);
 
   useEffect(() => {
     if (!isMatched || !matchedAt) return;
@@ -159,10 +179,22 @@ export default function OnlineGamePage() {
     if (phase !== "matched") return;
     if (!matchId) return;
     const timer = setTimeout(() => {
-      router.push(`/game/online/match?matchId=${encodeURIComponent(matchId)}`);
+      void fetchStatus()
+        .then(() => {
+          if (!isMatchedRef.current) return;
+          const currentMatchId = matchIdRef.current;
+          if (!currentMatchId) return;
+          router.push(
+            `/game/online/match?matchId=${encodeURIComponent(currentMatchId)}`,
+          );
+        })
+        .catch(() => {
+          setError("ステータス確認に失敗しました。");
+          setPhase("waiting");
+        });
     }, 500);
     return () => clearTimeout(timer);
-  }, [phase, matchId, router]);
+  }, [phase, matchId, router, fetchStatus]);
 
   const handleCancel = () => {
     void leaveQueue();
