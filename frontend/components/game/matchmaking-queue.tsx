@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 interface MatchmakingQueueProps {
   isSearching: boolean;
   isBusy?: boolean;
+  isMatched?: boolean;
   queueTime?: number;
   playersInQueue?: number;
   onStart?: () => void;
@@ -18,6 +19,7 @@ interface MatchmakingQueueProps {
 export function MatchmakingQueue({
   isSearching,
   isBusy = false,
+  isMatched = false,
   queueTime = 0,
   playersInQueue,
   onStart,
@@ -60,10 +62,14 @@ export function MatchmakingQueue({
         )}
 
         <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          {isSearching ? "対戦相手を検索中です。" : "検索開始を押してマッチングを開始します。"}
+          {isMatched
+            ? "マッチ成立。対戦準備中です。"
+            : isSearching
+              ? "対戦相手を検索中です。"
+              : "検索開始を押してマッチングを開始します。"}
         </div>
 
-        {!isSearching && (
+        {!isSearching && !isMatched && (
           <Button
             onClick={onStart}
             className="w-full"

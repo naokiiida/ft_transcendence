@@ -227,6 +227,7 @@ export default function OnlineGamePage() {
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <MatchmakingQueue
             isSearching={isSearching}
+            isMatched={isMatched}
             isBusy={isBusy}
             queueTime={queueTime}
             playersInQueue={playersInQueue}
