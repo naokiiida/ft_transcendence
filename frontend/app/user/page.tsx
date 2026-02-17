@@ -1015,7 +1015,7 @@ export default function UserPage() {
                                               opponentDisplayName?.trim() ||
                                               (opponentId
                                                 ? `${opponentId.slice(0, 8)}...`
-                                                : "AI/Local");
+                                                : "AI/ローカル");
                                             return (
                                               <div
                                                 key={match.id}
