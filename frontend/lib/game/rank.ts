@@ -7,10 +7,10 @@ export type RankTier = {
 
 export const rankTiers: RankTier[] = [
   { label: "Bronze", min: 0 },
-  { label: "Silver", min: 100 },
-  { label: "Gold", min: 200 },
-  { label: "Platinum", min: 300 },
-  { label: "Diamond", min: 450 },
+  { label: "Silver", min: 50 },
+  { label: "Gold", min: 100 },
+  { label: "Platinum", min: 150 },
+  { label: "Diamond", min: 200 },
 ];
 
 export function getRankForScore(value: number): RankTier {

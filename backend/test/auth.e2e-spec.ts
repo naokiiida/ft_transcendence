@@ -54,7 +54,7 @@ describe('Auth (e2e)', () => {
         method: 'email',
         wins: 0,
         losses: 0,
-        user_score: 1000,
+        user_score: 0,
       });
       expect(res.body.uuid).toBeDefined();
       // password_hash は返されない

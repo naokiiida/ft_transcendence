@@ -8,6 +8,13 @@
       "when": 1770800028249,
       "tag": "0000_brainy_masked_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1771304392900,
+      "tag": "0001_user_score_default_zero",
+      "breakpoints": true
     }
   ]
 }
