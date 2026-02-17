@@ -257,16 +257,18 @@ export default function OnlineGamePage() {
                 state={
                   phase === "waiting"
                     ? "waiting"
-                    : phase === "matched_notice"
+                    : phase === "matched_notice" || phase === "matched"
                       ? "matched"
-                      : "countdown"
+                      : phase === "countdown"
+                        ? "countdown"
+                        : "playing"
                 }
                 message={
                   phase === "waiting"
                     ? isSearching
                       ? "対戦相手を検索中..."
                       : "検索開始してください。"
-                    : phase === "matched_notice"
+                    : phase === "matched_notice" || phase === "matched"
                       ? "対戦相手が見つかりました。"
                       : "対戦開始までカウント中"
                 }
