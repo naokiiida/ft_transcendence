@@ -11,6 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare } from "lucide-react";
 import { renderGame } from "@/lib/game/renderer";
 import type { GameState, InputState } from "@/lib/game/state";
+import { getRankForScore } from "@/lib/game/rank";
+import { getBallColorForRank } from "@/lib/game/ball-colors";
+import { useBallColorByRankEnabled } from "@/lib/game/preferences";
 
 type ServerMessage =
   | {
@@ -82,6 +85,7 @@ export function OnlineMatchClient() {
   const [chatOpen, setChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const chatOpenRef = useRef(chatOpen);
+  const [ballColorByRankEnabled] = useBallColorByRankEnabled();
 
   const updateStatus = (next: typeof status) => {
     statusRef.current = next;
@@ -106,15 +110,25 @@ export function OnlineMatchClient() {
     const frame = () => {
       const state = stateRef.current;
       if (state) {
+        const rankLabel = user
+          ? getRankForScore(user.user_score).label
+          : "Bronze";
+        const ballColor = ballColorByRankEnabled
+          ? getBallColorForRank(rankLabel)
+          : undefined;
         // should change label to player name
-        renderGame(ctx, state, {leftName: "Left player", rightName: "Right player"});
+        renderGame(ctx, state, {
+          leftName: "Left player",
+          rightName: "Right player",
+          ballColor,
+        });
       }
       frameId = requestAnimationFrame(frame);
     };
     frameId = requestAnimationFrame(frame);
 
     return () => cancelAnimationFrame(frameId);
-  }, []);
+  }, [ballColorByRankEnabled, user?.user_score]);
 
   useEffect(() => {
     if (!matchId) {

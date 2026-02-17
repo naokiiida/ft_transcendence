@@ -11,6 +11,8 @@ import { FriendsTab } from "@/components/user/friends-tab";
 import { StatsTab } from "@/components/user/stats-tab";
 import { RecordTab } from "@/components/user/record-tab";
 import { SettingsTab } from "@/components/user/settings-tab";
+import { getRankForScore, rankTiers } from "@/lib/game/rank";
+import { useBallColorByRankEnabled } from "@/lib/game/preferences";
 import type {
   AchievementRow,
   FriendEntry,
@@ -32,15 +34,6 @@ import type {
 
 
 */
-
-// ===== ランク計算用の閾値 =====
-const rankTiers = [
-  { label: "Bronze", min: 0 },
-  { label: "Silver", min: 100 },
-  { label: "Gold", min: 200 },
-  { label: "Platinum", min: 300 },
-  { label: "Diamond", min: 450 },
-];
 
 
 /*
@@ -96,6 +89,8 @@ export default function UserPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState(false);
+  const [ballColorByRankEnabled, setBallColorByRankEnabled] =
+    useBallColorByRankEnabled();
   // ----- ユーザー統計 -----
   const wins = user?.wins ?? 0;
   const losses = user?.losses ?? 0;
@@ -103,13 +98,6 @@ export default function UserPage() {
   const winRate =
     totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
   const score = user?.user_score ?? 0;
-  const getRankForScore = (value: number) => {
-    let current = rankTiers[0];
-    for (const tier of rankTiers) {
-      if (value >= tier.min) current = tier;
-    }
-    return current;
-  };
   const currentRank = getRankForScore(score);
   const currentRankIndex = rankTiers.findIndex(
     (tier) => tier.label === currentRank.label,
@@ -439,6 +427,10 @@ export default function UserPage() {
     setSearchTerm(value);
   };
 
+  const handleToggleBallColorByRank = () => {
+    setBallColorByRankEnabled(!ballColorByRankEnabled);
+  };
+
   const handleTestUpdate = async (payload: {
     result: "win" | "loss";
     score_delta: number;
@@ -744,6 +736,8 @@ export default function UserPage() {
             profileError={profileError}
             profileSuccess={profileSuccess}
             onDisplayNameChange={handleDisplayNameChange}
+            ballColorByRankEnabled={ballColorByRankEnabled}
+            onToggleBallColorByRank={handleToggleBallColorByRank}
             onSaveProfile={handleSaveProfile}
             onTestUpdate={handleTestUpdate}
             onDeleteAccount={handleDeleteAccount}

@@ -23,6 +23,8 @@ interface SettingsTabProps {
   profileError: string | null;
   profileSuccess: boolean;
   onDisplayNameChange: (value: string) => void;
+  ballColorByRankEnabled: boolean;
+  onToggleBallColorByRank: () => void;
   onSaveProfile: () => void;
   onTestUpdate: (payload: { result: "win" | "loss"; score_delta: number }) => void;
   onDeleteAccount: () => void;
@@ -38,6 +40,8 @@ export function SettingsTab({
   profileError,
   profileSuccess,
   onDisplayNameChange,
+  ballColorByRankEnabled,
+  onToggleBallColorByRank,
   onSaveProfile,
   onTestUpdate,
   onDeleteAccount,
@@ -68,6 +72,23 @@ export function SettingsTab({
               value={editDisplayName}
               onChange={(e) => onDisplayNameChange(e.target.value)}
             />
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">ボール色（ランク連動）</p>
+                <p className="text-xs text-muted-foreground">
+                  オンライン対戦のボール色をランクに合わせて変化させます。
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={ballColorByRankEnabled ? "secondary" : "outline"}
+                onClick={onToggleBallColorByRank}
+              >
+                {ballColorByRankEnabled ? "有効" : "無効"}
+              </Button>
+            </div>
           </div>
           <Button type="button" onClick={onSaveProfile} disabled={!canSave}>
             {profileSaving ? "保存中..." : "保存する"}
