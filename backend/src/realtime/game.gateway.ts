@@ -16,6 +16,7 @@ import { ChatService } from './chat.service';
 
 type ConnectionInfo = {
   userId: string;
+  displayName: string;
   matchId: string | null;
   side: 'left' | 'right' | null;
 };
@@ -75,7 +76,12 @@ export class GameGateway
 
     this.metricsService.websocketConnections.inc();
     this.metricsService.connectedUsersCount.inc();
-    this.connections.set(client, { userId: user.uuid, matchId: null, side: null });
+    this.connections.set(client, {
+      userId: user.uuid,
+      displayName: user.display_name,
+      matchId: null,
+      side: null,
+    });
 
     client.on('message', (data) => this.handleMessage(client, data));
   }
@@ -151,6 +157,7 @@ export class GameGateway
       matchId,
       assignment.side,
       info.userId,
+      info.displayName,
       client,
     );
     const opponent = this.usersService.findByUuid(assignment.opponentId);

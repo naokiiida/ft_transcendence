@@ -10,6 +10,7 @@ type PlayerSide = 'left' | 'right';
 
 type PlayerSlot = {
   userId: string;
+  displayName: string;
   socket: WebSocket;
   input: InputState;
   lastSeen: number;
@@ -47,10 +48,17 @@ export class GameSessionService {
     private readonly gamesService: GamesService,
   ) {}
 
-  addPlayer(matchId: string, side: PlayerSide, userId: string, socket: WebSocket) {
+  addPlayer(
+    matchId: string,
+    side: PlayerSide,
+    userId: string,
+    displayName: string,
+    socket: WebSocket,
+  ) {
     const session = this.getOrCreate(matchId);
     session.players[side] = {
       userId,
+      displayName,
       socket,
       input: { up: false, down: false },
       lastSeen: Date.now(),
@@ -144,12 +152,17 @@ export class GameSessionService {
       session.engine.step(session.state, leftInput, rightInput, 1 / TICK_RATE);
       session.tick += 1;
       if (session.state.gameOver) {
+        const winnerSide = this.toWinnerSide(session.state.winner);
+        const winnerName = winnerSide
+          ? session.players[winnerSide]?.displayName ?? null
+          : null;
         this.broadcast(session, {
           type: 'game_over',
           winner: session.state.winner,
           score: session.state.score,
+          winnerName,
         });
-        this.completeGameRecord(session, this.toWinnerSide(session.state.winner));
+        this.completeGameRecord(session, winnerSide);
         this.stopGameLoop(session);
         this.schedulePostGameCleanup(session);
       }

@@ -28,6 +28,7 @@ type ServerMessage =
       type: "game_over";
       winner: GameState["winner"];
       score: GameState["score"];
+      winnerName?: string | null;
     }
   | { type: "player_left"; winner: "left" | "right" }
   | {
@@ -196,14 +197,19 @@ export function OnlineMatchClient() {
 
       if (msg.type === "game_over") {
         updateStatus("finished");
-        if (msg.winner === "left" || msg.winner === "right") {
-          const selfName = user?.display_name ?? "あなた";
-          const opponentLabel = opponentName ?? "相手";
+        if (msg.winnerName) {
+          setWinner(msg.winnerName);
+        } else if (msg.winner === "left" || msg.winner === "right") {
+          const selfName = user?.display_name ?? null;
+          const opponentLabel = opponentName ?? null;
+          let winnerName: string | null = null;
           if (side) {
-            setWinner(msg.winner === side ? selfName : opponentLabel);
-          } else {
-            setWinner(msg.winner === "left" ? "左" : "右");
+            winnerName = msg.winner === side ? selfName : opponentLabel;
           }
+          if (!winnerName) {
+            winnerName = msg.winner === "left" ? "左" : "右";
+          }
+          setWinner(winnerName);
         } else {
           setWinner(null);
         }
