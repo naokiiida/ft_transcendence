@@ -431,25 +431,6 @@ export default function UserPage() {
     setBallColorByRankEnabled(!ballColorByRankEnabled);
   };
 
-  const handleTestUpdate = async (payload: {
-    result: "win" | "loss";
-    score_delta: number;
-  }) => {
-    try {
-      const response = await fetch(`${apiBase}/api/me/test-score`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) return;
-      const data = (await response.json()) as unknown;
-      setUserFromApi(data);
-    } catch {
-      // ignore network errors for test actions
-    }
-  };
-
   const handleDeleteAccount = async () => {
     if (deletingAccount) return;
     setDeletingAccount(true);
@@ -739,7 +720,6 @@ export default function UserPage() {
             ballColorByRankEnabled={ballColorByRankEnabled}
             onToggleBallColorByRank={handleToggleBallColorByRank}
             onSaveProfile={handleSaveProfile}
-            onTestUpdate={handleTestUpdate}
             onDeleteAccount={handleDeleteAccount}
             deletingAccount={deletingAccount}
             onAvatarUploadSuccess={setUserFromApi}

@@ -26,7 +26,6 @@ interface SettingsTabProps {
   ballColorByRankEnabled: boolean;
   onToggleBallColorByRank: () => void;
   onSaveProfile: () => void;
-  onTestUpdate: (payload: { result: "win" | "loss"; score_delta: number }) => void;
   onDeleteAccount: () => void;
   deletingAccount: boolean;
   onAvatarUploadSuccess: (payload: unknown) => void;
@@ -43,7 +42,6 @@ export function SettingsTab({
   ballColorByRankEnabled,
   onToggleBallColorByRank,
   onSaveProfile,
-  onTestUpdate,
   onDeleteAccount,
   deletingAccount,
   onAvatarUploadSuccess,
@@ -99,28 +97,6 @@ export function SettingsTab({
           {profileSuccess ? (
             <p className="text-sm text-green-600">プロフィールを更新しました</p>
           ) : null}
-          <div className="rounded-lg border border-border p-4">
-            <p className="text-sm font-semibold">テスト用更新</p>
-            <p className="text-xs text-muted-foreground">
-              勝利/敗北/スコアを一時的に更新します。
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => onTestUpdate({ result: "win", score_delta: 25 })}
-              >
-                勝利 (+25)
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => onTestUpdate({ result: "loss", score_delta: 25 })}
-              >
-                敗北 (-25)
-              </Button>
-            </div>
-          </div>
           <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
             <div className="space-y-1">
               <p className="text-sm font-semibold text-destructive">
