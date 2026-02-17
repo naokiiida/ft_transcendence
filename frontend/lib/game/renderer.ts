@@ -5,6 +5,7 @@ type Paddle = GameState["left"];
 type RenderOptions = {
   leftName?: string;
   rightName?: string;
+  ballColor?: string;
 };
 
 export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, options: RenderOptions = {}) {
@@ -24,6 +25,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, opti
   drawPaddle(ctx, state.right);
 
   // ボールの描画
+  ctx.fillStyle = options.ballColor ?? "#eaeaea";
   ctx.beginPath();
   ctx.arc(state.ball.x, state.ball.y, state.ball.r, 0, Math.PI * 2);
   ctx.fill();

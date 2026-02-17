@@ -11,6 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare } from "lucide-react";
 import { renderGame } from "@/lib/game/renderer";
 import type { GameState, InputState } from "@/lib/game/state";
+import { getRankForScore } from "@/lib/game/rank";
+import { getBallColorForRank } from "@/lib/game/ball-colors";
+import { useBallColorByRankEnabled } from "@/lib/game/preferences";
 
 type ServerMessage =
   | {
@@ -25,6 +28,7 @@ type ServerMessage =
       type: "game_over";
       winner: GameState["winner"];
       score: GameState["score"];
+      winnerName?: string | null;
     }
   | { type: "player_left"; winner: "left" | "right" }
   | {
@@ -57,6 +61,8 @@ type ChatMessageItem = {
   isOwn?: boolean;
 };
 
+const POST_GAME_CHAT_MS = 30_000;
+
 export function OnlineMatchClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -76,12 +82,18 @@ export function OnlineMatchClient() {
   const [side, setSide] = useState<"left" | "right" | null>(null);
   const [opponentName, setOpponentName] = useState<string | null>(null);
   const statusRef = useRef(status);
+  const sideRef = useRef<typeof side>(side);
+  const opponentNameRef = useRef<string | null>(opponentName);
+  const userNameRef = useRef<string | null>(user?.display_name ?? null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessageItem[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const chatOpenRef = useRef(chatOpen);
+  const [postGameChatActive, setPostGameChatActive] = useState(false);
+  const postGameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [ballColorByRankEnabled] = useBallColorByRankEnabled();
 
   const updateStatus = (next: typeof status) => {
     statusRef.current = next;
@@ -97,6 +109,37 @@ export function OnlineMatchClient() {
   }, [chatOpen]);
 
   useEffect(() => {
+    sideRef.current = side;
+  }, [side]);
+
+  useEffect(() => {
+    opponentNameRef.current = opponentName;
+  }, [opponentName]);
+
+  useEffect(() => {
+    userNameRef.current = user?.display_name ?? null;
+  }, [user?.display_name]);
+
+  const startPostGameChatWindow = useCallback(() => {
+    setPostGameChatActive(true);
+    if (postGameTimerRef.current) {
+      clearTimeout(postGameTimerRef.current);
+    }
+    postGameTimerRef.current = setTimeout(() => {
+      setPostGameChatActive(false);
+    }, POST_GAME_CHAT_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (postGameTimerRef.current) {
+        clearTimeout(postGameTimerRef.current);
+        postGameTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -106,15 +149,35 @@ export function OnlineMatchClient() {
     const frame = () => {
       const state = stateRef.current;
       if (state) {
-        // should change label to player name
-        renderGame(ctx, state, {leftName: "Left player", rightName: "Right player"});
+        const rankLabel = user
+          ? getRankForScore(user.user_score).label
+          : "Bronze";
+        const ballColor = ballColorByRankEnabled
+          ? getBallColorForRank(rankLabel)
+          : undefined;
+        const selfName = userNameRef.current ?? "あなた";
+        const opponentLabel = opponentNameRef.current ?? "相手";
+        let leftName = "左";
+        let rightName = "右";
+        if (sideRef.current === "left") {
+          leftName = selfName;
+          rightName = opponentLabel;
+        } else if (sideRef.current === "right") {
+          leftName = opponentLabel;
+          rightName = selfName;
+        }
+        renderGame(ctx, state, {
+          leftName,
+          rightName,
+          ballColor,
+        });
       }
       frameId = requestAnimationFrame(frame);
     };
     frameId = requestAnimationFrame(frame);
 
     return () => cancelAnimationFrame(frameId);
-  }, []);
+  }, [ballColorByRankEnabled, user?.user_score]);
 
   useEffect(() => {
     if (!matchId) {
@@ -159,13 +222,24 @@ export function OnlineMatchClient() {
 
       if (msg.type === "game_over") {
         updateStatus("finished");
-        const label =
-          msg.winner === "left"
-            ? "Left"
-            : msg.winner === "right"
-              ? "Right"
-              : null;
-        setWinner(label);
+        if (msg.winnerName) {
+          setWinner(msg.winnerName);
+        } else if (msg.winner === "left" || msg.winner === "right") {
+          const selfName = userNameRef.current;
+          const opponentLabel = opponentNameRef.current;
+          let winnerName: string | null = null;
+          if (sideRef.current) {
+            winnerName =
+              msg.winner === sideRef.current ? selfName : opponentLabel;
+          }
+          if (!winnerName) {
+            winnerName = msg.winner === "left" ? "左" : "右";
+          }
+          setWinner(winnerName);
+        } else {
+          setWinner(null);
+        }
+        startPostGameChatWindow();
         return;
       }
 
@@ -232,7 +306,7 @@ export function OnlineMatchClient() {
       ws.close();
       wsRef.current = null;
     };
-  }, [matchId, wsUrl, user?.uuid]);
+  }, [matchId, wsUrl, user?.uuid, startPostGameChatWindow]);
 
   useEffect(() => {
     const ws = wsRef.current;
@@ -310,7 +384,10 @@ export function OnlineMatchClient() {
     ws.send(JSON.stringify({ type: "chat_message", content }));
   }, []);
 
-  const chatDisabled = status !== "playing" && status !== "waiting";
+  const chatDisabled =
+    status !== "playing" &&
+    status !== "waiting" &&
+    !(status === "finished" && postGameChatActive);
 
   return (
     <AuthGate>

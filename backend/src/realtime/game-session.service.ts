@@ -10,6 +10,7 @@ type PlayerSide = 'left' | 'right';
 
 type PlayerSlot = {
   userId: string;
+  displayName: string;
   socket: WebSocket;
   input: InputState;
   lastSeen: number;
@@ -27,12 +28,14 @@ type GameSession = {
   tickTimer: ReturnType<typeof setInterval> | null;
   broadcastTimer: ReturnType<typeof setInterval> | null;
   joinTimeout: ReturnType<typeof setTimeout> | null;
+  postGameTimer: ReturnType<typeof setTimeout> | null;
 };
 
 const TICK_RATE = 30;
 const BROADCAST_RATE = 15;
 const HEARTBEAT_TIMEOUT_MS = 5000;
 const JOIN_TIMEOUT_MS = 60000;
+const POST_GAME_CHAT_MS = 30_000;
 
 @Injectable()
 export class GameSessionService {
@@ -45,10 +48,17 @@ export class GameSessionService {
     private readonly gamesService: GamesService,
   ) {}
 
-  addPlayer(matchId: string, side: PlayerSide, userId: string, socket: WebSocket) {
+  addPlayer(
+    matchId: string,
+    side: PlayerSide,
+    userId: string,
+    displayName: string,
+    socket: WebSocket,
+  ) {
     const session = this.getOrCreate(matchId);
     session.players[side] = {
       userId,
+      displayName,
       socket,
       input: { up: false, down: false },
       lastSeen: Date.now(),
@@ -102,6 +112,7 @@ export class GameSessionService {
       tickTimer: null,
       broadcastTimer: null,
       joinTimeout: null,
+      postGameTimer: null,
     };
     session.joinTimeout = setTimeout(() => {
       if (session.started) return;
@@ -141,13 +152,19 @@ export class GameSessionService {
       session.engine.step(session.state, leftInput, rightInput, 1 / TICK_RATE);
       session.tick += 1;
       if (session.state.gameOver) {
+        const winnerSide = this.toWinnerSide(session.state.winner);
+        const winnerName = winnerSide
+          ? session.players[winnerSide]?.displayName ?? null
+          : null;
         this.broadcast(session, {
           type: 'game_over',
           winner: session.state.winner,
           score: session.state.score,
+          winnerName,
         });
-        this.completeGameRecord(session, this.toWinnerSide(session.state.winner));
-        this.stopSession(session.matchId);
+        this.completeGameRecord(session, winnerSide);
+        this.stopGameLoop(session);
+        this.schedulePostGameCleanup(session);
       }
     }, tickInterval);
 
@@ -172,6 +189,13 @@ export class GameSessionService {
         ? 'right'
         : null;
 
+    if (session.completed) {
+      if (!remainingSide) {
+        this.stopSession(session.matchId);
+      }
+      return;
+    }
+
     if (remainingSide) {
       this.broadcast(session, {
         type: 'player_left',
@@ -185,15 +209,7 @@ export class GameSessionService {
   private stopSession(matchId: string) {
     const session = this.sessions.get(matchId);
     if (!session) return;
-    this.clearJoinTimeout(session);
-    if (session.tickTimer) clearInterval(session.tickTimer);
-    if (session.broadcastTimer) clearInterval(session.broadcastTimer);
-    session.tickTimer = null;
-    session.broadcastTimer = null;
-    if (session.started) {
-      this.metricsService.activeGamesCount.dec();
-    }
-    this.matchmakingService.clearAssignmentByMatchId(matchId);
+    this.teardownSessionLoop(session, { clearPostGameTimer: true });
     this.sessions.delete(matchId);
   }
 
@@ -201,6 +217,42 @@ export class GameSessionService {
     if (!session.joinTimeout) return;
     clearTimeout(session.joinTimeout);
     session.joinTimeout = null;
+  }
+
+  private clearPostGameTimer(session: GameSession) {
+    if (!session.postGameTimer) return;
+    clearTimeout(session.postGameTimer);
+    session.postGameTimer = null;
+  }
+
+  private stopGameLoop(session: GameSession) {
+    this.teardownSessionLoop(session, { clearPostGameTimer: false });
+  }
+
+  private schedulePostGameCleanup(session: GameSession) {
+    if (session.postGameTimer) return;
+    session.postGameTimer = setTimeout(() => {
+      this.stopSession(session.matchId);
+    }, POST_GAME_CHAT_MS);
+  }
+
+  private teardownSessionLoop(
+    session: GameSession,
+    options: { clearPostGameTimer: boolean },
+  ) {
+    this.clearJoinTimeout(session);
+    if (options.clearPostGameTimer) {
+      this.clearPostGameTimer(session);
+    }
+    if (session.tickTimer) clearInterval(session.tickTimer);
+    if (session.broadcastTimer) clearInterval(session.broadcastTimer);
+    session.tickTimer = null;
+    session.broadcastTimer = null;
+    if (session.started) {
+      this.metricsService.activeGamesCount.dec();
+      session.started = false;
+    }
+    this.matchmakingService.clearAssignmentByMatchId(session.matchId);
   }
 
   private handleHeartbeatTimeout(session: GameSession) {

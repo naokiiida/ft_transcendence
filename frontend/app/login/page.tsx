@@ -45,7 +45,8 @@ function LoginPageClient() {
   const searchParams = useSearchParams();
   const { setUserFromApi, setUser, isAuthenticated, isLoading } = useUser();
   const rawNext = searchParams.get("next") || "/user";
-  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//")
+  const nextPath =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.includes("\\")
     ? rawNext
     : "/user";
 

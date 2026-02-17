@@ -12,7 +12,7 @@ export default function Home() {
       <div className="flex flex-col items-center justify-center gap-8 px-4 py-16">
         <Logo size="lg" />
         <p className="text-center text-lg text-muted-foreground">
-          リアルタイムマルチプレイヤー Pong とトーナメント
+          リアルタイムオンライン対戦 Pong と 気軽にAIバトル
         </p>
 
         <div className="flex flex-wrap gap-4">

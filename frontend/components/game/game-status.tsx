@@ -94,7 +94,7 @@ export function GameStatus({
           <div className="flex flex-col items-center gap-4">
             <Trophy className="h-16 w-16 text-accent" />
             <p className="text-3xl font-bold text-accent text-glow">
-              {winner ? `${winner} Wins!` : "Game Over"}
+              {winner ? `${winner} の勝利！` : "試合終了"}
             </p>
           </div>
         )}

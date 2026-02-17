@@ -39,13 +39,13 @@ export function MatchmakingQueue({
           <Loader2
             className={cn("h-5 w-5 text-primary", isSearching && "animate-spin")}
           />
-          {isSearching ? "Finding Opponent" : "Matchmaking"}
+          {isSearching ? "対戦相手を検索中" : "マッチング"}
         </CardTitle>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
         <div className="flex justify-between text-sm text-muted-foreground">
-          <span>Time in queue</span>
+          <span>待機時間</span>
           <span className="font-mono text-foreground">
             {formatTime(queueTime)}
           </span>
@@ -55,7 +55,7 @@ export function MatchmakingQueue({
           <div className="flex justify-between text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Users className="h-4 w-4" />
-              Players searching
+              検索中プレイヤー
             </span>
             <span className="font-mono text-foreground">{playersInQueue}</span>
           </div>
@@ -87,7 +87,7 @@ export function MatchmakingQueue({
             disabled={isBusy}
           >
             <X className="mr-2 h-4 w-4" />
-            Cancel
+            キャンセル
           </Button>
         )}
       </CardContent>
