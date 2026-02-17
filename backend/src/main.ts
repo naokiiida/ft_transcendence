@@ -10,6 +10,7 @@ async function bootstrap() {
   runMigrations();
 
   const app = await NestFactory.create(AppModule);
+  // WebSocket を Nest 上で使えるようにする（ws パッケージ）。
   app.useWebSocketAdapter(new WsAdapter(app));
   // CORS設定、credentialsをtrueにしないとクッキーが送信されない
   app.enableCors({
@@ -41,6 +42,7 @@ async function bootstrap() {
   const envPort = process.env.PORT;
   const parsedPort = envPort ? Number(envPort) : NaN;
   const port = Number.isFinite(parsedPort) ? parsedPort : 3001;
+  // HTTP サーバー起動
   await app.listen(port);
 }
 bootstrap();

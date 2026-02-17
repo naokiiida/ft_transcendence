@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import { OnlineMatchClient } from "./online-match-client";
 
+// 常に動的レンダリング（query string に依存するため）
 export const dynamic = "force-dynamic";
 
 export default function OnlineMatchPage() {
+  // searchParams を使うので Suspense で包む
   return (
     <Suspense
       fallback={

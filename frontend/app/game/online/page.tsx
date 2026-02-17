@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AuthGate } from "@/components/auth/auth-gate";
 
 type MatchmakingStatus = {
+  // バックエンドのマッチング状態レスポンス
   in_queue: boolean;
   players_in_queue: number;
   queued_at: number | null;
@@ -28,7 +29,9 @@ const COUNTDOWN_SECONDS = 3;
 
 export default function OnlineGamePage() {
   const router = useRouter();
+  // APIのベースURL（環境変数が無ければローカル）
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  // 画面状態
   const [isSearching, setIsSearching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -52,6 +55,7 @@ export default function OnlineGamePage() {
     matchIdRef.current = matchId;
   }, [matchId]);
 
+  // サーバーの状態を画面の state に反映する
   const applyStatus = useCallback((status: MatchmakingStatus) => {
     setIsSearching(status.in_queue);
     setIsMatched(status.matched);
@@ -80,6 +84,7 @@ export default function OnlineGamePage() {
     }
   }, [lastNoticeAt]);
 
+  // 現在のマッチング状態を取得
   const fetchStatus = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/matchmaking/status`, {
       credentials: "include",
@@ -91,6 +96,7 @@ export default function OnlineGamePage() {
     applyStatus(data);
   }, [apiBase, applyStatus]);
 
+  // マッチング開始
   const joinQueue = useCallback(async () => {
     setIsBusy(true);
     setError(null);
@@ -112,6 +118,7 @@ export default function OnlineGamePage() {
     }
   }, [apiBase, applyStatus]);
 
+  // マッチング離脱
   const leaveQueue = useCallback(async () => {
     setIsBusy(true);
     setError(null);
@@ -133,6 +140,7 @@ export default function OnlineGamePage() {
   }, [apiBase, applyStatus]);
 
   useEffect(() => {
+    // 待機時間の表示用タイマー
     if (!isSearching) return;
     const timer = setInterval(() => {
       if (queuedAt) {
@@ -145,6 +153,7 @@ export default function OnlineGamePage() {
   }, [isSearching, queuedAt]);
 
   useEffect(() => {
+    // マッチング状態をポーリングで更新
     if (!isSearching && !isMatched) return;
     const intervalMs = isMatched ? 1000 : 5000;
     void fetchStatus().catch(() => {
@@ -159,6 +168,7 @@ export default function OnlineGamePage() {
   }, [isSearching, isMatched, fetchStatus]);
 
   useEffect(() => {
+    // マッチ成立後の「見つかりました」→カウントダウン演出
     if (!isMatched || !matchedAt) return;
     const tick = () => {
       const elapsed = Math.floor((Date.now() - matchedAt) / 1000);
@@ -183,6 +193,7 @@ export default function OnlineGamePage() {
   }, [isMatched, matchedAt]);
 
   useEffect(() => {
+    // カウントダウン後に試合ページへ遷移
     if (phase !== "matched") return;
     if (!matchId) return;
     const timer = setTimeout(() => {
@@ -203,6 +214,7 @@ export default function OnlineGamePage() {
     return () => clearTimeout(timer);
   }, [phase, matchId, router, fetchStatus]);
 
+  // ユーザーが待機キャンセルしたとき
   const handleCancel = () => {
     void leaveQueue();
     setPhase("waiting");

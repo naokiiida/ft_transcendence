@@ -9,6 +9,7 @@ import type { GameState, InputState } from './game/state';
 type PlayerSide = 'left' | 'right';
 
 type PlayerSlot = {
+  // 参加プレイヤーの接続情報と入力
   userId: string;
   displayName: string;
   socket: WebSocket;
@@ -17,6 +18,7 @@ type PlayerSlot = {
 };
 
 type GameSession = {
+  // 1試合の状態を保持するセッション
   matchId: string;
   gameId: string | null;
   state: GameState;
@@ -31,15 +33,21 @@ type GameSession = {
   postGameTimer: ReturnType<typeof setTimeout> | null;
 };
 
+// 1秒あたりの更新/配信レート
 const TICK_RATE = 30;
 const BROADCAST_RATE = 15;
+// 心拍が途絶えた場合のタイムアウト
 const HEARTBEAT_TIMEOUT_MS = 5000;
+// 対戦相手が参加しない場合のタイムアウト
 const JOIN_TIMEOUT_MS = 60000;
+// 試合終了後のチャット猶予時間
 const POST_GAME_CHAT_MS = 30_000;
 
 @Injectable()
 export class GameSessionService {
+  // matchId -> セッション
   private readonly sessions = new Map<string, GameSession>();
+  // userId -> (matchId, side) 逆引きインデックス
   private readonly userIndex = new Map<string, { matchId: string; side: PlayerSide }>();
 
   constructor(
@@ -55,6 +63,7 @@ export class GameSessionService {
     displayName: string,
     socket: WebSocket,
   ) {
+    // 参加プレイヤーをセッションに登録
     const session = this.getOrCreate(matchId);
     session.players[side] = {
       userId,
@@ -72,6 +81,7 @@ export class GameSessionService {
   }
 
   updateInput(matchId: string, side: PlayerSide, input: InputState) {
+    // クライアント入力を反映
     const session = this.sessions.get(matchId);
     if (!session) return;
     const slot = session.players[side];
@@ -81,6 +91,7 @@ export class GameSessionService {
   }
 
   recordHeartbeat(matchId: string, side: PlayerSide) {
+    // 接続維持用 ping の受信時刻を更新
     const session = this.sessions.get(matchId);
     if (!session) return;
     const slot = session.players[side];
@@ -89,6 +100,7 @@ export class GameSessionService {
   }
 
   removePlayerByUser(userId: string) {
+    // ユーザーIDからセッションを逆引きして削除
     const entry = this.userIndex.get(userId);
     if (!entry) return;
     this.userIndex.delete(userId);
@@ -98,6 +110,7 @@ export class GameSessionService {
   }
 
   private getOrCreate(matchId: string): GameSession {
+    // 既存セッションがあれば再利用、なければ新規作成
     const existing = this.sessions.get(matchId);
     if (existing) return existing;
     const session: GameSession = {
@@ -130,6 +143,7 @@ export class GameSessionService {
   }
 
   private isReady(session: GameSession) {
+    // 左右プレイヤーが揃っているか
     return Boolean(session.players.left && session.players.right);
   }
 
@@ -144,6 +158,7 @@ export class GameSessionService {
     const tickInterval = Math.round(1000 / TICK_RATE);
     const broadcastInterval = Math.round(1000 / BROADCAST_RATE);
     session.tickTimer = setInterval(() => {
+      // 入力反映 → ゲーム進行
       if (this.handleHeartbeatTimeout(session)) {
         return;
       }
@@ -152,6 +167,7 @@ export class GameSessionService {
       session.engine.step(session.state, leftInput, rightInput, 1 / TICK_RATE);
       session.tick += 1;
       if (session.state.gameOver) {
+        // ゲーム終了時の処理
         const winnerSide = this.toWinnerSide(session.state.winner);
         const winnerName = winnerSide
           ? session.players[winnerSide]?.displayName ?? null
@@ -169,6 +185,7 @@ export class GameSessionService {
     }, tickInterval);
 
     session.broadcastTimer = setInterval(() => {
+      // 状態を定期的に配信
       this.broadcast(session, {
         type: 'state',
         tick: session.tick,
@@ -197,6 +214,7 @@ export class GameSessionService {
     }
 
     if (remainingSide) {
+      // 相手が残っている場合は勝者通知
       this.broadcast(session, {
         type: 'player_left',
         winner: remainingSide,
@@ -209,6 +227,7 @@ export class GameSessionService {
   private stopSession(matchId: string) {
     const session = this.sessions.get(matchId);
     if (!session) return;
+    // ループ停止とセッション破棄
     this.teardownSessionLoop(session, { clearPostGameTimer: true });
     this.sessions.delete(matchId);
   }
@@ -230,6 +249,7 @@ export class GameSessionService {
   }
 
   private schedulePostGameCleanup(session: GameSession) {
+    // 試合終了後、一定時間でセッションを掃除
     if (session.postGameTimer) return;
     session.postGameTimer = setTimeout(() => {
       this.stopSession(session.matchId);
@@ -252,10 +272,12 @@ export class GameSessionService {
       this.metricsService.activeGamesCount.dec();
       session.started = false;
     }
+    // マッチング側の割当も解除
     this.matchmakingService.clearAssignmentByMatchId(session.matchId);
   }
 
   private handleHeartbeatTimeout(session: GameSession) {
+    // 心拍が途絶えたら試合を中断
     const now = Date.now();
     const leftStale =
       session.players.left && now - session.players.left.lastSeen > HEARTBEAT_TIMEOUT_MS;
@@ -275,6 +297,7 @@ export class GameSessionService {
   }
 
   private initializeGameRecord(session: GameSession) {
+    // DB上のゲームレコードを作成
     if (session.gameId) return true;
     const leftId = session.players.left?.userId;
     const rightId = session.players.right?.userId;
@@ -306,6 +329,7 @@ export class GameSessionService {
   }
 
   private completeGameRecord(session: GameSession, winnerSide: PlayerSide | null) {
+    // 試合結果をDBに保存
     if (session.completed) return;
     session.completed = true;
     if (!session.gameId) return;
@@ -323,12 +347,14 @@ export class GameSessionService {
   }
 
   broadcastToMatch(matchId: string, payload: unknown): void {
+    // 外部から matchId 指定で送信したい場合に使う
     const session = this.sessions.get(matchId);
     if (!session) return;
     this.broadcast(session, payload);
   }
 
   private broadcast(session: GameSession, payload: unknown) {
+    // 左右のプレイヤーへ同報送信
     const message = JSON.stringify(payload);
     const targets = [session.players.left?.socket, session.players.right?.socket];
     for (const socket of targets) {

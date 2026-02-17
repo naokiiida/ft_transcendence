@@ -15,6 +15,7 @@ import { GameSessionService } from './game-session.service';
 import { ChatService } from './chat.service';
 
 type ConnectionInfo = {
+  // 1クライアントに紐づく認証/マッチ情報
   userId: string;
   displayName: string;
   matchId: string | null;
@@ -22,6 +23,7 @@ type ConnectionInfo = {
 };
 
 type ClientMessage =
+  // クライアントから届く WebSocket メッセージ
   | { type: 'join'; matchId: string }
   | { type: 'input'; up: boolean; down: boolean; seq?: number }
   | { type: 'ping' }
@@ -31,7 +33,9 @@ type ClientMessage =
 export class GameGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
 {
+  // 接続中のクライアントとそのメタ情報
   private readonly connections = new Map<WebSocket, ConnectionInfo>();
+  // マッチが解散された通知を受け取るためのハンドラ
   private readonly matchDissolvedHandler: (payload: {
     opponentId: string;
     matchId: string;
@@ -53,6 +57,7 @@ export class GameGateway
     }) => {
       this.notifyMatchDissolved(payload);
     };
+    // マッチングサービスのイベントを購読
     this.matchmakingService.events.on(
       'match_dissolved',
       this.matchDissolvedHandler,
@@ -60,6 +65,7 @@ export class GameGateway
   }
 
   onModuleDestroy() {
+    // モジュール破棄時にイベント購読を解除
     this.matchmakingService.events.off(
       'match_dissolved',
       this.matchDissolvedHandler,
@@ -67,6 +73,7 @@ export class GameGateway
   }
 
   handleConnection(client: WebSocket, request: IncomingMessage) {
+    // Cookie のセッションIDからユーザーを特定
     const sessionId = readCookie(request.headers.cookie, 'ft_session');
     const user = sessionId ? this.authService.findUserBySession(sessionId) : null;
     if (!user) {
@@ -83,12 +90,14 @@ export class GameGateway
       side: null,
     });
 
+    // 生の ws イベントからメッセージを受け取る
     client.on('message', (data) => this.handleMessage(client, data));
   }
 
   handleDisconnect(client: WebSocket) {
     const info = this.connections.get(client);
     if (!info) return;
+    // 切断時にチャット/セッションの後処理
     this.chatService.clearUser(info.userId);
     this.sessionService.removePlayerByUser(info.userId);
     this.connections.delete(client);
@@ -101,6 +110,7 @@ export class GameGateway
     if (!info) return;
     let message: ClientMessage;
     try {
+      // ws の RawData を文字列化して JSON 解析
       let text: string;
       if (typeof data === 'string') {
         text = data;
@@ -118,6 +128,7 @@ export class GameGateway
       return;
     }
 
+    // メッセージ種別ごとに処理
     if (message.type === 'join') {
       this.handleJoin(client, info, message.matchId);
       return;
@@ -144,6 +155,7 @@ export class GameGateway
   }
 
   private handleJoin(client: WebSocket, info: ConnectionInfo, matchId: string) {
+    // 既に参加済みなら無視
     if (info.matchId) return;
     const assignment = this.matchmakingService.getAssignment(info.userId);
     if (!assignment || assignment.matchId !== matchId) {
@@ -161,6 +173,7 @@ export class GameGateway
       client,
     );
     const opponent = this.usersService.findByUuid(assignment.opponentId);
+    // 初期状態をクライアントに送信
     this.safeSend(client, {
       type: 'welcome',
       matchId,
@@ -177,6 +190,7 @@ export class GameGateway
   ) {
     if (!info.matchId || !info.side) return;
 
+    // バリデーション（レート制限/長さなど）
     const result = this.chatService.validate(info.userId, raw);
     if (!result.ok) {
       this.safeSend(client, {
@@ -188,6 +202,7 @@ export class GameGateway
     }
 
     const sender = this.usersService.findByUuid(info.userId);
+    // 試合参加者へブロードキャスト
     this.sessionService.broadcastToMatch(info.matchId, {
       type: 'chat_received',
       game_id: info.matchId,
@@ -201,6 +216,7 @@ export class GameGateway
   }
 
   private safeSend(client: WebSocket, payload: unknown) {
+    // readyState: 1 = OPEN
     if (client.readyState !== 1) return;
     client.send(JSON.stringify(payload));
   }
@@ -210,6 +226,7 @@ export class GameGateway
     matchId: string;
     reason: 'opponent_left';
   }) {
+    // 相手が離脱した場合の通知
     this.sessionService.removePlayerByUser(payload.opponentId);
     for (const [client, info] of this.connections.entries()) {
       if (info.userId !== payload.opponentId) continue;

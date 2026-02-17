@@ -9,6 +9,7 @@ import { GameSessionService } from './game-session.service';
 import { ChatService } from './chat.service';
 
 @Module({
+  // WebSocket関連の依存関係をまとめるモジュール
   imports: [AuthModule, MatchmakingModule, GamesModule, UsersModule, ObservabilityModule],
   providers: [GameGateway, GameSessionService, ChatService],
 })
