@@ -60,6 +60,8 @@ type ChatMessageItem = {
   isOwn?: boolean;
 };
 
+const POST_GAME_CHAT_MS = 30_000;
+
 export function OnlineMatchClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,6 +87,8 @@ export function OnlineMatchClient() {
   const [chatOpen, setChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const chatOpenRef = useRef(chatOpen);
+  const [postGameChatActive, setPostGameChatActive] = useState(false);
+  const postGameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ballColorByRankEnabled] = useBallColorByRankEnabled();
 
   const updateStatus = (next: typeof status) => {
@@ -99,6 +103,25 @@ export function OnlineMatchClient() {
       setUnreadCount(0);
     }
   }, [chatOpen]);
+
+  const startPostGameChatWindow = useCallback(() => {
+    setPostGameChatActive(true);
+    if (postGameTimerRef.current) {
+      clearTimeout(postGameTimerRef.current);
+    }
+    postGameTimerRef.current = setTimeout(() => {
+      setPostGameChatActive(false);
+    }, POST_GAME_CHAT_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (postGameTimerRef.current) {
+        clearTimeout(postGameTimerRef.current);
+        postGameTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -180,6 +203,7 @@ export function OnlineMatchClient() {
               ? "Right"
               : null;
         setWinner(label);
+        startPostGameChatWindow();
         return;
       }
 
@@ -246,7 +270,7 @@ export function OnlineMatchClient() {
       ws.close();
       wsRef.current = null;
     };
-  }, [matchId, wsUrl, user?.uuid]);
+  }, [matchId, wsUrl, user?.uuid, startPostGameChatWindow]);
 
   useEffect(() => {
     const ws = wsRef.current;
@@ -324,7 +348,10 @@ export function OnlineMatchClient() {
     ws.send(JSON.stringify({ type: "chat_message", content }));
   }, []);
 
-  const chatDisabled = status !== "playing" && status !== "waiting";
+  const chatDisabled =
+    status !== "playing" &&
+    status !== "waiting" &&
+    !(status === "finished" && postGameChatActive);
 
   return (
     <AuthGate>
