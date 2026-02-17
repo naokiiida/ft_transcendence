@@ -196,13 +196,17 @@ export function OnlineMatchClient() {
 
       if (msg.type === "game_over") {
         updateStatus("finished");
-        const label =
-          msg.winner === "left"
-            ? "Left"
-            : msg.winner === "right"
-              ? "Right"
-              : null;
-        setWinner(label);
+        if (msg.winner === "left" || msg.winner === "right") {
+          const selfName = user?.display_name ?? "あなた";
+          const opponentLabel = opponentName ?? "相手";
+          if (side) {
+            setWinner(msg.winner === side ? selfName : opponentLabel);
+          } else {
+            setWinner(msg.winner === "left" ? "左" : "右");
+          }
+        } else {
+          setWinner(null);
+        }
         startPostGameChatWindow();
         return;
       }
