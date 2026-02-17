@@ -2,7 +2,7 @@
 
 import { useUser } from "@/components/auth/user-context";
 import { useRouter } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthGate } from "@/components/auth/auth-gate";
@@ -601,12 +601,17 @@ export default function UserPage() {
   };
 
   // ----- フレンド関連: 参照用セット -----
-  const friendIdSet = new Set(friends.map((friend) => friend.friend_id));
-  const incomingRequestSet = new Set(
-    pendingRequests.map((request) => request.requester_id),
+  const friendIdSet = useMemo(
+    () => new Set(friends.map((friend) => friend.friend_id)),
+    [friends],
   );
-  const outgoingRequestSet = new Set(
-    sentRequests.map((request) => request.addressee_id),
+  const incomingRequestSet = useMemo(
+    () => new Set(pendingRequests.map((request) => request.requester_id)),
+    [pendingRequests],
+  );
+  const outgoingRequestSet = useMemo(
+    () => new Set(sentRequests.map((request) => request.addressee_id)),
+    [sentRequests],
   );
   const displayName = user?.display_name ?? "Guest";
   const avatarDisplayName = user?.display_name ?? "U";

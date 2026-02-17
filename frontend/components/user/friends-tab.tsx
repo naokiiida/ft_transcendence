@@ -365,19 +365,17 @@ export function FriendsTab({
                                   <DialogClose asChild>
                                     <Button variant="outline">キャンセル</Button>
                                   </DialogClose>
-                                  <DialogClose asChild>
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() =>
-                                        onRemoveFriend(friend.friendship_id)
-                                      }
-                                      disabled={removingFriendId !== null}
-                                    >
-                                      {removingFriendId === friend.friendship_id
-                                        ? "解除中..."
-                                        : "解除する"}
-                                    </Button>
-                                  </DialogClose>
+                                  <Button
+                                    variant="destructive"
+                                    onClick={() =>
+                                      onRemoveFriend(friend.friendship_id)
+                                    }
+                                    disabled={removingFriendId !== null}
+                                  >
+                                    {removingFriendId === friend.friendship_id
+                                      ? "解除中..."
+                                      : "解除する"}
+                                  </Button>
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>

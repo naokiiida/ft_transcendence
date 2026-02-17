@@ -209,17 +209,7 @@ export class GameSessionService {
   private stopSession(matchId: string) {
     const session = this.sessions.get(matchId);
     if (!session) return;
-    this.clearJoinTimeout(session);
-    this.clearPostGameTimer(session);
-    if (session.tickTimer) clearInterval(session.tickTimer);
-    if (session.broadcastTimer) clearInterval(session.broadcastTimer);
-    session.tickTimer = null;
-    session.broadcastTimer = null;
-    if (session.started) {
-      this.metricsService.activeGamesCount.dec();
-      session.started = false;
-    }
-    this.matchmakingService.clearAssignmentByMatchId(matchId);
+    this.teardownSessionLoop(session, { clearPostGameTimer: true });
     this.sessions.delete(matchId);
   }
 
@@ -236,7 +226,24 @@ export class GameSessionService {
   }
 
   private stopGameLoop(session: GameSession) {
+    this.teardownSessionLoop(session, { clearPostGameTimer: false });
+  }
+
+  private schedulePostGameCleanup(session: GameSession) {
+    if (session.postGameTimer) return;
+    session.postGameTimer = setTimeout(() => {
+      this.stopSession(session.matchId);
+    }, POST_GAME_CHAT_MS);
+  }
+
+  private teardownSessionLoop(
+    session: GameSession,
+    options: { clearPostGameTimer: boolean },
+  ) {
     this.clearJoinTimeout(session);
+    if (options.clearPostGameTimer) {
+      this.clearPostGameTimer(session);
+    }
     if (session.tickTimer) clearInterval(session.tickTimer);
     if (session.broadcastTimer) clearInterval(session.broadcastTimer);
     session.tickTimer = null;
@@ -246,13 +253,6 @@ export class GameSessionService {
       session.started = false;
     }
     this.matchmakingService.clearAssignmentByMatchId(session.matchId);
-  }
-
-  private schedulePostGameCleanup(session: GameSession) {
-    if (session.postGameTimer) return;
-    session.postGameTimer = setTimeout(() => {
-      this.stopSession(session.matchId);
-    }, POST_GAME_CHAT_MS);
   }
 
   private handleHeartbeatTimeout(session: GameSession) {

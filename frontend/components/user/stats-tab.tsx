@@ -54,17 +54,19 @@ export function StatsTab({
                 <Badge variant="outline">最高ランク到達</Badge>
               )}
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">
-                次のランクまで {remainingForNextRank} スコア
-              </p>
-              <div className="mt-2 flex items-center gap-3">
-                <Progress value={progressToNextRank} />
-                <span className="text-sm font-semibold">
-                  {progressToNextRank}%
-                </span>
+            {nextRankLabel ? (
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  次のランクまで {remainingForNextRank} スコア
+                </p>
+                <div className="mt-2 flex items-center gap-3">
+                  <Progress value={progressToNextRank} />
+                  <span className="text-sm font-semibold">
+                    {progressToNextRank}%
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : null}
           </CardContent>
         </Card>
 

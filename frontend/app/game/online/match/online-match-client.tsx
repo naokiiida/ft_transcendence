@@ -82,6 +82,9 @@ export function OnlineMatchClient() {
   const [side, setSide] = useState<"left" | "right" | null>(null);
   const [opponentName, setOpponentName] = useState<string | null>(null);
   const statusRef = useRef(status);
+  const sideRef = useRef<typeof side>(side);
+  const opponentNameRef = useRef<string | null>(opponentName);
+  const userNameRef = useRef<string | null>(user?.display_name ?? null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessageItem[]>([]);
@@ -104,6 +107,18 @@ export function OnlineMatchClient() {
       setUnreadCount(0);
     }
   }, [chatOpen]);
+
+  useEffect(() => {
+    sideRef.current = side;
+  }, [side]);
+
+  useEffect(() => {
+    opponentNameRef.current = opponentName;
+  }, [opponentName]);
+
+  useEffect(() => {
+    userNameRef.current = user?.display_name ?? null;
+  }, [user?.display_name]);
 
   const startPostGameChatWindow = useCallback(() => {
     setPostGameChatActive(true);
@@ -140,10 +155,20 @@ export function OnlineMatchClient() {
         const ballColor = ballColorByRankEnabled
           ? getBallColorForRank(rankLabel)
           : undefined;
-        // should change label to player name
+        const selfName = userNameRef.current ?? "あなた";
+        const opponentLabel = opponentNameRef.current ?? "相手";
+        let leftName = "左";
+        let rightName = "右";
+        if (sideRef.current === "left") {
+          leftName = selfName;
+          rightName = opponentLabel;
+        } else if (sideRef.current === "right") {
+          leftName = opponentLabel;
+          rightName = selfName;
+        }
         renderGame(ctx, state, {
-          leftName: "Left player",
-          rightName: "Right player",
+          leftName,
+          rightName,
           ballColor,
         });
       }
@@ -200,11 +225,12 @@ export function OnlineMatchClient() {
         if (msg.winnerName) {
           setWinner(msg.winnerName);
         } else if (msg.winner === "left" || msg.winner === "right") {
-          const selfName = user?.display_name ?? null;
-          const opponentLabel = opponentName ?? null;
+          const selfName = userNameRef.current;
+          const opponentLabel = opponentNameRef.current;
           let winnerName: string | null = null;
-          if (side) {
-            winnerName = msg.winner === side ? selfName : opponentLabel;
+          if (sideRef.current) {
+            winnerName =
+              msg.winner === sideRef.current ? selfName : opponentLabel;
           }
           if (!winnerName) {
             winnerName = msg.winner === "left" ? "左" : "右";

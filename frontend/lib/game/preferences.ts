@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "ft_ball_color_by_rank";
 
@@ -15,9 +15,11 @@ export function setBallColorByRankEnabled(value: boolean): void {
 }
 
 export function useBallColorByRankEnabled() {
-  const [enabled, setEnabled] = useState<boolean>(() =>
-    getBallColorByRankEnabled()
-  );
+  const [enabled, setEnabled] = useState<boolean>(true);
+
+  useEffect(() => {
+    setEnabled(getBallColorByRankEnabled());
+  }, []);
 
   const update = useCallback((value: boolean) => {
     setEnabled(value);
