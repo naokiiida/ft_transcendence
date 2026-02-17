@@ -1,14 +1,23 @@
 import type { GameState } from "./state";
 
+// GameState 内のパドル型を流用（left/right は同じ構造）。
 type Paddle = GameState["left"];
 
 type RenderOptions = {
+  // 表示用の名前（未指定ならデフォルト）。
   leftName?: string;
   rightName?: string;
+  // ボール色を上書きしたいときに指定。
   ballColor?: string;
 };
 
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, options: RenderOptions = {}) {
+// 1フレーム分の描画を行う。
+export function renderGame(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  options: RenderOptions = {},
+) {
+  // 背景の塗りつぶし（毎フレーム全体を描画する方式）。
   ctx.fillStyle = "#0b0b0b";
   ctx.fillRect(0, 0, state.width, state.height); // 背景塗りつぶし
 
@@ -45,6 +54,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, opti
 
   // ゲームオーバー表示
   if (state.gameOver) {
+    // 半透明の暗幕をかけて、文字を見やすくする。
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
     ctx.fillRect(0, 0, state.width, state.height);
     ctx.fillStyle = "#fef3c7";
@@ -62,7 +72,12 @@ function drawPaddle(ctx: CanvasRenderingContext2D, paddle: Paddle) {
   ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
 }
 
-function formatWinnerLabel(winner: GameState["winner"], leftName: string, rightName: string) {
+function formatWinnerLabel(
+  winner: GameState["winner"],
+  leftName: string,
+  rightName: string,
+) {
+  // 勝者が未確定ならプレースホルダーを返す。
   if (!winner) return "Winner: -";
 
   if (winner === "manual_end") {

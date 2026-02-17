@@ -6,6 +6,7 @@ import { Bot, Gamepad2, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
+  // ルートのトップページ（LP的な構成）。
   return (
     <div className="min-h-screen">
       {/* ヒーローセクション */}
@@ -15,6 +16,7 @@ export default function Home() {
           リアルタイムオンライン対戦 Pong と 気軽にAIバトル
         </p>
 
+        {/* 主要CTA（3つのゲームモードへの導線） */}
         <div className="flex flex-wrap gap-4">
           <Button size="lg" className="glow-primary" asChild>
             <Link href="/game/online">
@@ -36,6 +38,7 @@ export default function Home() {
           </Button>
         </div>
 
+        {/* 使用技術の簡易バッジ */}
         <div className="flex gap-2">
           <Badge variant="default">Next.js 15</Badge>
           <Badge variant="secondary">React 19</Badge>

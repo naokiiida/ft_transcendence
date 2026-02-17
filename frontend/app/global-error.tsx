@@ -6,10 +6,12 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Next.js のグローバルエラー画面（クライアント側）。
   return (
     <html lang="ja">
       <body
         style={{
+          // ページ全体を中央寄せで表示
           margin: 0,
           minHeight: "100vh",
           display: "flex",
@@ -37,6 +39,7 @@ export default function GlobalError({
             type="button"
             onClick={() => reset()}
             style={{
+              // シンプルな再試行ボタン
               padding: "0.5rem 1.5rem",
               fontSize: "0.875rem",
               backgroundColor: "#fafafa",

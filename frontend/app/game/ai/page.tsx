@@ -15,13 +15,13 @@ import {
 import { LocalMatch } from "@/lib/game/match";
 import { Button } from "@/components/ui/button";
 
-// AIレベルの選択肢を取得
+// AIレベルの選択肢を取得（隠しレベルは未解放なら除外）
 const AVAILABLE_AI_LEVELS = getAvailableAiLevels(DEFAULT_AI_UNLOCKS);
 type AiLevel = (typeof AVAILABLE_AI_LEVELS)[number]["id"];
 
 // ゲームページコンポーネント
 export default function GamePage() {
-  // 画面が変わらない要素
+  // 画面が変わらない参照（状態は持たずに保持する）
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState | null>(null);
   const gameOverRef = useRef(false);
@@ -42,13 +42,13 @@ export default function GamePage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    //  ゲームの初期化
+    // ゲームの初期化
     const state = createGameState(canvas.width, canvas.height);
     stateRef.current = state;
     // ゲームオーバーフラグの初期化
     gameOverRef.current = false;
     setGameOver(false);
-    // 入力状態を管理するオブジェクト
+    // 入力状態を管理するオブジェクト（キーボードで更新される）
     const input: InputState = { up: false, down: false };
     // ゲームエンジンとマッチの作成
     const engine = new PongEngine();
@@ -56,6 +56,7 @@ export default function GamePage() {
     const currentConfig = DEFAULT_AI_CONFIGS[aiLevel];
     const cpuName = currentConfig.name;
 
+    // 左: 人、右: AI のローカル対戦
     const match = new LocalMatch(engine, input, DEFAULT_AI_CONFIGS[aiLevel]);
 
     // キー割当
@@ -68,7 +69,7 @@ export default function GamePage() {
       S: "down",
     };
 
-    // キーイベントハンドラ 押したときと離したときで分ける
+    // キーイベントハンドラ（押したときと離したときで分ける）
     const handleKeyDown = (event: KeyboardEvent) => {
       const action = keyMap[event.key];
       if (!action) return;
@@ -92,6 +93,7 @@ export default function GamePage() {
 
     // ゲームループ
     const frame = (time: number) => {
+      // フレーム時間の上限を決めて暴走を防ぐ
       const dt = Math.min((time - lastTime) / 1000, 0.033);
       lastTime = time;
       match.tick(state, dt);
@@ -99,7 +101,10 @@ export default function GamePage() {
         gameOverRef.current = state.gameOver;
         setGameOver(state.gameOver);
       }
-      renderGame(ctx, state, {leftName: "Player", rightName: "CPU(" + cpuName + ")"});
+      renderGame(ctx, state, {
+        leftName: "Player",
+        rightName: "CPU(" + cpuName + ")",
+      });
       frameId = requestAnimationFrame(frame);
     };
 
@@ -113,7 +118,7 @@ export default function GamePage() {
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [aiLevel, sessionId]);
-  // useEffectの依存配列、ページの最初、aiLevelかsessionIdが変わったときに再実行される。
+  // useEffectの依存配列：初回と aiLevel / sessionId の変更時に再実行。
 
   // JSX（画面の見た目）
   return (
@@ -130,6 +135,7 @@ export default function GamePage() {
               variant={aiLevel === level.id ? "default" : "outline"}
               onClick={() => {
                 setAiLevel(level.id);
+                // 同じ難易度でも強制リスタートしたいので sessionId も更新
                 setSessionId((current) => current + 1);
               }}
             >

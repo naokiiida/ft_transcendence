@@ -2,6 +2,7 @@
 
 import type { Ball, GameState, InputState, Paddle } from "./state";
 
+// 速度は px/秒 を想定。
 const BALL_SPEED = 320; // 基準速度
 const BALL_SPEED_MAX = 520; // 最高速度(反射時に加速するため）
 
@@ -12,12 +13,14 @@ export function movePaddle(
   input: InputState,
   dt: number,
 ) {
+  // 入力フラグに応じて上下移動。
   if (input.up) {
     paddle.y -= paddle.speed * dt;
   }
   if (input.down) {
     paddle.y += paddle.speed * dt;
   }
+  // 画面外に出ないように上下端の余白で制限。
   paddle.y = clamp(paddle.y, 12, state.height - paddle.h - 12); //マージン12を確保して、それ以上にはみ出させない。
 }
 
@@ -38,7 +41,7 @@ export function moveBall(state: GameState, dt: number) {
     ball.vy = -Math.abs(ball.vy);
   }
 
-  //　パドルに衝突したら、反射させる。
+  // パドルに衝突したら、反射させる。
   if (hitsPaddle(ball, state.left)) {
     reflectFromPaddle(ball, state.left, 1);
   }
@@ -46,7 +49,7 @@ export function moveBall(state: GameState, dt: number) {
     reflectFromPaddle(ball, state.right, -1);
   }
 
-  //ボールが、左側をはみ出したら、右の得点。
+  // ボールが左側をはみ出したら、右の得点。
   if (ball.x + ball.r < 0) {
     state.score.right += 1;
     // 最大得点に達したら、ゲームオーバー。
@@ -55,7 +58,7 @@ export function moveBall(state: GameState, dt: number) {
       state.winner = "right";
       return;
     }
-    // ボールを中央にリスポーン。
+    // 右が得点したら、次は右方向へ。
     state.ball = spawnBall(state.width, state.height, 1);
   }
   if (ball.x - ball.r > state.width) {
@@ -65,6 +68,7 @@ export function moveBall(state: GameState, dt: number) {
       state.winner = "left";
       return;
     }
+    // 左が得点したら、次は左方向へ。
     state.ball = spawnBall(state.width, state.height, -1);
   }
 }
@@ -75,6 +79,7 @@ export function spawnBall(
   height: number,
   direction: 1 | -1,
 ): Ball {
+  // 角度は水平に近い範囲に限定（急角度になりすぎないようにする）。
   const angle = (Math.random() * 0.6 - 0.3) * Math.PI; // -0.3π〜+0.3πの範囲でランダムな角度。
   return {
     //画面中央から
@@ -88,6 +93,7 @@ export function spawnBall(
 }
 
 function hitsPaddle(ball: Ball, paddle: Paddle) {
+  // 円（ボール）と長方形（パドル）のAABB近似で当たり判定。
   return (
     ball.x - ball.r <= paddle.x + paddle.w &&
     ball.x + ball.r >= paddle.x &&
@@ -98,6 +104,7 @@ function hitsPaddle(ball: Ball, paddle: Paddle) {
 
 // パドルからの反射処理。
 function reflectFromPaddle(ball: Ball, paddle: Paddle, direction: 1 | -1) {
+  // 衝突位置から反射角を決める（中央に当たるほど水平に近い反射）。
   const center = paddle.y + paddle.h / 2;
   const offset = (ball.y - center) / (paddle.h / 2); // -1 〜 +1 の範囲に正規化された衝突位置
   const angle = clamp(offset, -1, 1) * 0.7; // 反射角度（最大±0.7ラジアン、約40度）
@@ -110,6 +117,7 @@ function reflectFromPaddle(ball: Ball, paddle: Paddle, direction: 1 | -1) {
   ball.vx = Math.cos(angle) * speed * direction;
   ball.vy = Math.sin(angle) * speed;
 
+  // 反射後にパドルの内側へめり込まないように位置を補正。
   if (direction === 1) {
     ball.x = paddle.x + paddle.w + ball.r;
   } else {
@@ -118,5 +126,6 @@ function reflectFromPaddle(ball: Ball, paddle: Paddle, direction: 1 | -1) {
 }
 
 function clamp(value: number, min: number, max: number) {
+  // 範囲外の値を min/max に丸めるヘルパー。
   return Math.min(Math.max(value, min), max);
 }

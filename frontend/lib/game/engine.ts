@@ -5,6 +5,7 @@ import { moveBall, movePaddle, spawnBall } from "./physics";
 
 // ここがメイン
 export class PongEngine {
+  // 外部から呼び出される初期化入口。
   createState(width: number, height: number) {
     return createGameState(width, height);
   }
@@ -16,11 +17,13 @@ export class PongEngine {
     cpuInput: InputState,
     dt: number,
   ) {
+    // 1フレーム分の更新（dt は秒）。
     updateGameWithInputs(state, playerInput, cpuInput, dt);
   }
 }
 
 // 定数
+// 速度は px/秒 を想定。
 const PADDLE_SPEED = 420;
 const CPU_SPEED = 340;
 const MAX_SCORE = 5;
@@ -48,6 +51,7 @@ export function createGameState(width: number, height: number): GameState {
       h: paddleHeight,
       speed: CPU_SPEED,
     },
+    // 初期ボールは右方向に出す（第3引数の向き）。
     ball: spawnBall(width, height, 1), // ボールの初期位置
     score: {
       left: 0,
@@ -66,16 +70,20 @@ export function updateGameWithInputs(
   cpuInput: InputState,
   dt: number,
 ) {
+  // 終了済みなら更新しない（入力も無視）。
   if (state.gameOver) {
     return;
   }
+  // 入力は {up, down} のフラグで、movePaddle が速度と境界処理を行う。
   movePaddle(state, state.left, playerInput, dt); // 左パドルの移動
   movePaddle(state, state.right, cpuInput, dt); // 右パドルの移動
+  // moveBall 内で壁反射や得点判定が行われる想定。
   moveBall(state, dt); // ボールの移動
 }
 
 // ゲームの手動終了。
 export function endGame(state: GameState) {
+  // UI 側で「中断」などの理由表示に使えるよう winner に種別を入れる。
   state.gameOver = true;
   state.winner = "manual_end";
 }

@@ -44,11 +44,13 @@ import type {
 // ユーザーページ
 // ===== ユーザーページ =====
 export default function UserPage() {
-  // UseUserからログアウト関数を取得
+  // ユーザー情報と認証操作（ログアウト/再取得）を取得
   const { user, logout, refreshUser, setUserFromApi } = useUser();
-  // ルーターを取得
+  // 画面遷移に使用
   const router = useRouter();
+  // APIのベースURL（環境変数が無ければローカル）
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  // 各種ローディング/エラー/状態
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [friends, setFriends] = useState<FriendEntry[]>([]); //フレンド一覧
   const [pendingRequests, setPendingRequests] = useState<PendingRequestEntry[]>(
@@ -92,6 +94,7 @@ export default function UserPage() {
   const [ballColorByRankEnabled, setBallColorByRankEnabled] =
     useBallColorByRankEnabled();
   // ----- ユーザー統計 -----
+  // ここは表示用の派生値（ユーザー情報から計算）
   const wins = user?.wins ?? 0;
   const losses = user?.losses ?? 0;
   const totalMatches = wins + losses;
@@ -113,11 +116,13 @@ export default function UserPage() {
     : 100;
   const remainingForNextRank = nextRank ? Math.max(0, nextRank.min - score) : 0;
   // ----- 表示補助 -----
+  // ISO文字列を日本語表示に変換するユーティリティ
   const formatDateTime = (value: string) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleString("ja-JP");
   };
+  // last_seen からオンライン状態を判定
   const getOnlineStatus = (lastSeen: string) => {
     const date = new Date(lastSeen);
     if (Number.isNaN(date.getTime())) {
@@ -135,6 +140,7 @@ export default function UserPage() {
     return { status: "offline" as const, label: "オフライン" };
   };
 
+  // 実績（UI表示用の疑似データ生成）
   const buildAchievements = () => {
     const totalMatches = wins + losses;
     const achievements: AchievementRow[] = [
@@ -339,6 +345,7 @@ export default function UserPage() {
 
   // ----- フレンド関連: 初期取得 -----
   useEffect(() => {
+    // ログインユーザーがいなければ状態をクリア
     if (!user?.uuid) {
       setFriends([]);
       setPendingRequests([]);
@@ -347,6 +354,7 @@ export default function UserPage() {
       setLeaderboard([]);
       return;
     }
+    // ユーザーがいる場合は各データを取得
     void refreshFriendData();
     void fetchMatchHistory();
     void fetchLeaderboard();
@@ -385,6 +393,7 @@ export default function UserPage() {
     }
   }, [user?.display_name]);
 
+  // 表示名の保存（API更新）
   const handleSaveProfile = async () => {
     if (profileSaving) return;
     setProfileSaving(true);
@@ -431,6 +440,7 @@ export default function UserPage() {
     setBallColorByRankEnabled(!ballColorByRankEnabled);
   };
 
+  // アカウント削除
   const handleDeleteAccount = async () => {
     if (deletingAccount) return;
     setDeletingAccount(true);
@@ -447,11 +457,13 @@ export default function UserPage() {
   };
 
   // ----- フレンド関連: 操作 -----
+  // 友達一覧・申請一覧の手動リフレッシュ
   const handleRefreshFriends = async () => {
     if (!user?.uuid) return;
     await refreshFriendData();
   };
 
+  // 申請の承認/拒否
   const handleRespondFriendRequest = async (
     requestId: string,
     response: "accepted" | "declined",
@@ -601,6 +613,7 @@ export default function UserPage() {
   };
 
   // ----- フレンド関連: 参照用セット -----
+  // 画面内での判定を高速にするため Set に変換
   const friendIdSet = useMemo(
     () => new Set(friends.map((friend) => friend.friend_id)),
     [friends],
@@ -633,6 +646,7 @@ export default function UserPage() {
       <AuthGate>
         <div className="mx-auto w-full max-w-6xl px-4 py-10">
         <Tabs defaultValue="profile">
+          {/* タブ切り替え */}
           <TabsList className="mb-6">
             <TabsTrigger value="profile">プロフィール</TabsTrigger>
             <TabsTrigger value="friends">フレンド</TabsTrigger>
@@ -641,6 +655,7 @@ export default function UserPage() {
             <TabsTrigger value="settings">設定</TabsTrigger>
           </TabsList>
 
+          {/* プロフィールタブ */}
           <ProfileTab
             displayName={displayName}
             avatarUrl={avatarUrl}
@@ -653,6 +668,7 @@ export default function UserPage() {
             onLogout={handleLogout}
           />
 
+          {/* フレンド管理タブ */}
           <FriendsTab
             friends={friends}
             friendsLoading={friendsLoading}
@@ -694,6 +710,7 @@ export default function UserPage() {
             refreshDisabled={refreshDisabled}
           />
 
+          {/* 統計タブ（ランク/実績/ランキング） */}
           <StatsTab
             currentRankLabel={currentRank.label}
             nextRankLabel={nextRank?.label ?? null}
@@ -706,6 +723,7 @@ export default function UserPage() {
             getRankForScore={getRankForScore}
           />
 
+          {/* 戦績タブ */}
           <RecordTab
             matchHistory={matchHistory}
             matchLoading={matchLoading}
@@ -714,6 +732,7 @@ export default function UserPage() {
             formatDateTime={formatDateTime}
           />
 
+          {/* 設定タブ */}
           <SettingsTab
             avatarUrl={avatarUrl}
             avatarDisplayName={avatarDisplayName}

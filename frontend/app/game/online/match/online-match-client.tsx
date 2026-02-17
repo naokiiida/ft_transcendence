@@ -16,6 +16,7 @@ import { getBallColorForRank } from "@/lib/game/ball-colors";
 import { useBallColorByRankEnabled } from "@/lib/game/preferences";
 
 type ServerMessage =
+  // サーバーから届くメッセージの型定義（WebSocket）。
   | {
       type: "welcome";
       matchId: string;
@@ -47,6 +48,7 @@ type ServerMessage =
   | { type: "error"; code?: string; message?: string };
 
 type ClientMessage =
+  // クライアントから送るメッセージの型定義（WebSocket）。
   | { type: "join"; matchId: string }
   | { type: "input"; up: boolean; down: boolean; seq: number }
   | { type: "ping" }
@@ -68,7 +70,9 @@ export function OnlineMatchClient() {
   const searchParams = useSearchParams();
   const { user } = useUser();
   const matchId = searchParams.get("matchId");
+  // WebSocket の接続先
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3001/api/ws";
+  // 描画とゲーム状態の参照（再レンダリングを抑えるため useRef を使用）
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const stateRef = useRef<GameState | null>(null);
@@ -95,6 +99,7 @@ export function OnlineMatchClient() {
   const postGameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ballColorByRankEnabled] = useBallColorByRankEnabled();
 
+  // state と ref の両方を更新して最新値を保持
   const updateStatus = (next: typeof status) => {
     statusRef.current = next;
     setStatus(next);
@@ -120,6 +125,7 @@ export function OnlineMatchClient() {
     userNameRef.current = user?.display_name ?? null;
   }, [user?.display_name]);
 
+  // 試合終了後のチャット許可時間（一定時間だけ開ける）
   const startPostGameChatWindow = useCallback(() => {
     setPostGameChatActive(true);
     if (postGameTimerRef.current) {
@@ -146,6 +152,7 @@ export function OnlineMatchClient() {
     if (!ctx) return;
     let frameId = 0;
 
+    // レンダリングループ（サーバー状態を描画）
     const frame = () => {
       const state = stateRef.current;
       if (state) {
@@ -180,12 +187,14 @@ export function OnlineMatchClient() {
   }, [ballColorByRankEnabled, user?.user_score]);
 
   useEffect(() => {
+    // matchId がない場合はエラー表示
     if (!matchId) {
       updateStatus("error");
       setMessage("matchId が見つかりません。");
       return;
     }
 
+    // WebSocket 接続を開始
     const ws = new WebSocket(`${wsUrl}?matchId=${encodeURIComponent(matchId)}`);
     wsRef.current = ws;
 
@@ -203,6 +212,7 @@ export function OnlineMatchClient() {
         return;
       }
 
+      // サーバーからのメッセージ種別ごとに状態更新
       if (msg.type === "welcome") {
         stateRef.current = msg.state;
         setSide(msg.side);
@@ -312,6 +322,7 @@ export function OnlineMatchClient() {
     const ws = wsRef.current;
     if (!ws) return;
 
+    // 入力キーの割り当て（ローカルと同じ）
     const keyMap: Record<string, "up" | "down"> = {
       ArrowUp: "up",
       ArrowDown: "down",
@@ -333,6 +344,7 @@ export function OnlineMatchClient() {
       wsRef.current.send(JSON.stringify(payload));
     };
 
+    // 押下/解放で入力を送信（変化があるときのみ送る）
     const handleKeyDown = (event: KeyboardEvent) => {
       const action = keyMap[event.key];
       if (!action) return;
@@ -361,6 +373,7 @@ export function OnlineMatchClient() {
   }, []);
 
   useEffect(() => {
+    // サーバーに定期 ping を送って接続維持
     const timer = setInterval(() => {
       if (!wsRef.current) return;
       if (wsRef.current.readyState !== WebSocket.OPEN) return;
@@ -371,6 +384,7 @@ export function OnlineMatchClient() {
   }, []);
 
   useEffect(() => {
+    // 切断/エラー時は少し待ってマッチング画面へ戻す
     if (status !== "disconnected" && status !== "error") return;
     const timer = setTimeout(() => {
       router.push("/game/online");
@@ -384,6 +398,7 @@ export function OnlineMatchClient() {
     ws.send(JSON.stringify({ type: "chat_message", content }));
   }, []);
 
+  // チャット入力の無効化判定
   const chatDisabled =
     status !== "playing" &&
     status !== "waiting" &&

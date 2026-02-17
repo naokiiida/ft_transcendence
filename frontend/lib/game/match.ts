@@ -13,10 +13,13 @@ export class Match {
     private left: PaddleController,
     private right: PaddleController,
   ) {}
-  // ゲーム状態を1ステップ進める。 requestAnimationFrameループ等から呼び出す。page.tsxのmatchTickから呼ばれる。
+  // ゲーム状態を1ステップ進める。requestAnimationFrameループ等から呼び出す。
+  // page.tsx の matchTick から呼ばれる想定。
   tick(state: GameState, dt: number) {
+    // 左右の入力生成はコントローラ側の責務（人/AI/リモートなど）。
     const leftInput = this.left.getInput(state, dt);
     const rightInput = this.right.getInput(state, dt);
+    // エンジンに入力を渡して物理・スコアなどを更新。
     this.engine.step(state, leftInput, rightInput, dt);
   }
 }
@@ -28,6 +31,7 @@ export class LocalMatch extends Match {
     playerInput: InputState,
     ai: AiDifficultyConfig,
   ) {
+    // 左は人、右はAIというローカル用の固定構成。
     super(
       engine,
       new HumanController(playerInput),

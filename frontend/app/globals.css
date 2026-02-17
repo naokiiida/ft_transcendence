@@ -5,6 +5,7 @@
 @layer base {
   :root {
     /* Retro Arcade Theme - Light */
+    /* アプリ全体のCSS変数（ライトテーマ） */
     --background: 0 0% 98%;
     --foreground: 0 0% 5%;
     --card: 0 0% 100%;
@@ -34,6 +35,7 @@
 
   .dark {
     /* Retro Arcade Theme - Dark (Primary) */
+    /* ダークテーマ用の上書き。layout.tsx の <html class="dark"> で有効 */
     --background: 0 0% 5%;
     --foreground: 0 0% 98%;
     --card: 0 0% 8%;
@@ -63,9 +65,11 @@
 
 @layer base {
   * {
+    /* Tailwind の border 色をテーマ変数に統一 */
     @apply border-border;
   }
   body {
+    /* 背景色・文字色・フォント機能を全体適用 */
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
@@ -74,15 +78,19 @@
 /* Retro arcade glow effects */
 @layer utilities {
   .glow-primary {
+    /* メインカラーの発光 */
     box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
   }
   .glow-secondary {
+    /* サブカラーの発光 */
     box-shadow: 0 0 20px hsl(var(--secondary) / 0.5);
   }
   .glow-accent {
+    /* アクセントカラーの発光 */
     box-shadow: 0 0 20px hsl(var(--accent) / 0.5);
   }
   .text-glow {
+    /* 文字の発光 */
     text-shadow: 0 0 10px currentColor;
   }
 }

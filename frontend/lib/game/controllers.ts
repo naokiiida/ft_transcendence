@@ -12,8 +12,10 @@ export type AiDifficultyConfig = {
   deadZonePx: number;
 };
 
+// DEFAULT_AI_CONFIGS のキー（"easy" | "medium" | ...）を型として再利用。
 export type AiDifficultyId = keyof typeof DEFAULT_AI_CONFIGS;
 
+// 隠し難易度の解放フラグ。将来増えることを想定してオブジェクト型にしている。
 export type AiUnlockState = {
   europeanHard: boolean;
 };
@@ -33,7 +35,7 @@ export const DEFAULT_AI_CONFIGS: Record<
     decisionIntervalMs: 140, //判断間隔
     aimNoisePx: 18, //照準ノイズ
     missChance: 0.5, //ミス確率
-    deadZonePx: 10, //デッドゾーン
+    deadZonePx: 10, //デッドゾーンとは、パドル中央からの距離がこの値以内なら入力しない設定。小さいほどシビアで、難易度が上がる。
   },
   medium: {
     name: "Medium",
@@ -61,6 +63,7 @@ export const DEFAULT_AI_CONFIGS: Record<
   },
 };
 
+// UI表示用の難易度一覧。hidden は未解放の場合に非表示。
 const AI_LEVELS: Array<{
   id: AiDifficultyId;
   hidden?: boolean;
@@ -72,6 +75,7 @@ const AI_LEVELS: Array<{
   { id: "EuropeanHard", hidden: true, unlockKey: "europeanHard" },
 ];
 
+// 解放済みの難易度だけを返すユーティリティ。
 export function getAvailableAiLevels(unlocks: AiUnlockState) {
   return AI_LEVELS.filter((level) => {
     if (!level.hidden) return true;
@@ -82,11 +86,13 @@ export function getAvailableAiLevels(unlocks: AiUnlockState) {
 
 // バー入力を生成する戦略（人/AI/リモート）、将来性を考慮したインターフェース。
 export interface PaddleController {
+  // dt: 前回フレームからの経過時間（秒）
   getInput(state: GameState, dt: number): InputState;
 }
 
 // 外部入力（キーボード等）をそのまま渡すラッパー。
 export class HumanController implements PaddleController {
+  // 外部入力をそのまま保持して返すだけ。
   private input: InputState;
 
   constructor(input: InputState) {
@@ -100,6 +106,7 @@ export class HumanController implements PaddleController {
 
 // 難易度設定で動作するAIコントローラ。
 export class AIController implements PaddleController {
+  // ms単位で内部時間を管理（dt は秒なので変換が必要）。
   private elapsedMs = 0; // 経過時間の累計
   private lastDecisionMs = 0; // 最後に判断を下した時間(判断を間引くため)
   private activeInput: InputState = { up: false, down: false }; // 現在出している入力
@@ -113,6 +120,7 @@ export class AIController implements PaddleController {
 
   // ゲーム状態に基づいて入力を生成。
   getInput(state: GameState, dt: number) {
+    // dt(秒) -> ms 変換。AIの各種設定がms単位なので合わせる。
     this.elapsedMs += dt * 1000; // msに変換して加算
 
     // 遅延時間が経過したら、保留中の入力をアクティブにする。
@@ -128,6 +136,7 @@ export class AIController implements PaddleController {
     ) {
       this.lastDecisionMs = this.elapsedMs;
       const paddle = state[this.side];
+      // パドル中央を基準に上下どちらに動くか判断する。
       const paddleCenter = paddle.y + paddle.h / 2;
       const targetY = this.getTargetY(state); // ノイズ付き目標Y座標
       let input: InputState = { up: false, down: false };
@@ -151,6 +160,7 @@ export class AIController implements PaddleController {
 
   // 目標Y座標を取得（ノイズ付き）。
   private getTargetY(state: GameState) {
+    // 照準ブレを付与して「完璧すぎない」挙動にする。
     const noise = (Math.random() * 2 - 1) * this.config.aimNoisePx;
     return state.ball.y + noise;
   }
