@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthGate } from "@/components/auth/auth-gate";
+import { useUser } from "@/components/auth/user-context";
 import { GameStatus } from "@/components/game/game-status";
+import { ChatPanel } from "@/components/game/chat-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageSquare } from "lucide-react";
 import { renderGame } from "@/lib/game/renderer";
 import type { GameState, InputState } from "@/lib/game/state";
 
@@ -30,16 +33,34 @@ type ServerMessage =
       message?: string;
     }
   | { type: "match_dissolved"; reason: "opponent_left"; message?: string }
-  | { type: "error"; message?: string };
+  | {
+      type: "chat_received";
+      game_id: string;
+      sender: { id: string; display_name: string };
+      content: string;
+      timestamp: number;
+    }
+  | { type: "error"; code?: string; message?: string };
 
 type ClientMessage =
   | { type: "join"; matchId: string }
   | { type: "input"; up: boolean; down: boolean; seq: number }
-  | { type: "ping" };
+  | { type: "ping" }
+  | { type: "chat_message"; content: string };
+
+type ChatMessageItem = {
+  id: string;
+  userId: string;
+  userName: string;
+  content: string;
+  timestamp: Date;
+  isOwn?: boolean;
+};
 
 export function OnlineMatchClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useUser();
   const matchId = searchParams.get("matchId");
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3001/api/ws";
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -56,10 +77,24 @@ export function OnlineMatchClient() {
   const [opponentName, setOpponentName] = useState<string | null>(null);
   const statusRef = useRef(status);
 
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessageItem[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const chatOpenRef = useRef(chatOpen);
+
   const updateStatus = (next: typeof status) => {
     statusRef.current = next;
     setStatus(next);
   };
+
+  // Keep chatOpenRef in sync
+  useEffect(() => {
+    chatOpenRef.current = chatOpen;
+    if (chatOpen) {
+      setUnreadCount(0);
+    }
+  }, [chatOpen]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -157,7 +192,30 @@ export function OnlineMatchClient() {
         return;
       }
 
+      if (msg.type === "chat_received") {
+        const isOwn = msg.sender.id === user?.uuid;
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            userId: msg.sender.id,
+            userName: msg.sender.display_name,
+            content: msg.content,
+            timestamp: new Date(msg.timestamp),
+            isOwn,
+          },
+        ]);
+        if (!chatOpenRef.current && !isOwn) {
+          setUnreadCount((prev) => prev + 1);
+        }
+        return;
+      }
+
       if (msg.type === "error") {
+        if (msg.code === "RATE_LIMITED" || msg.code === "INVALID_MESSAGE") {
+          // Non-fatal chat errors: don't terminate game session
+          return;
+        }
         updateStatus("error");
         setMessage(msg.message ?? "エラーが発生しました。");
       }
@@ -174,7 +232,7 @@ export function OnlineMatchClient() {
       ws.close();
       wsRef.current = null;
     };
-  }, [matchId, wsUrl]);
+  }, [matchId, wsUrl, user?.uuid]);
 
   useEffect(() => {
     const ws = wsRef.current;
@@ -246,6 +304,14 @@ export function OnlineMatchClient() {
     return () => clearTimeout(timer);
   }, [status, router]);
 
+  const handleSendChatMessage = useCallback((content: string) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "chat_message", content }));
+  }, []);
+
+  const chatDisabled = status !== "playing" && status !== "waiting";
+
   return (
     <AuthGate>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
@@ -261,9 +327,24 @@ export function OnlineMatchClient() {
                 : "対戦相手: 取得中..."}
             </p>
           </div>
-          <Button variant="outline" onClick={() => router.push("/game/online")}>
-            マッチングに戻る
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setChatOpen((prev) => !prev)}
+              className="relative"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/game/online")}>
+              マッチングに戻る
+            </Button>
+          </div>
         </div>
 
         <Card className="relative min-h-[360px] overflow-hidden">
@@ -294,6 +375,17 @@ export function OnlineMatchClient() {
             />
           </CardContent>
         </Card>
+
+        {chatOpen && (
+          <div className="h-80">
+            <ChatPanel
+              messages={chatMessages}
+              onSendMessage={handleSendChatMessage}
+              disabled={chatDisabled}
+              className="h-full"
+            />
+          </div>
+        )}
       </div>
     </AuthGate>
   );
