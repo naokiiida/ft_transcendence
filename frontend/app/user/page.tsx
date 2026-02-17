@@ -1,40 +1,27 @@
 "use client";
 
-import { OnlineIndicator } from "@/components/shared/online-indicator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { useUser } from "@/components/auth/user-context";
 import { useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { AvatarUpload } from "@/components/shared/avatar-upload";
-import { resolveApiUrl } from "@/lib/utils";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthGate } from "@/components/auth/auth-gate";
+import { ProfileTab } from "@/components/user/profile-tab";
+import { FriendsTab } from "@/components/user/friends-tab";
+import { StatsTab } from "@/components/user/stats-tab";
+import { RecordTab } from "@/components/user/record-tab";
+import { SettingsTab } from "@/components/user/settings-tab";
+import type {
+  AchievementRow,
+  FriendEntry,
+  LeaderboardEntry,
+  LeaderboardResponse,
+  MatchHistoryResponse,
+  MatchRow,
+  PendingRequestEntry,
+  SearchUserEntry,
+  SentRequestEntry,
+} from "@/lib/types/user";
 
 /*
 フレンドのオンライン、オフライン認定
@@ -46,51 +33,6 @@ import { AuthGate } from "@/components/auth/auth-gate";
 
 */
 
-// ===== 戦績表示用 =====
-type MatchRow = {
-  id: string;
-  player1_id: string;
-  player2_id: string | null;
-  winner_id: string | null;
-  player1_score: number;
-  player2_score: number;
-  created_at: string;
-  status: string;
-  player1_display_name?: string | null;
-  player2_display_name?: string | null;
-};
-
-type MatchHistoryResponse = {
-  games: MatchRow[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-// ===== 統計表示用 =====
-type AchievementRow = {
-  id: string;
-  title: string;
-  description: string;
-  progress: number;
-  unlocked: boolean;
-};
-
-type LeaderboardEntry = {
-  uuid: string;
-  display_name: string;
-  avatar_url: string | null;
-  user_score: number;
-  position: number;
-};
-
-type LeaderboardResponse = {
-  entries: LeaderboardEntry[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
 // ===== ランク計算用の閾値 =====
 const rankTiers = [
   { label: "Bronze", min: 0 },
@@ -100,37 +42,6 @@ const rankTiers = [
   { label: "Diamond", min: 450 },
 ];
 
-// ===== APIレスポンス型 =====
-type FriendEntry = {
-  friendship_id: string;
-  friend_id: string;
-  display_name: string;
-  avatar_url: string | null;
-  user_score: number;
-  last_seen: string;
-};
-
-type PendingRequestEntry = {
-  id: string;
-  requester_id: string;
-  display_name: string;
-  avatar_url: string | null;
-  created_at: string;
-};
-
-type SentRequestEntry = {
-  id: string;
-  addressee_id: string;
-  display_name: string;
-  avatar_url: string | null;
-  created_at: string;
-};
-
-type SearchUserEntry = {
-  uuid: string;
-  display_name: string;
-  avatar_url: string | null;
-};
 
 /*
 サーバーのログアウトが失敗しても、フロントエンド側の状態はクリアする。
@@ -518,6 +429,16 @@ export default function UserPage() {
     }
   };
 
+  const handleDisplayNameChange = (value: string) => {
+    setEditDisplayName(value);
+    setProfileSuccess(false);
+    setProfileError(null);
+  };
+
+  const handleSearchTermChange = (value: string) => {
+    setSearchTerm(value);
+  };
+
   const handleTestUpdate = async (payload: {
     result: "win" | "loss";
     score_delta: number;
@@ -714,6 +635,12 @@ export default function UserPage() {
   const outgoingRequestSet = new Set(
     sentRequests.map((request) => request.addressee_id),
   );
+  const displayName = user?.display_name ?? "Guest";
+  const avatarDisplayName = user?.display_name ?? "U";
+  const avatarUrl = user?.avatar_url ?? null;
+  const achievements = buildAchievements();
+  const refreshDisabled = pendingLoading || friendsLoading || sentLoading;
+  const currentUserId = user?.uuid ?? null;
 
   return (
     <Suspense fallback={
@@ -728,897 +655,101 @@ export default function UserPage() {
       <AuthGate>
         <div className="mx-auto w-full max-w-6xl px-4 py-10">
         <Tabs defaultValue="profile">
-        <TabsList className="mb-6">
-          <TabsTrigger value="profile">プロフィール</TabsTrigger>
-          <TabsTrigger value="friends">フレンド</TabsTrigger>
-          <TabsTrigger value="stats">統計</TabsTrigger>
-          <TabsTrigger value="record">戦績</TabsTrigger>
-          <TabsTrigger value="settings">設定</TabsTrigger>
-        </TabsList>
+          <TabsList className="mb-6">
+            <TabsTrigger value="profile">プロフィール</TabsTrigger>
+            <TabsTrigger value="friends">フレンド</TabsTrigger>
+            <TabsTrigger value="stats">統計</TabsTrigger>
+            <TabsTrigger value="record">戦績</TabsTrigger>
+            <TabsTrigger value="settings">設定</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="profile">
-          <div className="grid gap-6 md:grid-cols-[280px_1fr]">
-            <Card>
-              <CardHeader>
-                <CardTitle>プレイヤー情報</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="h-16 w-16">
-                      {user?.avatar_url ? (
-                        <AvatarImage
-                          src={user.avatar_url}
-                          alt={user.display_name}
-                        />
-                      ) : null}
-                      <AvatarFallback>
-                        {user?.display_name?.trim()?.[0]?.toUpperCase() ?? "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="absolute -bottom-1 -right-1 rounded-full border border-background bg-background p-1">
-                      <OnlineIndicator status="online" size="sm" />
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold">
-                      {user?.display_name ?? "Guest"}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      メインサーバー
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="secondary">ランク: {currentRank.label}</Badge>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={refreshUser}
-                >
-                  最新情報を取得
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleLogout}
-                >
-                  ログアウト
-                </Button>
-              </CardContent>
-            </Card>
+          <ProfileTab
+            displayName={displayName}
+            avatarUrl={avatarUrl}
+            currentRankLabel={currentRank.label}
+            winRate={winRate}
+            wins={wins}
+            losses={losses}
+            score={score}
+            onRefresh={refreshUser}
+            onLogout={handleLogout}
+          />
 
-            <Card>
-              <CardHeader>
-                <CardTitle>概要</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">勝率</p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <Progress value={winRate} />
-                    <span className="text-sm font-semibold">{winRate}%</span>
-                  </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-muted-foreground">勝利</p>
-                    <p className="text-xl font-semibold">{wins}</p>
-                  </div>
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-muted-foreground">敗北</p>
-                    <p className="text-xl font-semibold">{losses}</p>
-                  </div>
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-muted-foreground">スコア</p>
-                    <p className="text-xl font-semibold">{score}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+          <FriendsTab
+            friends={friends}
+            friendsLoading={friendsLoading}
+            friendsError={friendsError}
+            pendingRequests={pendingRequests}
+            pendingLoading={pendingLoading}
+            pendingError={pendingError}
+            sentRequests={sentRequests}
+            sentLoading={sentLoading}
+            sentError={sentError}
+            friendProfileId={friendProfileId}
+            friendProfileHistory={friendProfileHistory}
+            friendProfileLoading={friendProfileLoading}
+            friendProfileError={friendProfileError}
+            removingFriendId={removingFriendId}
+            pendingActionId={pendingActionId}
+            sentActionId={sentActionId}
+            searchTerm={searchTerm}
+            searchResults={searchResults}
+            searchLoading={searchLoading}
+            searchError={searchError}
+            hasSearched={hasSearched}
+            searchActionId={searchActionId}
+            friendIdSet={friendIdSet}
+            incomingRequestSet={incomingRequestSet}
+            outgoingRequestSet={outgoingRequestSet}
+            onRefreshFriends={handleRefreshFriends}
+            onOpenFriendProfile={openFriendProfile}
+            onCloseFriendProfile={closeFriendProfile}
+            onRemoveFriend={handleRemoveFriend}
+            onRespondFriendRequest={handleRespondFriendRequest}
+            onCancelRequest={handleCancelRequest}
+            onSearch={handleSearch}
+            onSearchTermChange={handleSearchTermChange}
+            onSendFriendRequest={handleSendFriendRequest}
+            getRankForScore={getRankForScore}
+            getOnlineStatus={getOnlineStatus}
+            formatDateTime={formatDateTime}
+            refreshDisabled={refreshDisabled}
+          />
 
-        <TabsContent value="friends">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold">フレンド</h3>
-              <p className="text-sm text-muted-foreground">
-                検索・申請・受信・解除をまとめて管理できます。
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshFriends}
-              disabled={pendingLoading || friendsLoading || sentLoading}
-            >
-              更新
-            </Button>
-          </div>
+          <StatsTab
+            currentRankLabel={currentRank.label}
+            nextRankLabel={nextRank?.label ?? null}
+            remainingForNextRank={remainingForNextRank}
+            progressToNextRank={progressToNextRank}
+            achievements={achievements}
+            leaderboard={leaderboard}
+            leaderboardLoading={leaderboardLoading}
+            leaderboardError={leaderboardError}
+            getRankForScore={getRankForScore}
+          />
 
-          <div className="mt-6 grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>フレンド一覧</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {friendsError ? (
-                  <Alert variant="destructive">
-                    <AlertDescription>{friendsError}</AlertDescription>
-                  </Alert>
-                ) : null}
-                {friendsLoading ? (
-                  <p className="text-sm text-muted-foreground">読み込み中...</p>
-                ) : friends.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    まだフレンドはいません。
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>プレイヤー</TableHead>
-                        <TableHead>状態</TableHead>
-                        <TableHead>スコア</TableHead>
-                        <TableHead>ランク</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {friends.map((friend) => {
-                        const friendRank = getRankForScore(friend.user_score);
-                        const onlineStatus = getOnlineStatus(friend.last_seen);
-                        return (
-                          <TableRow key={friend.friendship_id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10">
-                                  {friend.avatar_url ? (
-                                    <AvatarImage
-                                      src={resolveApiUrl(friend.avatar_url)}
-                                      alt={friend.display_name}
-                                    />
-                                  ) : null}
-                                  <AvatarFallback>
-                                    {friend.display_name
-                                      .trim()?.[0]
-                                      ?.toUpperCase() ?? "F"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">
-                                    {friend.display_name}
-                                  </p>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-2">
-                                  <OnlineIndicator
-                                    status={onlineStatus.status}
-                                    size="sm"
-                                  />
-                                  <span className="text-sm">
-                                    {onlineStatus.label}
-                                  </span>
-                                </div>
-                                <span className="text-xs text-muted-foreground">
-                                  最終: {formatDateTime(friend.last_seen)}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{friend.user_score}</TableCell>
-                            <TableCell>{friendRank.label}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Dialog
-                                  onOpenChange={(open) => {
-                                    if (open) {
-                                      openFriendProfile(friend.friend_id);
-                                    } else {
-                                      closeFriendProfile();
-                                    }
-                                  }}
-                                >
-                                  <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                      プロフィール
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>
-                                        {friend.display_name}
-                                      </DialogTitle>
-                                      <DialogDescription>
-                                        フレンドのプロフィール情報です。
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="flex items-center gap-4">
-                                      <Avatar className="h-16 w-16">
-                                        {friend.avatar_url ? (
-                                          <AvatarImage
-                                            src={resolveApiUrl(friend.avatar_url)}
-                                            alt={friend.display_name}
-                                          />
-                                        ) : null}
-                                        <AvatarFallback>
-                                          {friend.display_name
-                                            .trim()?.[0]
-                                            ?.toUpperCase() ?? "F"}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <div className="space-y-1">
-                                        <p className="text-sm text-muted-foreground">
-                                          スコア
-                                        </p>
-                                        <p className="text-lg font-semibold">
-                                          {friend.user_score}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                          ランク: {friendRank.label}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          最終: {formatDateTime(friend.last_seen)}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                      <p className="text-sm font-medium">
-                                        最近の戦績
-                                      </p>
-                                      {friendProfileId !== friend.friend_id ? (
-                                        <p className="text-sm text-muted-foreground">
-                                          読み込み中...
-                                        </p>
-                                      ) : friendProfileError ? (
-                                        <Alert variant="destructive">
-                                          <AlertDescription>
-                                            {friendProfileError}
-                                          </AlertDescription>
-                                        </Alert>
-                                      ) : friendProfileLoading ? (
-                                        <p className="text-sm text-muted-foreground">
-                                          読み込み中...
-                                        </p>
-                                      ) : friendProfileHistory.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground">
-                                          まだ戦績はありません。
-                                        </p>
-                                      ) : (
-                                        <div className="space-y-2">
-                                          {friendProfileHistory.map((match) => {
-                                            const isPlayer1 =
-                                              match.player1_id === friend.friend_id;
-                                            const opponentId = isPlayer1
-                                              ? match.player2_id
-                                              : match.player1_id;
-                                            const friendScore = isPlayer1
-                                              ? match.player1_score
-                                              : match.player2_score;
-                                            const opponentScore = isPlayer1
-                                              ? match.player2_score
-                                              : match.player1_score;
-                                            const result = match.winner_id
-                                              ? match.winner_id ===
-                                                friend.friend_id
-                                                ? "勝ち"
-                                                : "負け"
-                                              : "中断";
-                                            const opponentDisplayName = isPlayer1
-                                              ? match.player2_display_name
-                                              : match.player1_display_name;
-                                            const opponentLabel =
-                                              opponentDisplayName?.trim() ||
-                                              (opponentId
-                                                ? `${opponentId.slice(0, 8)}...`
-                                                : "AI/ローカル");
-                                            return (
-                                              <div
-                                                key={match.id}
-                                                className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
-                                              >
-                                                <div>
-                                                  <p className="font-medium">
-                                                    {result}
-                                                  </p>
-                                                  <p className="text-xs text-muted-foreground">
-                                                    vs {opponentLabel}
-                                                  </p>
-                                                </div>
-                                                <div className="text-sm font-mono">
-                                                  {friendScore} - {opponentScore}
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <DialogFooter>
-                                      <DialogClose asChild>
-                                        <Button variant="outline">
-                                          閉じる
-                                        </Button>
-                                      </DialogClose>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="destructive" size="sm">
-                                      解除
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>フレンド解除</DialogTitle>
-                                      <DialogDescription>
-                                        {friend.display_name}{" "}
-                                        をフレンドから解除しますか？
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <DialogFooter>
-                                      <DialogClose asChild>
-                                        <Button variant="outline">
-                                          キャンセル
-                                        </Button>
-                                      </DialogClose>
-                                      <DialogClose asChild>
-                                        <Button
-                                          variant="destructive"
-                                          onClick={() =>
-                                            handleRemoveFriend(
-                                              friend.friendship_id,
-                                            )
-                                          }
-                                          disabled={removingFriendId !== null}
-                                        >
-                                          {removingFriendId ===
-                                          friend.friendship_id
-                                            ? "解除中..."
-                                            : "解除する"}
-                                        </Button>
-                                      </DialogClose>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+          <RecordTab
+            matchHistory={matchHistory}
+            matchLoading={matchLoading}
+            matchError={matchError}
+            currentUserId={currentUserId}
+            formatDateTime={formatDateTime}
+          />
 
-            <Card>
-              <CardHeader>
-                <CardTitle>受信申請</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {pendingError ? (
-                  <Alert variant="destructive">
-                    <AlertDescription>{pendingError}</AlertDescription>
-                  </Alert>
-                ) : null}
-                {pendingLoading ? (
-                  <p className="text-sm text-muted-foreground">読み込み中...</p>
-                ) : pendingRequests.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    受信申請はありません。
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {pendingRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            {request.avatar_url ? (
-                              <AvatarImage
-                                src={resolveApiUrl(request.avatar_url)}
-                                alt={request.display_name}
-                              />
-                            ) : null}
-                            <AvatarFallback>
-                              {request.display_name
-                                .trim()?.[0]
-                                ?.toUpperCase() ?? "F"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">
-                              {request.display_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              申請日: {formatDateTime(request.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              handleRespondFriendRequest(request.id, "accepted")
-                            }
-                            disabled={pendingActionId !== null}
-                          >
-                            {pendingActionId === request.id
-                              ? "処理中..."
-                              : "承認"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handleRespondFriendRequest(request.id, "declined")
-                            }
-                            disabled={pendingActionId !== null}
-                          >
-                            {pendingActionId === request.id
-                              ? "処理中..."
-                              : "拒否"}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>フレンド検索</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <form
-                  className="flex flex-col gap-3 sm:flex-row"
-                  onSubmit={handleSearch}
-                >
-                  <Input
-                    placeholder="表示名で検索"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                  />
-                  <Button type="submit" disabled={searchLoading}>
-                    {searchLoading ? "検索中..." : "検索"}
-                  </Button>
-                </form>
-                {searchError ? (
-                  <Alert variant="destructive">
-                    <AlertDescription>{searchError}</AlertDescription>
-                  </Alert>
-                ) : null}
-                {searchLoading ? (
-                  <p className="text-sm text-muted-foreground">検索中...</p>
-                ) : searchResults.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {hasSearched
-                      ? "検索結果がありません。"
-                      : "表示名を入力して検索してください。"}
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {searchResults.map((result) => {
-                      const isFriend = friendIdSet.has(result.uuid);
-                      const isOutgoing = outgoingRequestSet.has(result.uuid);
-                      const isIncoming = incomingRequestSet.has(result.uuid);
-                      return (
-                        <div
-                          key={result.uuid}
-                          className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border p-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              {result.avatar_url ? (
-                                <AvatarImage
-                                  src={resolveApiUrl(result.avatar_url)}
-                                  alt={result.display_name}
-                                />
-                              ) : null}
-                              <AvatarFallback>
-                                {result.display_name
-                                  .trim()?.[0]
-                                  ?.toUpperCase() ?? "U"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">
-                                {result.display_name}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {isFriend ? (
-                              <Badge variant="secondary">フレンド</Badge>
-                            ) : isOutgoing ? (
-                              <Badge variant="outline">送信済み</Badge>
-                            ) : isIncoming ? (
-                              <Badge variant="outline">受信申請あり</Badge>
-                            ) : (
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handleSendFriendRequest(result.uuid)
-                                }
-                                disabled={searchActionId !== null}
-                              >
-                                {searchActionId === result.uuid
-                                  ? "送信中..."
-                                  : "申請"}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>送信申請</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {sentError ? (
-                  <Alert variant="destructive">
-                    <AlertDescription>{sentError}</AlertDescription>
-                  </Alert>
-                ) : null}
-                {sentLoading ? (
-                  <p className="text-sm text-muted-foreground">読み込み中...</p>
-                ) : sentRequests.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    送信中の申請はありません。
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {sentRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            {request.avatar_url ? (
-                              <AvatarImage
-                                src={resolveApiUrl(request.avatar_url)}
-                                alt={request.display_name}
-                              />
-                            ) : null}
-                            <AvatarFallback>
-                              {request.display_name
-                                .trim()?.[0]
-                                ?.toUpperCase() ?? "F"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">
-                              {request.display_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              送信日: {formatDateTime(request.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCancelRequest(request.id)}
-                            disabled={sentActionId !== null}
-                          >
-                            {sentActionId === request.id
-                              ? "取消中..."
-                              : "取り消し"}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="stats">
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>ランクと進行度</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Badge variant="secondary">
-                    現在ランク: {currentRank.label}
-                  </Badge>
-                  {nextRank ? (
-                    <Badge variant="outline">
-                      次のランク: {nextRank.label}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">最高ランク到達</Badge>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    次のランクまで {remainingForNextRank} スコア
-                  </p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <Progress value={progressToNextRank} />
-                    <span className="text-sm font-semibold">
-                      {progressToNextRank}%
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>アチーブメント</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {buildAchievements().map((achievement) => (
-                    <div
-                      key={achievement.id}
-                      className="rounded-lg border border-border p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold">{achievement.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {achievement.description}
-                          </p>
-                        </div>
-                        {achievement.unlocked ? (
-                          <Badge>達成</Badge>
-                        ) : (
-                          <Badge variant="outline">進行中</Badge>
-                        )}
-                      </div>
-                      <div className="mt-3 flex items-center gap-3">
-                        <Progress value={achievement.progress} />
-                        <span className="text-xs font-medium">
-                          {achievement.progress}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>スコアランキング</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {leaderboardError ? (
-                    <Alert variant="destructive">
-                      <AlertDescription>{leaderboardError}</AlertDescription>
-                    </Alert>
-                  ) : null}
-                  {leaderboardLoading ? (
-                    <p className="text-sm text-muted-foreground">読み込み中...</p>
-                  ) : leaderboard.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      まだランキングがありません。
-                    </p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>順位</TableHead>
-                          <TableHead>プレイヤー</TableHead>
-                          <TableHead>スコア</TableHead>
-                          <TableHead>ランク</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {leaderboard.map((entry) => {
-                          const rank = getRankForScore(entry.user_score);
-                          return (
-                            <TableRow key={entry.uuid}>
-                              <TableCell>{entry.position}</TableCell>
-                              <TableCell>{entry.display_name}</TableCell>
-                              <TableCell>{entry.user_score}</TableCell>
-                              <TableCell>{rank.label}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="record">
-          <Card>
-            <CardHeader>
-              <CardTitle>最近の試合</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {matchError ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{matchError}</AlertDescription>
-                </Alert>
-              ) : null}
-              {matchLoading ? (
-                <p className="text-sm text-muted-foreground">読み込み中...</p>
-              ) : matchHistory.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  まだ試合履歴がありません。
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>対戦相手</TableHead>
-                      <TableHead>結果</TableHead>
-                      <TableHead>スコア</TableHead>
-                      <TableHead>日時</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {matchHistory.map((match) => {
-                      const isPlayer1 = match.player1_id === user?.uuid;
-                      const opponentId = isPlayer1
-                        ? match.player2_id
-                        : match.player1_id;
-                      const opponentDisplayName = isPlayer1
-                        ? match.player2_display_name
-                        : match.player1_display_name;
-                      const opponentLabel =
-                        opponentDisplayName?.trim() ||
-                        (opponentId ? `${opponentId.slice(0, 8)}...` : "AI/ローカル");
-                      const result =
-                        match.status !== "completed"
-                          ? "未完了"
-                          : match.winner_id === null
-                          ? "引き分け"
-                          : match.winner_id === user?.uuid
-                          ? "勝利"
-                          : "敗北";
-                      const scoreText = isPlayer1
-                        ? `${match.player1_score}-${match.player2_score}`
-                        : `${match.player2_score}-${match.player1_score}`;
-                      return (
-                        <TableRow key={match.id}>
-                          <TableCell>{opponentLabel}</TableCell>
-                          <TableCell>{result}</TableCell>
-                          <TableCell>{scoreText}</TableCell>
-                          <TableCell>{formatDateTime(match.created_at)}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="settings">
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <CardTitle>プロフィール設定</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex justify-center">
-                <AvatarUpload
-                  currentAvatarUrl={user?.avatar_url ?? null}
-                  displayName={user?.display_name ?? "U"}
-                  onUploadSuccess={setUserFromApi}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="displayName">表示名</Label>
-                <Input
-                  id="displayName"
-                  placeholder="Player42"
-                  value={editDisplayName}
-                  onChange={(e) => {
-                    setEditDisplayName(e.target.value);
-                    setProfileSuccess(false);
-                    setProfileError(null);
-                  }}
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={handleSaveProfile}
-                disabled={profileSaving || !editDisplayName.trim()}
-              >
-                {profileSaving ? "保存中..." : "保存する"}
-              </Button>
-              {profileError ? (
-                <p className="text-sm text-destructive">{profileError}</p>
-              ) : null}
-              {profileSuccess ? (
-                <p className="text-sm text-green-600">プロフィールを更新しました</p>
-              ) : null}
-              <div className="rounded-lg border border-border p-4">
-                <p className="text-sm font-semibold">テスト用更新</p>
-                <p className="text-xs text-muted-foreground">
-                  勝利/敗北/スコアを一時的に更新します。
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() =>
-                      handleTestUpdate({ result: "win", score_delta: 25 })
-                    }
-                  >
-                    勝利 (+25)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() =>
-                      handleTestUpdate({ result: "loss", score_delta: 25 })
-                    }
-                  >
-                    敗北 (-25)
-                  </Button>
-                </div>
-              </div>
-              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-destructive">
-                    アカウント閉鎖
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    この操作は取り消せません。プロフィールと戦績が削除されます。
-                  </p>
-                </div>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="destructive" className="mt-3 w-full">
-                      アカウントを閉鎖する
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>アカウントを閉鎖しますか？</DialogTitle>
-                      <DialogDescription>
-                        閉鎖するとプロフィールと戦績は復元できません。
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button variant="outline">キャンセル</Button>
-                      </DialogClose>
-                      <Button
-                        variant="destructive"
-                        onClick={handleDeleteAccount}
-                        disabled={deletingAccount}
-                      >
-                        閉鎖を確定する
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <SettingsTab
+            avatarUrl={avatarUrl}
+            avatarDisplayName={avatarDisplayName}
+            editDisplayName={editDisplayName}
+            profileSaving={profileSaving}
+            profileError={profileError}
+            profileSuccess={profileSuccess}
+            onDisplayNameChange={handleDisplayNameChange}
+            onSaveProfile={handleSaveProfile}
+            onTestUpdate={handleTestUpdate}
+            onDeleteAccount={handleDeleteAccount}
+            deletingAccount={deletingAccount}
+            onAvatarUploadSuccess={setUserFromApi}
+          />
         </Tabs>
       </div>
       </AuthGate>
