@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from '../src/app.module';
 import { runMigrations } from '../src/db/migrate';
 import { getDatabase, closeDatabase } from '../src/db/database';
@@ -18,6 +19,7 @@ describe('Auth (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useWebSocketAdapter(new WsAdapter(app));
     await app.init();
   });
 
