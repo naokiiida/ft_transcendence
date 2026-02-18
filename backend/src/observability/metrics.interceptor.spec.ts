@@ -10,6 +10,7 @@ describe('MetricsInterceptor', () => {
     const mockMetricsService = {
       httpRequestsTotal: { inc: jest.fn() },
       httpRequestDuration: { observe: jest.fn() },
+      httpResponseSize: { observe: jest.fn() },
     } as unknown as MetricsService;
 
     interceptor = new MetricsInterceptor(mockMetricsService);

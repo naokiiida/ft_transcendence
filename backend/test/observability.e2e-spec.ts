@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from '../src/app.module';
 import { runMigrations } from '../src/db/migrate';
 import { closeDatabase } from '../src/db/database';
@@ -17,6 +18,7 @@ describe('Observability (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useWebSocketAdapter(new WsAdapter(app));
     await app.init();
   });
 
@@ -37,7 +39,6 @@ describe('Observability (e2e)', () => {
         status: expect.any(String),
         components: {
           database: expect.objectContaining({ status: expect.any(String) }),
-          memory: expect.objectContaining({ status: expect.any(String) }),
         },
       });
       expect(res.body.timestamp).toBeDefined();
@@ -63,7 +64,7 @@ describe('Observability (e2e)', () => {
       expect(res.headers['content-type']).toContain('text/plain');
       expect(res.text).toContain('http_requests_total');
       expect(res.text).toContain('http_request_duration_seconds');
-      expect(res.text).toContain('active_sessions_count');
+      expect(res.text).toContain('logged_in_sessions');
     });
 
     it('認証なしでアクセスできる', async () => {

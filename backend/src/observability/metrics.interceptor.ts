@@ -30,7 +30,10 @@ export class MetricsInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap({
-        next: () => this.record(method, route, response.statusCode, startTime),
+        next: () => {
+          this.record(method, route, response.statusCode, startTime);
+          this.recordResponseSize(method, route, response);
+        },
         error: (err: Error) =>
           this.record(method, route, this.extractStatus(err), startTime),
       }),
@@ -58,6 +61,20 @@ export class MetricsInterceptor implements NestInterceptor {
       if (typeof e.statusCode === 'number') return e.statusCode;
     }
     return 500;
+  }
+
+  private recordResponseSize(
+    method: string,
+    route: string,
+    response: Response,
+  ) {
+    const contentLength = response.getHeader('content-length');
+    if (contentLength) {
+      this.metricsService.httpResponseSize.observe(
+        { method, route, status_code: String(response.statusCode) },
+        Number(contentLength),
+      );
+    }
   }
 
   // ルート正規化: UUID/数値IDをプレースホルダに変換してカーディナリティ爆発を防止

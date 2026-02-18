@@ -6,6 +6,10 @@ import {
   Gauge,
   Histogram,
 } from 'prom-client';
+import { sql } from 'drizzle-orm';
+import { gt } from 'drizzle-orm';
+import { getDatabase } from '../db/database';
+import { sessions } from '../db/schema';
 
 @Injectable()
 export class MetricsService implements OnModuleInit, OnModuleDestroy {
@@ -27,11 +31,37 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
     registers: [this.registry],
   });
 
-  // アプリケーションメトリクス
-  readonly activeSessionsCount = new Gauge({
-    name: 'active_sessions_count',
-    help: 'Number of active user sessions',
+  readonly httpResponseSize = new Histogram({
+    name: 'http_response_size_bytes',
+    help: 'HTTP response size in bytes',
+    labelNames: ['method', 'route', 'status_code'] as const,
+    buckets: [100, 1000, 5000, 10000, 50000, 100000, 500000],
     registers: [this.registry],
+  });
+
+  readonly dbQueryDuration = new Histogram({
+    name: 'db_query_duration_seconds',
+    help: 'Database query duration in seconds',
+    labelNames: ['operation'] as const,
+    buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
+    registers: [this.registry],
+  });
+
+  // アプリケーションメトリクス
+  readonly loggedInSessions = new Gauge({
+    name: 'logged_in_sessions',
+    help: 'Number of logged-in sessions (unexpired session records)',
+    registers: [this.registry],
+    collect() {
+      const db = getDatabase();
+      const now = new Date().toISOString();
+      const result = db
+        .select({ count: sql<number>`count(*)` })
+        .from(sessions)
+        .where(gt(sessions.expires_at, now))
+        .get();
+      this.set(result?.count ?? 0);
+    },
   });
 
   // 将来のGame/WebSocket機能用（初期値0で事前登録）
