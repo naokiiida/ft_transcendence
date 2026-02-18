@@ -1,6 +1,6 @@
 # ft_transcendence — Biarritz
 
-*This project has been created as part of the 42 curriculum by niida, mkaihori, thashimo, oohba*
+*This project has been created as part of the 42 curriculum by niida, mkaihori, oohba*
 
 ## Description
 
@@ -32,7 +32,7 @@ ft\_transcendence は、リアルタイム対戦 Pong ゲームを中心とし�
 
 - Docker および Docker Compose
 - Git
-- (ローカル開発の場合) Node.js 22+, pnpm
+- (ローカル開発の場合) Node.js 22+, npm
 
 ### 環境変数の設定
 
@@ -55,13 +55,10 @@ cp .env.example .env
 ### 起動方法（Docker）
 
 ```bash
-# 開発環境
+# 全プロファイル起動（Traefik + Cloudflare Tunnel + Storybook 付き）
 make up
 # または
-docker compose up --build
-
-# 本番環境（Traefik + Cloudflare Tunnel 付き）
-make prod
+docker compose --profile production --profile docs up --build
 ```
 
 ### 起動方法（ローカル開発）
@@ -115,8 +112,7 @@ make down
 |----------|--------|----------|
 | **niida** | Product Owner, Project Manager, Developer | プロダクトビジョンの定義、プロジェクト管理、User Management・DevOps・監視・チャット・統計・Public API の実装 |
 | **oohba** | Technical Lead, Developer | 技術アーキテクチャの設計、AI 対戦・リモート対戦・ゲームカスタマイズの実装 |
-| **mkaihori** | Developer | Pong ゲーム（ローカル対戦）の実装 |
-| **thashimo** | Developer | 42 OAuth 認証の実装 |
+| **mkaihori** | Developer | Pong ゲーム（ローカル対戦）・42 OAuth 認証の実装 |
 
 ---
 
@@ -210,7 +206,7 @@ make down
 
 ### リレーションシップ
 
-```
+```text
 users 1─∞ sessions    (ユーザー → セッション)
 users 1─∞ games       (player1_id, player2_id, winner_id)
 users 1─∞ friendships (requester_id, addressee_id)
@@ -228,7 +224,7 @@ users 1─∞ friendships (requester_id, addressee_id)
 | **ゲームカスタマイズ** | ゲーム設定のカスタマイズ | oohba |
 | **ゲーム内チャット** | 対戦中のテキストメッセージ送受信 | niida |
 | **ユーザー登録/ログイン** | Email/Password 認証 (パスワードハッシュ + セッション管理) | niida |
-| **42 OAuth** | 42 Intra アカウントによるログイン | thashimo |
+| **42 OAuth** | 42 Intra アカウントによるログイン | mkaihori |
 | **ユーザープロフィール** | 表示名・アバター・戦績の表示と編集 | niida |
 | **フレンドシステム** | フレンド申請・承認・一覧・削除 | niida |
 | **ユーザー検索** | 表示名によるユーザー検索 | niida |
@@ -265,7 +261,7 @@ users 1─∞ friendships (requester_id, addressee_id)
 
 | Module | 担当 | 選定理由 | 実装方法 |
 |--------|------|----------|----------|
-| **42 OAuth** | thashimo | 42 エコシステムとの連携で利便性とセキュリティを高める | 42 Intra OAuth 2.0 フロー。`intra_id` / `intra_username` による紐づけ |
+| **42 OAuth** | mkaihori | 42 エコシステムとの連携で利便性とセキュリティを高める | 42 Intra OAuth 2.0 フロー。`intra_id` / `intra_username` による紐づけ |
 | **Game Customization** | oohba | ゲーム体験の幅を広げ、差別化要素を作る | ゲーム設定パラメータのカスタマイズ |
 | **Design System** | masho | UI 一貫性と開発効率を高めるため、再利用可能コンポーネントを整備する | shadcn/ui (Radix UI) ベース。Storybook でコンポーネントカタログを管理 |
 | **Game statistics** | niida | 勝敗や履歴の表示でユーザー体験を強化し、評価項目にも対応する | 試合履歴 API (`/api/games/history/:userId`)。勝敗ベースのレーティング (±25) |
@@ -279,7 +275,7 @@ users 1─∞ friendships (requester_id, addressee_id)
 | :---- | :---- | :---- | :---- | :---- |
 | Web (Next.js) | Major | 2 | 全員 | 完了 |
 | User Management | Major | 2 | niida | 完了 |
-| 42 OAuth | Minor | 1 | thashimo | 未完了 |
+| 42 OAuth | Minor | 1 | mkaihori | 未完了 |
 | Web-based game (Pong) | Major | 2 | mkaihori | 完了 |
 | AI Opponent | Major | 2 | oohba | 完了 |
 | Remote Players | Major | 2 | oohba | 完了 |
@@ -327,21 +323,14 @@ users 1─∞ friendships (requester_id, addressee_id)
 
 ### mkaihori (Developer)
 
-- **担当モジュール**: Web-based game (Pong)
+- **担当モジュール**: Web-based game (Pong), 42 OAuth
 - **主な貢献**:
   - Pong ゲームエンジンの設計と Canvas ベースのレンダリング実装
   - サーバー権威モデルによるティックベースのゲームロジック
   - ローカル対戦モードの実装
-- **課題と克服**:
-  - ゲームループの設計でフレームレート依存の問題に対応し、ティックベースの固定更新間隔で安定した動作を実現
-
-### thashimo (Developer)
-
-- **担当モジュール**: 42 OAuth
-- **主な貢献**:
   - 42 Intra OAuth 2.0 認証フローの実装
 - **課題と克服**:
-  - <!-- TODO: thashimo の課題と克服方法を記入 -->
+  - ゲームループの設計でフレームレート依存の問題に対応し、ティックベースの固定更新間隔で安定した動作を実現
 
 ---
 

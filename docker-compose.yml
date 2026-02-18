@@ -32,14 +32,14 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:3001:3001"
     volumes:
       - ./data/backend:/app/data
     environment:
-      - PORT=3000
+      - PORT=3001
       - CORS_ORIGIN=${CORS_ORIGIN:-https://pong.taiida.com}
     healthcheck:
-      test: ["CMD", "node", "-e", "const http=require('http');http.get('http://localhost:3000/api/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "const http=require('http');http.get('http://localhost:3001/api/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -50,7 +50,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=Host(`${DOMAIN:-pong.taiida.com}`) && PathPrefix(`/api`)"
-      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+      - "traefik.http.services.backend.loadbalancer.server.port=3001"
 
   # --- Reverse Proxy ---
   traefik:
@@ -73,7 +73,7 @@ services:
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.keyType=EC256
       - --metrics.prometheus=true
-      - --log.level=DEBUG
+      - --log.level=${TRAEFIK_LOG_LEVEL:-INFO}
     ports:
       - "80:80"
       - "443:443"

@@ -6,8 +6,7 @@ import {
   Gauge,
   Histogram,
 } from 'prom-client';
-import { sql } from 'drizzle-orm';
-import { gt } from 'drizzle-orm';
+import { sql, gt } from 'drizzle-orm';
 import { getDatabase } from '../db/database';
 import { sessions } from '../db/schema';
 
