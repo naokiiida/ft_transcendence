@@ -1,23 +1,22 @@
 .PHONY: help up up-frontend down build build-no-cache logs \
 	frontend-install frontend-dev frontend-lint \
-	backend-install backend-dev backend-lint npm prod prod-down inpm\
+	backend-install backend-dev backend-lint npm inpm\
 
 help:
 	@echo "Targets:"
-	@echo "  up                - docker compose up --build"
-	@echo "  up-frontend        - docker compose up --build frontend"
-	@echo "  down              - docker compose down --remove-orphans"
+	@echo "  up                - full stack (traefik + tunnel + docs)"
+	@echo "  up-frontend       - frontend only"
+	@echo "  down              - stop all services"
 	@echo "  build             - docker compose build"
-	@echo "  build-no-cache     - docker compose build --no-cache"
+	@echo "  build-no-cache    - docker compose build --no-cache"
 	@echo "  logs              - docker compose logs -f --tail=100"
+	@echo "  npm               - local dev (frontend + backend without Docker)"
 	@echo "  frontend-install  - npm install in ./frontend"
 	@echo "  frontend-dev      - npm run dev in ./frontend"
 	@echo "  frontend-lint     - npm run lint in ./frontend"
 	@echo "  backend-install   - npm install in ./backend"
 	@echo "  backend-dev       - npm run start:dev in ./backend"
 	@echo "  backend-lint      - npm run lint in ./backend"
-	@echo "  prod              - production deploy (cloudflared + traefik)"
-	@echo "  prod-down         - production down --remove-orphans"
 
 # frontendディレクトリに（npm run dev）と、backend(npm run start:dev)の両方を同時に実行するコマンド
 
@@ -36,13 +35,13 @@ inpm:
 	wait
 
 up:
-	docker compose up --build
+	docker compose --profile production --profile docs up --build
 
 up-frontend:
 	docker compose up --build frontend
 
 down:
-	docker compose down --remove-orphans
+	docker compose --profile production --profile docs down --remove-orphans
 
 build:
 	docker compose build
@@ -71,8 +70,3 @@ backend-dev:
 backend-lint:
 	cd backend && npm run lint
 
-prod:
-	docker compose --profile production up --build
-
-prod-down:
-	docker compose --profile production down --remove-orphans

@@ -65,9 +65,9 @@ export class HealthController {
 
   private checkMemory(): ComponentHealth {
     const mem = process.memoryUsage();
-    const usedMb = Math.round(mem.heapUsed / 1024 / 1024);
-    const totalMb = Math.round(mem.heapTotal / 1024 / 1024);
-    const status = mem.heapUsed / mem.heapTotal < 0.9 ? 'healthy' : 'unhealthy';
-    return { status, usedMb, totalMb };
+    const usedMb = Math.round(mem.rss / 1024 / 1024);
+    const limitMb = 512;
+    const status = usedMb < limitMb ? 'healthy' : 'unhealthy';
+    return { status, usedMb, totalMb: limitMb };
   }
 }
