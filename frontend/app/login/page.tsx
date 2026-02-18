@@ -90,6 +90,13 @@ function LoginPageClient() {
     );
   }
 
+  useEffect(() => {
+    const errorParam = searchParams.get("error"); 
+    if (errorParam === "oauth_failed") {
+      setError("42ログインに失敗しました。もう一度お試しください。");
+      }
+  }, [searchParams]);
+
   const handleRegisterChange =
     (key: keyof RegisterRequest) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {

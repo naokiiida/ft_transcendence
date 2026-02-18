@@ -93,10 +93,16 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
 // ── OAuth 認証 ──────────────────────────────────────
   async login42(profile: any): Promise<User> {
+    const { email, username, avatar } = profile;
     // 1. 既存ユーザーを探す (EmailまたはIntraIDで)
     let user = this.usersService.findByEmail(profile.email);
 
     if (user) {
+      if (user.method !== 'intra') {
+        throw new ConflictException(
+          'このメールアドレスは既にメール/パスワード方式で登録されています。セキュリティのため連携できません。',
+        );
+      }
       return user;
     }
 

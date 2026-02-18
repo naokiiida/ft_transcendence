@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res, UsePipes, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UsePipes, Get, UseGuards, Logger, } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -87,21 +87,40 @@ export class AuthController {
     return;
   }
 
+  private readonly logger = new Logger(AuthController.name); 
+
   @Get('42/callback')
   @UseGuards(AuthGuard('42'))
   async callback(@Req() req, @Res() res: Response) {
-    
-    const user = await this.authService.login42(req.user);
 
-    const sessionId = this.authService.createSession(user);
+    const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
 
-    res.cookie('ft_session', sessionId, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-    });
+    try {
+      // 1. ガードを抜けてもユーザー情報がない場合の安全策
+      if (!req.user) {
+        throw new Error('User not found from 42 provider');
+      }
 
-    res.redirect('http://localhost:3000/user'); 
+      const user = await this.authService.login42(req.user);
+      const sessionId = this.authService.createSession(user);
+
+      res.cookie('ft_session', sessionId, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+      });
+
+      // 成功時: ユーザーページへ
+      res.redirect(`${frontendUrl}/user`);
+
+    } catch (error) {
+      // 2. エラーハンドリング
+      this.logger.error(`OAuth Callback Error: ${error.message}`, error.stack);
+
+      // 失敗時: ログイン画面へ戻し、エラー原因をクエリパラメータで伝える
+      // フロントエンド側で `searchParams.get('error')` を見てアラートを出せる
+      res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+    }
   }
 }
