@@ -421,9 +421,14 @@ function LoginPageClient() {
 
               <TabsContent value="42oauth" className="mt-4">
                 <form className="space-y-4" onSubmit={handleOauth}>
-                  <Button type="submit" className="w-full" disabled={pending}>
-                    {pending ? "送信中..." : "42でログインする"}
-                  </Button>
+                  <div className="flex flex-col gap-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      42 Intraアカウントを使用してログインします。
+                    </p>
+                    <Button type="submit" className="w-full bg-[#00babc] hover:bg-[#00aeb0] text-white" disabled={pending}>
+                      {pending ? "転送中..." : "42 Intraでログイン"}
+                    </Button>
+                  </div>
                 </form>
               </TabsContent>
 
