@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res, UsePipes } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UsePipes, Get, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -11,6 +11,7 @@ import {
   type RegisterRequest,
   type LoginRequest,
 } from '../model/user.model';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('auth')
 @Public()
@@ -78,5 +79,29 @@ export class AuthController {
       maxAge: 0,
     });
     return { ok: true };
+  }
+
+  @Get('42')
+  @UseGuards(AuthGuard('42')) 
+  oauthLogin() {
+    return;
+  }
+
+  @Get('42/callback')
+  @UseGuards(AuthGuard('42'))
+  async callback(@Req() req, @Res() res: Response) {
+    
+    const user = await this.authService.login42(req.user);
+
+    const sessionId = this.authService.createSession(user);
+
+    res.cookie('ft_session', sessionId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    });
+
+    res.redirect('http://localhost:3000/user'); 
   }
 }

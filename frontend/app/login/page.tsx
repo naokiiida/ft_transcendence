@@ -275,9 +275,7 @@ function LoginPageClient() {
     event.preventDefault();
     setPending(true);
 
-    // バックエンドのOAuth開始エンドポイントへリダイレクト
-    // ブラウザがページごと移動します
-    window.location.href = `${apiBase}/auth/42`;
+    window.location.href = `${apiBase}/api/auth/42`;
   };
 
   return (
