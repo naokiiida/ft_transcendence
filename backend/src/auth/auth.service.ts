@@ -91,6 +91,48 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     return user;
   }
 
+// ── OAuth 認証 ──────────────────────────────────────
+  async login42(profile: any): Promise<User> {
+    const { email, username, avatar } = profile;
+    // 1. 既存ユーザーを探す (EmailまたはIntraIDで)
+    let user = this.usersService.findByEmail(profile.email);
+
+    if (user) {
+      if (user.method !== 'intra') {
+        throw new ConflictException(
+          'このメールアドレスは既にメール/パスワード方式で登録されています。セキュリティのため連携できません。',
+        );
+      }
+      return user;
+    }
+
+    // 2. 表示名の重複チェックと回避
+    // UsersService.createは重複時に例外を投げるため、ここで事前に回避します
+    let displayName = profile.username;
+    while (this.usersService.findByDisplayName(displayName)) {
+      // 重複していたらランダムな文字列を付与 (例: naokiiida_a1b2)
+      const suffix = randomBytes(2).toString('hex');
+      displayName = `${profile.username}_${suffix}`;
+    }
+
+    // 3. 新規ユーザー作成
+    // UsersService.create の引数 (CreateUserInput) に合わせます
+    const newUserInput = {
+      method: 'intra',               // ここでIntra認証であることを指定
+      email: profile.email,
+      display_name: displayName,
+      intra_id: String(profile.ftId),  // IntraのユーザーID
+      intra_username: profile.username, // IntraのログインID
+      // method: 'intra' なので password_hash は無視されますが、
+      // 型定義で必須なら適当な値を入れるか、型定義を修正してください
+      password_hash: '', 
+      avatar_url: profile.avatar,    // ※CreateUserInputにこのフィールドがある場合
+    };
+
+    // createメソッド呼び出し (型キャストが必要な場合は as any を使用)
+    return this.usersService.create(newUserInput as any);
+  }
+
   // ── セッション管理（DB永続化） ─────────────────────────
 
   // セッションを作成し、IDを返す

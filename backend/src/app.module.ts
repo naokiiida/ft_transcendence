@@ -7,6 +7,7 @@ import { GamesModule } from './games/games.module';
 import { FriendshipsModule } from './friendships/friendships.module';
 import { MatchmakingModule } from './matchmaking/matchmaking.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     FriendshipsModule,
     MatchmakingModule,
     RealtimeModule,
+    ConfigModule.forRoot({ isGlobal: true, }),
   ],
   controllers: [],
   providers: [],

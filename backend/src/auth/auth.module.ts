@@ -6,12 +6,19 @@ import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { SessionController } from './session.controller';
 import { UsersModule } from '../users/users.module';
+import { PassportModule } from '@nestjs/passport';
+
+import { FtStrategy } from './strategies/ft.strategy';
 
 @Module({
-  imports: [UsersModule],
+  imports: [
+    UsersModule,
+    PassportModule.register({ session: false }),
+  ],
   controllers: [AuthController, SessionController],
   providers: [
     AuthService,
+    FtStrategy,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
