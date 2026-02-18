@@ -93,9 +93,6 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
 // ── OAuth 認証 ──────────────────────────────────────
   async login42(profile: any): Promise<User> {
-    // profileはStrategyのvalidateが返したオブジェクト
-    // 例: { fortyTwoId: 12345, username: 'naokiiida', email: '...', avatar: '...' }
-    
     // 1. 既存ユーザーを探す (EmailまたはIntraIDで)
     let user = this.usersService.findByEmail(profile.email);
 
@@ -118,7 +115,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       method: 'intra',               // ここでIntra認証であることを指定
       email: profile.email,
       display_name: displayName,
-      intra_id: String(profile.fortyTwoId),  // IntraのユーザーID
+      intra_id: String(profile.ftId),  // IntraのユーザーID
       intra_username: profile.username, // IntraのログインID
       // method: 'intra' なので password_hash は無視されますが、
       // 型定義で必須なら適当な値を入れるか、型定義を修正してください

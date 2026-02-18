@@ -8,7 +8,7 @@ import { SessionController } from './session.controller';
 import { UsersModule } from '../users/users.module';
 import { PassportModule } from '@nestjs/passport';
 
-import { FortyTwoStrategy } from './strategies/forty-two.strategy';
+import { FtStrategy } from './strategies/ft.strategy';
 
 @Module({
   imports: [
@@ -18,7 +18,7 @@ import { FortyTwoStrategy } from './strategies/forty-two.strategy';
   controllers: [AuthController, SessionController],
   providers: [
     AuthService,
-    FortyTwoStrategy,
+    FtStrategy,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

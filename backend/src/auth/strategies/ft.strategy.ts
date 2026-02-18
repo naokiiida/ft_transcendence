@@ -4,11 +4,11 @@ import { PassportStrategy } from '@nestjs/passport';
 const Strategy = require('passport-42').Strategy;
 
 @Injectable()
-export class FortyTwoStrategy extends PassportStrategy(Strategy, '42') {
+export class FtStrategy extends PassportStrategy(Strategy, '42') {
   constructor() {
     super({
-      clientID: process.env.FORTYTWO_APP_ID,
-      clientSecret: process.env.FORTYTWO_APP_SECRET,
+      clientID: process.env.FT_CLIENT_ID,
+      clientSecret: process.env.FT_CLIENT_SECRET,
       callbackURL: 'http://localhost:3001/api/auth/42/callback',
       
       authorizationURL: 'https://api.intra.42.fr/oauth/authorize',
@@ -26,7 +26,7 @@ export class FortyTwoStrategy extends PassportStrategy(Strategy, '42') {
     const json = profile._json || profile;
     
     const user = {
-      fortyTwoId: json.id,
+      ftId: json.id,
       username: json.login,
       email: json.email,
       avatar: json.image?.link,
