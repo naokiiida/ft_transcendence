@@ -19,7 +19,7 @@ import { ConfigModule } from '@nestjs/config';
     FriendshipsModule,
     MatchmakingModule,
     RealtimeModule,
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '../.env', }),
   ],
   controllers: [],
   providers: [],
