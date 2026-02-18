@@ -271,6 +271,15 @@ function LoginPageClient() {
     }
   };
 
+  const handleOauth = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPending(true);
+
+    // バックエンドのOAuth開始エンドポイントへリダイレクト
+    // ブラウザがページごと移動します
+    window.location.href = `${apiBase}/auth/42`;
+  };
+
   return (
     <div className="min-h-screen px-4 py-10">
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">
@@ -280,10 +289,11 @@ function LoginPageClient() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="login">ログイン</TabsTrigger>
                 <TabsTrigger value="register">登録</TabsTrigger>
                 <TabsTrigger value="forgot">再発行</TabsTrigger>
+                <TabsTrigger value="42oauth">42login</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login" className="mt-4">
@@ -408,6 +418,15 @@ function LoginPageClient() {
                   </Button>
                 </form>
               </TabsContent>
+
+              <TabsContent value="42oauth" className="mt-4">
+                <form className="space-y-4" onSubmit={handleOauth}>
+                  <Button type="submit" className="w-full" disabled={pending}>
+                    {pending ? "送信中..." : "42でログインする"}
+                  </Button>
+                </form>
+              </TabsContent>
+
             </Tabs>
           </CardContent>
         </Card>
