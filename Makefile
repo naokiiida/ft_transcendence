@@ -1,6 +1,7 @@
 .PHONY: help up up-frontend local down build build-no-cache logs \
 	frontend-install frontend-dev frontend-lint \
-	backend-install backend-dev backend-lint npm inpm\
+	backend-install backend-dev backend-lint npm inpm \
+	clean
 
 help:
 	@echo "Targets:"
@@ -18,6 +19,7 @@ help:
 	@echo "  backend-install   - npm install in ./backend"
 	@echo "  backend-dev       - npm run start:dev in ./backend"
 	@echo "  backend-lint      - npm run lint in ./backend"
+	@echo "  clean             - stop all, remove volumes and database"
 
 # frontendディレクトリに（npm run dev）と、backend(npm run start:dev)の両方を同時に実行するコマンド
 
@@ -74,4 +76,9 @@ backend-dev:
 
 backend-lint:
 	cd backend && npm run lint
+
+clean:
+	docker compose --profile production --profile docs down -v --remove-orphans
+	rm -rf data/backend
+	@echo "Cleaned: volumes removed, data/backend deleted."
 
