@@ -6,7 +6,7 @@ import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from '../src/app.module';
 import { runMigrations } from '../src/db/migrate';
 import { getDatabase, closeDatabase } from '../src/db/database';
-import { users, sessions } from '../src/db/schema';
+import { users, sessions, games, friendships } from '../src/db/schema';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
@@ -25,6 +25,8 @@ describe('Auth (e2e)', () => {
 
   beforeEach(() => {
     const db = getDatabase();
+    db.delete(games).run();
+    db.delete(friendships).run();
     db.delete(sessions).run();
     db.delete(users).run();
   });

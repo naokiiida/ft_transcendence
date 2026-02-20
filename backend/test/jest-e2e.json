@@ -6,5 +6,7 @@
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "globalSetup": "<rootDir>/global-setup.ts"
+  "globalSetup": "<rootDir>/global-setup.ts",
+  "setupFiles": ["<rootDir>/setup-env.ts"],
+  "maxWorkers": 1
 }
