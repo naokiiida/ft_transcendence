@@ -75,10 +75,6 @@ services:
       - --certificatesresolvers.letsencrypt.acme.keyType=EC256
       - --metrics.prometheus=true
       - --log.level=${TRAEFIK_LOG_LEVEL:-INFO}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
     environment:
       - CLOUDFLARE_DNS_API_TOKEN=${CF_API_TOKEN}
     volumes:
