@@ -12,7 +12,6 @@ import {
   NotFoundException,
   UploadedFile,
   UseInterceptors,
-  UsePipes,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
@@ -77,10 +76,9 @@ export class SessionController {
   }
 
   @Patch('me/profile')
-  @UsePipes(new ZodValidationPipe(updateProfileSchema))
   updateProfile(
     @CurrentUser() user: User,
-    @Body() body: UpdateProfileInput,
+    @Body(new ZodValidationPipe(updateProfileSchema)) body: UpdateProfileInput,
   ) {
     const updated = this.usersService.updateProfile(user.uuid, body);
     if (!updated) {
@@ -159,8 +157,10 @@ export class SessionController {
   }
 
   @Post('me/test-score')
-  @UsePipes(new ZodValidationPipe(gameResultSchema))
-  testScore(@CurrentUser() user: User, @Body() body: GameResult) {
+  testScore(
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(gameResultSchema)) body: GameResult,
+  ) {
     const updated = this.usersService.recordGameResult(user.uuid, body);
     if (!updated) {
       throw new NotFoundException('User not found');
