@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 import {
@@ -13,6 +13,7 @@ import { UsersService } from './users.service';
 
 //usersを使う予定。まだ未実装
 @ApiTags('users')
+@ApiCookieAuth('ft_session')
 @Controller('api/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

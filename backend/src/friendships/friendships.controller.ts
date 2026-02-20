@@ -7,7 +7,7 @@ import {
   Param,
   Body,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, RequireUser } from '../auth/decorators';
 import { FriendshipsService } from './friendships.service';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
@@ -20,6 +20,7 @@ import {
 import type { User } from '../model/user.model';
 
 @ApiTags('friendships')
+@ApiCookieAuth('ft_session')
 @RequireUser()
 @Controller('api/friendships')
 export class FriendshipsController {
