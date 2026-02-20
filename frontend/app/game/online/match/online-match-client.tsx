@@ -86,6 +86,7 @@ export function OnlineMatchClient() {
   const sideRef = useRef<typeof side>(side);
   const opponentNameRef = useRef<string | null>(opponentName);
   const userNameRef = useRef<string | null>(user?.display_name ?? null);
+  const userUuidRef = useRef<string | null>(user?.uuid ?? null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessageItem[]>([]);
@@ -120,6 +121,10 @@ export function OnlineMatchClient() {
   useEffect(() => {
     userNameRef.current = user?.display_name ?? null;
   }, [user?.display_name]);
+
+  useEffect(() => {
+    userUuidRef.current = user?.uuid ?? null;
+  }, [user?.uuid]);
 
   const startPostGameChatWindow = useCallback(() => {
     setPostGameChatActive(true);
@@ -268,7 +273,7 @@ export function OnlineMatchClient() {
       }
 
       if (msg.type === "chat_received") {
-        const isOwn = msg.sender.id === user?.uuid;
+        const isOwn = msg.sender.id === userUuidRef.current;
         setChatMessages((prev) => [
           ...prev,
           {
@@ -304,10 +309,11 @@ export function OnlineMatchClient() {
     };
 
     return () => {
+      ws.onclose = null;
       ws.close();
       wsRef.current = null;
     };
-  }, [matchId, wsUrl, user?.uuid, startPostGameChatWindow]);
+  }, [matchId, wsUrl, startPostGameChatWindow]);
 
   useEffect(() => {
     const ws = wsRef.current;
