@@ -195,6 +195,10 @@ export function OnlineMatchClient() {
     const ws = new WebSocket(`${wsUrl}?matchId=${encodeURIComponent(matchId)}`);
     wsRef.current = ws;
 
+    ws.onerror = () => {
+      // Connection errors are handled by onclose
+    };
+
     ws.onopen = () => {
       updateStatus("waiting");
       const join: ClientMessage = { type: "join", matchId };
