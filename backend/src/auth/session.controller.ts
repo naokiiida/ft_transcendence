@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -37,6 +37,7 @@ const AVATAR_DIR = path.join(process.cwd(), 'data', 'avatars');
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 @ApiTags('session')
+@ApiCookieAuth('ft_session')
 @RequireUser()
 @Controller('api')
 export class SessionController {

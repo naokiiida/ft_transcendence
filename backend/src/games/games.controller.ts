@@ -5,7 +5,7 @@ import {
   Query,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { GamesService } from './games.service';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../model/game.model';
 
 @ApiTags('games')
+@ApiCookieAuth('ft_session')
 @Controller('api/games')
 export class GamesController {
   constructor(private readonly gamesService: GamesService) {}
