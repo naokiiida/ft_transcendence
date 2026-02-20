@@ -78,6 +78,14 @@ function LoginPageClient() {
     }
   }, [isLoading, isAuthenticated, router, nextPath]);
 
+  // OAuthコールバックのエラーを表示（早期リターンの前に配置してHooksルールを守る）
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "oauth_failed") {
+      setError("42ログインに失敗しました。もう一度お試しください。");
+    }
+  }, [searchParams]);
+
   if (isLoading || isAuthenticated) {
     return (
       <div className="min-h-screen px-4 py-10">
@@ -89,13 +97,6 @@ function LoginPageClient() {
       </div>
     );
   }
-
-  useEffect(() => {
-    const errorParam = searchParams.get("error"); 
-    if (errorParam === "oauth_failed") {
-      setError("42ログインに失敗しました。もう一度お試しください。");
-      }
-  }, [searchParams]);
 
   const handleRegisterChange =
     (key: keyof RegisterRequest) =>
