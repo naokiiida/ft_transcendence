@@ -208,9 +208,11 @@ export function FriendsTab({
                                 {onlineStatus.label}
                               </span>
                             </div>
-                            <span className="text-xs text-muted-foreground">
-                              最終: {formatDateTime(friend.last_seen)}
-                            </span>
+                            {onlineStatus.status !== "online" && (
+                              <span className="text-xs text-muted-foreground">
+                                最終: {formatDateTime(friend.last_seen)}
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>{friend.user_score}</TableCell>

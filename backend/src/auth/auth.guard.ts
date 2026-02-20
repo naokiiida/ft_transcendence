@@ -29,7 +29,7 @@ const API_KEY = process.env.API_KEY || randomUUID();
 export class AuthGuard implements CanActivate {
   private readonly logger = new Logger(AuthGuard.name);
   private readonly lastSeenCache = new Map<string, number>();
-  private static readonly LAST_SEEN_THROTTLE_MS = 60_000;
+  private static readonly LAST_SEEN_THROTTLE_MS = 30_000;
 
   constructor(
     private readonly reflector: Reflector,

@@ -172,9 +172,11 @@ export default function UserPage() {
   };
 
   // ----- フレンド関連: 取得 -----
-  const fetchFriends = useCallback(async () => {
-    setFriendsLoading(true);
-    setFriendsError(null);
+  const fetchFriends = useCallback(async (silent = false) => {
+    if (!silent) {
+      setFriendsLoading(true);
+      setFriendsError(null);
+    }
     try {
       const response = await fetch(`${apiBase}/api/friendships`, {
         credentials: "include",
@@ -188,11 +190,13 @@ export default function UserPage() {
       }
       setFriends(Array.isArray(data) ? (data as FriendEntry[]) : []);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "フレンド一覧の取得に失敗しました";
-      setFriendsError(message);
+      if (!silent) {
+        const message =
+          err instanceof Error ? err.message : "フレンド一覧の取得に失敗しました";
+        setFriendsError(message);
+      }
     } finally {
-      setFriendsLoading(false);
+      if (!silent) setFriendsLoading(false);
     }
   }, [apiBase]);
 
@@ -357,7 +361,7 @@ export default function UserPage() {
   useEffect(() => {
     if (activeTab !== "friends" || !user?.uuid) return;
     const intervalId = setInterval(() => {
-      void fetchFriends();
+      void fetchFriends(true);
     }, 30_000);
     return () => clearInterval(intervalId);
   }, [activeTab, user?.uuid, fetchFriends]);

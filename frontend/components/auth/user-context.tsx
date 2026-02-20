@@ -126,6 +126,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
       });
   }, [handleMeResponse, setUser]);
 
+  // ハートビート: 認証済みユーザーの last_seen をサーバー側で更新し続ける
+  useEffect(() => {
+    if (!user) return;
+    const id = setInterval(() => {
+      fetch(`${API_BASE}/api/me`, { credentials: "include" }).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [user]);
+
   const refreshUser = useCallback(async () => {
     setIsLoading(true);
     try {
