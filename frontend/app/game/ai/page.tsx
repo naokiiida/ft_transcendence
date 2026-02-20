@@ -68,14 +68,22 @@ export default function GamePage() {
       S: "down",
     };
 
+    // テキスト入力中はゲームキーを無視
+    const isTyping = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+    };
+
     // キーイベントハンドラ 押したときと離したときで分ける
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTyping(event)) return;
       const action = keyMap[event.key];
       if (!action) return;
       input[action] = true;
       event.preventDefault();
     };
     const handleKeyUp = (event: KeyboardEvent) => {
+      if (isTyping(event)) return;
       const action = keyMap[event.key];
       if (!action) return;
       input[action] = false;

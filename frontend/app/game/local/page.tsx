@@ -43,7 +43,13 @@ export default function GamePage() {
     );
 
     // ★変更点3: キー操作を左右のInputStateに振り分け
+    const isTyping = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+    };
+
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTyping(event)) return;
       switch (event.key) {
         // 左プレイヤー (WASD)
         case "w": case "W": inputLeft.up = true; break;
@@ -55,6 +61,7 @@ export default function GamePage() {
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      if (isTyping(event)) return;
       switch (event.key) {
         // 左プレイヤー
         case "w": case "W": inputLeft.up = false; break;

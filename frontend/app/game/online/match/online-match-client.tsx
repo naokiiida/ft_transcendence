@@ -344,7 +344,13 @@ export function OnlineMatchClient() {
       wsRef.current.send(JSON.stringify(payload));
     };
 
+    const isTyping = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+    };
+
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTyping(event)) return;
       const action = keyMap[event.key];
       if (!action) return;
       if (!inputRef.current[action]) {
@@ -354,6 +360,7 @@ export function OnlineMatchClient() {
       event.preventDefault();
     };
     const handleKeyUp = (event: KeyboardEvent) => {
+      if (isTyping(event)) return;
       const action = keyMap[event.key];
       if (!action) return;
       if (inputRef.current[action]) {
