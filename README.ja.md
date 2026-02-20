@@ -1,4 +1,4 @@
-# ft_transcendence — Biarritz
+# ft_transcendence
 
 *This project has been created as part of the 42 curriculum by niida, mkaihori, oohba*
 
@@ -7,22 +7,6 @@
 ft\_transcendence は、リアルタイム対戦 Pong ゲームを中心としたマルチユーザー対応 Web アプリケーションです。Next.js + NestJS で構築し、ローカル対戦・AI 対戦・オンラインマッチメイキングに対応しています。
 
 認証・ユーザー管理・フレンド機能・ゲーム内チャット・レーティングシステム・ゲーム統計・Prometheus + Grafana による運用監視・分析ダッシュボードまでを一体で提供します。
-
-### 主要機能
-
-- リアルタイム対戦 Pong（ローカル / AI / オンライン）
-- マッチメイキングキューとオンライン対戦（WebSocket）
-- AI 対戦（4段階の難易度）
-- ユーザー認証（Email/Password + 42 OAuth）
-- ユーザープロフィール・アバター・レーティング
-- フレンドシステム（申請・承認・一覧）
-- ゲーム内チャット
-- ゲームカスタマイズ
-- リーダーボード
-- 試合履歴・統計
-- Prometheus + Grafana による監視
-- 分析ダッシュボード
-- デザインシステム（Storybook）
 
 ---
 
@@ -40,17 +24,7 @@ ft\_transcendence は、リアルタイム対戦 Pong ゲームを中心とし�
 cp .env.example .env
 ```
 
-`.env.example` を参照し、以下を設定してください:
-
-| 変数 | 説明 | 例 |
-|------|------|-----|
-| `NEXT_PUBLIC_API_URL` | バックエンド API URL | `http://localhost:3001` |
-| `NEXT_PUBLIC_WS_URL` | WebSocket URL | `ws://localhost:3001/api/ws` |
-| `PORT` | バックエンドポート | `3001` |
-| `SESSION_SECRET` | セッション秘密鍵 | `openssl rand -hex 32` で生成 |
-| `FT_CLIENT_ID` | 42 OAuth クライアント ID | (42 intra で取得) |
-| `FT_CLIENT_SECRET` | 42 OAuth クライアントシークレット | (42 intra で取得) |
-| `FT_REDIRECT_URI` | 42 OAuth コールバック URL | `https://your-domain/api/auth/callback` |
+`.env.example` を参照し、必要な変数（API URL、セッション秘密鍵、42 OAuth 認証情報等）を設定してください。
 
 ### 起動方法（Docker）
 
@@ -269,27 +243,6 @@ users 1─∞ friendships (requester_id, addressee_id)
 
 ---
 
-## 役割分担
-
-| Module | Type | Points | 担当 | 状態 |
-| :---- | :---- | :---- | :---- | :---- |
-| Web (Next.js) | Major | 2 | 全員 | 完了 |
-| User Management | Major | 2 | niida | 完了 |
-| 42 OAuth | Minor | 1 | mkaihori | 未完了 |
-| Web-based game (Pong) | Major | 2 | mkaihori | 完了 |
-| AI Opponent | Major | 2 | oohba | 完了 |
-| Remote Players | Major | 2 | oohba | 完了 |
-| DevOps (Prometheus+Grafana) | Major | 2 | niida | 完了 |
-| Analytics Dashboard | Major | 2 | niida | 完了 |
-| Game Customization | Minor | 1 | oohba | 完了 |
-| Design System | Minor | 1 | masho | 完了 |
-| User interaction (Chat) | Major | 2 | niida | 完了 |
-| Game statistics | Minor | 1 | niida | 完了 |
-| Public API | Major | 2 | niida | 完了 |
-| ORM (Drizzle) | Minor | 1 | 全員 | 完了 |
-
----
-
 ## Individual Contributions
 
 ### niida (Product Owner / Project Manager / Developer)
@@ -332,15 +285,4 @@ users 1─∞ friendships (requester_id, addressee_id)
 - **課題と克服**:
   - ゲームループの設計でフレームレート依存の問題に対応し、ティックベースの固定更新間隔で安定した動作を実現
 
----
 
-## スケジュール
-
-| 週 | 期間 | 目標 |
-| :---- | :---- | :---- |
-| Week 1 | 1/12〜1/18 | 環境構築、基礎実装開始 (local pong, auth) |
-| Week 2 | 1/19〜1/25 | コア機能実装（Remote WebSocket Game, 管理画面） |
-| Week 3 | 1/26〜2/1 | 機能完成（User interaction, Monitoring） |
-| Week 4 | 2/2〜2/8 | 統合テスト、バグ修正 |
-| Week 5 | 2/9〜2/14 | 完成、最終調整 |
-| Review | 2/16〜2/22 | 最大 3 回の提出チャンス |

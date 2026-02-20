@@ -1,0 +1,61 @@
+---
+title: ft_transcendence Database Schema
+---
+erDiagram
+    accTitle: ft_transcendence Database Entity Relationship Diagram
+    accDescr: Entity relationship diagram showing the four core tables users, sessions, games, and friendships with their columns and foreign key relationships
+
+    users {
+        TEXT uuid PK "User identifier (UUID)"
+        TEXT email UK "Email address"
+        TEXT password_hash "Password hash (NULL for OAuth users)"
+        TEXT display_name UK "Display name"
+        TEXT avatar_url "Avatar image URL"
+        TEXT intra_id UK "42 Intra ID"
+        TEXT intra_username UK "42 Intra username"
+        INTEGER wins "Number of wins (default: 0)"
+        INTEGER losses "Number of losses (default: 0)"
+        INTEGER user_score "Rating (default: 1000)"
+        TEXT method "Auth method: email | intra"
+        TEXT created_at "Creation timestamp"
+        TEXT last_seen "Last active timestamp"
+    }
+
+    sessions {
+        TEXT id PK "Session ID (UUID)"
+        TEXT user_id FK "User ID (CASCADE DELETE)"
+        TEXT expires_at "Expiration time"
+        TEXT created_at "Creation timestamp"
+    }
+
+    games {
+        TEXT id PK "Game ID (UUID)"
+        TEXT player1_id FK "Player 1"
+        TEXT player2_id FK "Player 2 (nullable)"
+        TEXT winner_id FK "Winner (nullable)"
+        INTEGER player1_score "Player 1 score"
+        INTEGER player2_score "Player 2 score"
+        TEXT game_type "local | online | ai"
+        TEXT ai_difficulty "easy | medium | hard | EuropeanHard"
+        TEXT status "waiting | playing | completed | forfeit"
+        INTEGER score_delta "Rating change (+-25)"
+        TEXT started_at "Start timestamp"
+        TEXT ended_at "End timestamp"
+        TEXT created_at "Creation timestamp"
+    }
+
+    friendships {
+        TEXT id PK "Friendship ID (UUID)"
+        TEXT requester_id FK "Request sender (CASCADE DELETE)"
+        TEXT addressee_id FK "Request receiver (CASCADE DELETE)"
+        TEXT status "pending | accepted | declined"
+        TEXT created_at "Creation timestamp"
+        TEXT updated_at "Update timestamp"
+    }
+
+    users ||--o{ sessions : "user_id"
+    users ||--o{ games : "player1_id"
+    users ||--o{ games : "player2_id"
+    users ||--o{ games : "winner_id"
+    users ||--o{ friendships : "requester_id"
+    users ||--o{ friendships : "addressee_id"
