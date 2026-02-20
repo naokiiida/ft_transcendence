@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import { OnlineMatchClient } from "./online-match-client";
 
-export const dynamic = "force-dynamic";
-
 export default function OnlineMatchPage() {
   return (
     <Suspense

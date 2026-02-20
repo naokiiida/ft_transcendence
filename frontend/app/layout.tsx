@@ -8,7 +8,7 @@ import "./globals.css";
 const dotGothic16 = DotGothic16({
   weight: "400",
   subsets: ["latin"],
-  preload: true,
+  preload: false,
 });
 
 export const metadata: Metadata = {
