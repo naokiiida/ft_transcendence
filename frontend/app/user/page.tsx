@@ -49,6 +49,7 @@ export default function UserPage() {
   // ルーターを取得
   const router = useRouter();
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  const [activeTab, setActiveTab] = useState("profile");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [friends, setFriends] = useState<FriendEntry[]>([]); //フレンド一覧
   const [pendingRequests, setPendingRequests] = useState<PendingRequestEntry[]>(
@@ -352,6 +353,15 @@ export default function UserPage() {
     void fetchLeaderboard();
   }, [user?.uuid, refreshFriendData, fetchMatchHistory, fetchLeaderboard]);
 
+  // ----- フレンドタブ表示中のポーリング (30秒間隔) -----
+  useEffect(() => {
+    if (activeTab !== "friends" || !user?.uuid) return;
+    const intervalId = setInterval(() => {
+      void fetchFriends();
+    }, 30_000);
+    return () => clearInterval(intervalId);
+  }, [activeTab, user?.uuid, fetchFriends]);
+
   const openFriendProfile = (friendId: string) => {
     setFriendProfileId(friendId);
     setFriendProfileHistory([]);
@@ -632,7 +642,7 @@ export default function UserPage() {
     }>
       <AuthGate>
         <div className="mx-auto w-full max-w-6xl px-4 py-10">
-        <Tabs defaultValue="profile">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="profile">プロフィール</TabsTrigger>
             <TabsTrigger value="friends">フレンド</TabsTrigger>

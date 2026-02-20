@@ -12,6 +12,7 @@ import type { Request } from 'express';
 import { IS_PUBLIC_KEY, IS_OPTIONAL_AUTH_KEY, REQUIRE_USER_KEY } from './decorators';
 import { readCookie } from './cookie.utils';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
 
 /*
 ログインしているユーザーにのみAPIを使わせる。
@@ -27,10 +28,13 @@ const API_KEY = process.env.API_KEY || randomUUID();
 @Injectable()
 export class AuthGuard implements CanActivate {
   private readonly logger = new Logger(AuthGuard.name);
+  private readonly lastSeenCache = new Map<string, number>();
+  private static readonly LAST_SEEN_THROTTLE_MS = 60_000;
 
   constructor(
     private readonly reflector: Reflector,
     private readonly authService: AuthService,
+    private readonly usersService: UsersService,
   ) {
     if (!process.env.API_KEY) {
       this.logger.warn(`Generated API key: ${API_KEY}`);
@@ -55,6 +59,7 @@ export class AuthGuard implements CanActivate {
       const user = this.authService.findUserBySession(sessionId);
       if (user) {
         request.user = user;
+        this.maybeUpdateLastSeen(user.uuid);
         return true;
       }
     }
@@ -72,6 +77,16 @@ export class AuthGuard implements CanActivate {
     if (isOptional) return true;
 
     throw new UnauthorizedException('Not authenticated');
+  }
+
+  private maybeUpdateLastSeen(uuid: string): void {
+    const now = Date.now();
+    const lastUpdated = this.lastSeenCache.get(uuid);
+    if (lastUpdated && now - lastUpdated < AuthGuard.LAST_SEEN_THROTTLE_MS) {
+      return;
+    }
+    this.lastSeenCache.set(uuid, now);
+    this.usersService.updateLastSeen(uuid);
   }
 
   private isValidApiKey(key: string): boolean {
