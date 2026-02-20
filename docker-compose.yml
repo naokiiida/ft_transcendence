@@ -78,7 +78,7 @@ services:
     environment:
       - CLOUDFLARE_DNS_API_TOKEN=${CF_API_TOKEN}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
       - acme:/letsencrypt
     restart: unless-stopped
     networks:

@@ -1,3 +1,6 @@
+# Rootless Docker: auto-detect socket path
+export DOCKER_SOCK ?= /run/user/$(shell id -u)/docker.sock
+
 .PHONY: help up up-frontend local down build build-no-cache logs \
 	frontend-install frontend-dev frontend-lint \
 	backend-install backend-dev backend-lint npm inpm \
