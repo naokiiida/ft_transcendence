@@ -14,6 +14,7 @@ import type { GameState, InputState } from "@/lib/game/state";
 import { getRankForScore } from "@/lib/game/rank";
 import { getBallColorForRank } from "@/lib/game/ball-colors";
 import { useBallColorByRankEnabled } from "@/lib/game/preferences";
+import { WS_BASE } from "@/lib/utils";
 
 type ServerMessage =
   | {
@@ -68,7 +69,7 @@ export function OnlineMatchClient() {
   const searchParams = useSearchParams();
   const { user } = useUser();
   const matchId = searchParams.get("matchId");
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3001/api/ws";
+  const wsUrl = WS_BASE;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const stateRef = useRef<GameState | null>(null);

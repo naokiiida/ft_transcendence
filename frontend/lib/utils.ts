@@ -6,6 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const NORMALIZED_API_BASE = API_BASE.replace(/\/$/, "");
+const DEFAULT_WS_BASE = `${NORMALIZED_API_BASE.replace(/^http/, "ws")}/api/ws`;
+export const WS_BASE = process.env.NEXT_PUBLIC_WS_URL ?? DEFAULT_WS_BASE;
 
 /**
  * 相対APIパス（/api/...）をバックエンドの完全URLに解決する。
