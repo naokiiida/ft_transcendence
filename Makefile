@@ -1,4 +1,4 @@
-.PHONY: help up up-frontend down build build-no-cache logs \
+.PHONY: help up up-frontend local down build build-no-cache logs \
 	frontend-install frontend-dev frontend-lint \
 	backend-install backend-dev backend-lint npm inpm\
 
@@ -10,6 +10,7 @@ help:
 	@echo "  build             - docker compose build"
 	@echo "  build-no-cache    - docker compose build --no-cache"
 	@echo "  logs              - docker compose logs -f --tail=100"
+	@echo "  local             - local dev with Docker (uses .env.local)"
 	@echo "  npm               - local dev (frontend + backend without Docker)"
 	@echo "  frontend-install  - npm install in ./frontend"
 	@echo "  frontend-dev      - npm run dev in ./frontend"
@@ -33,6 +34,10 @@ inpm:
 	cd $(CURDIR)/frontend && npm run dev & \
 	cd $(CURDIR)/backend && npm run start:dev & \
 	wait
+
+local:
+	@test -f .env.local || (echo "Error: .env.local not found. Copy .env.local.example to .env.local and fill in secrets." && exit 1)
+	docker compose --env-file .env.local up --build
 
 up:
 	docker compose --profile production --profile docs up --build
