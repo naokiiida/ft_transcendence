@@ -143,7 +143,10 @@ export class GameSessionService {
 
     const tickInterval = Math.round(1000 / TICK_RATE);
     const broadcastInterval = Math.round(1000 / BROADCAST_RATE);
+    const targetTickMs = tickInterval;
     session.tickTimer = setInterval(() => {
+      const tickStart = performance.now();
+
       if (this.handleHeartbeatTimeout(session)) {
         return;
       }
@@ -151,6 +154,13 @@ export class GameSessionService {
       const rightInput = session.players.right?.input ?? { up: false, down: false };
       session.engine.step(session.state, leftInput, rightInput, 1 / TICK_RATE);
       session.tick += 1;
+
+      const tickDurationMs = performance.now() - tickStart;
+      this.metricsService.gameTickDuration.observe(tickDurationMs / 1000);
+      if (tickDurationMs > targetTickMs) {
+        this.metricsService.gameTickOverrun.inc();
+      }
+
       if (session.state.gameOver) {
         const winnerSide = this.toWinnerSide(session.state.winner);
         const winnerName = winnerSide
@@ -169,11 +179,15 @@ export class GameSessionService {
     }, tickInterval);
 
     session.broadcastTimer = setInterval(() => {
+      const broadcastStart = performance.now();
       this.broadcast(session, {
         type: 'state',
         tick: session.tick,
         state: session.state,
       });
+      this.metricsService.gameBroadcastDuration.observe(
+        (performance.now() - broadcastStart) / 1000,
+      );
     }, broadcastInterval);
   }
 

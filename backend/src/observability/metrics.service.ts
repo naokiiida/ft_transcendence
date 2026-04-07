@@ -88,6 +88,27 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
     registers: [this.registry],
   });
 
+  // ゲームtickパフォーマンスメトリクス
+  readonly gameTickDuration = new Histogram({
+    name: 'game_tick_duration_seconds',
+    help: 'Duration of a single game tick (physics step) in seconds',
+    buckets: [0.0001, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05],
+    registers: [this.registry],
+  });
+
+  readonly gameBroadcastDuration = new Histogram({
+    name: 'game_broadcast_duration_seconds',
+    help: 'Duration of broadcasting game state to players in seconds',
+    buckets: [0.0001, 0.0005, 0.001, 0.005, 0.01],
+    registers: [this.registry],
+  });
+
+  readonly gameTickOverrun = new Counter({
+    name: 'game_tick_overrun_total',
+    help: 'Number of game ticks that exceeded the target interval',
+    registers: [this.registry],
+  });
+
   onModuleInit() {
     collectDefaultMetrics({ register: this.registry });
   }
