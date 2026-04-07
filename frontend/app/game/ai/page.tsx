@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link"; // 画面遷移用リンク
 import { createGameState, endGame } from "@/lib/game/engine";
 import { renderGame } from "@/lib/game/renderer";
+import { renderPerfOverlay } from "@/lib/game/perf-overlay";
+import { GameProfiler } from "@/lib/game/profiler";
 import type { GameState, InputState } from "@/lib/game/state";
 import { PongEngine } from "@/lib/game/engine";
 import {
@@ -94,6 +96,16 @@ export default function GamePage() {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 
+    // パフォーマンスプロファイラー (F3でトグル)
+    const profiler = new GameProfiler();
+    const handleProfilerToggle = (event: KeyboardEvent) => {
+      if (event.key === "F3") {
+        event.preventDefault();
+        profiler.toggle();
+      }
+    };
+    window.addEventListener("keydown", handleProfilerToggle);
+
     // 時間管理
     let lastTime = performance.now();
     let frameId = 0;
@@ -102,12 +114,25 @@ export default function GamePage() {
     const frame = (time: number) => {
       const dt = Math.min((time - lastTime) / 1000, 0.033);
       lastTime = time;
+
+      profiler.beginFrame();
+
+      profiler.beginPhysics();
       match.tick(state, dt);
+      profiler.endPhysics();
+
       if (state.gameOver !== gameOverRef.current) {
         gameOverRef.current = state.gameOver;
         setGameOver(state.gameOver);
       }
+
+      profiler.beginRender();
       renderGame(ctx, state, {leftName: "Player", rightName: "CPU(" + cpuName + ")"});
+      profiler.endRender();
+
+      renderPerfOverlay(ctx, profiler);
+      profiler.endFrame();
+
       frameId = requestAnimationFrame(frame);
     };
 
@@ -119,6 +144,7 @@ export default function GamePage() {
       cancelAnimationFrame(frameId);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("keydown", handleProfilerToggle);
     };
   }, [aiLevel, sessionId]);
   // useEffectの依存配列、ページの最初、aiLevelかsessionIdが変わったときに再実行される。

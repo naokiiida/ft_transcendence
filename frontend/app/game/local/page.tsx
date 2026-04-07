@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createGameState, endGame } from "@/lib/game/engine";
 import { renderGame } from "@/lib/game/renderer";
+import { renderPerfOverlay } from "@/lib/game/perf-overlay";
+import { GameProfiler } from "@/lib/game/profiler";
 import type { GameState, InputState } from "@/lib/game/state"; // InputStateを追加
 import { PongEngine } from "@/lib/game/engine";
 import { Match } from "@/lib/game/match"; // LocalMatchではなくMatchをインポート
@@ -75,21 +77,41 @@ export default function GamePage() {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 
+    // パフォーマンスプロファイラー (F3でトグル)
+    const profiler = new GameProfiler();
+    const handleProfilerToggle = (event: KeyboardEvent) => {
+      if (event.key === "F3") {
+        event.preventDefault();
+        profiler.toggle();
+      }
+    };
+    window.addEventListener("keydown", handleProfilerToggle);
+
     let lastTime = performance.now();
     let frameId = 0;
 
     const frame = (time: number) => {
       const dt = Math.min((time - lastTime) / 1000, 0.033);
       lastTime = time;
-      
-      // Matchクラスのtickを実行（内部でそれぞれのgetInputが呼ばれる）
+
+      profiler.beginFrame();
+
+      profiler.beginPhysics();
       match.tick(state, dt);
+      profiler.endPhysics();
 
       if (state.gameOver !== gameOverRef.current) {
         gameOverRef.current = state.gameOver;
         setGameOver(state.gameOver);
       }
+
+      profiler.beginRender();
       renderGame(ctx, state, {leftName: "Left player", rightName: "Right player"});
+      profiler.endRender();
+
+      renderPerfOverlay(ctx, profiler);
+      profiler.endFrame();
+
       frameId = requestAnimationFrame(frame);
     };
 
@@ -99,6 +121,7 @@ export default function GamePage() {
       cancelAnimationFrame(frameId);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("keydown", handleProfilerToggle);
     };
   }, [sessionId]);
 

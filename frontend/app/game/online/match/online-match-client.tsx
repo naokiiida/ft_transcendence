@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare } from "lucide-react";
 import { renderGame } from "@/lib/game/renderer";
+import { renderPerfOverlay } from "@/lib/game/perf-overlay";
+import { GameProfiler } from "@/lib/game/profiler";
 import type { GameState, InputState } from "@/lib/game/state";
 import { getRankForScore } from "@/lib/game/rank";
 import { getBallColorForRank } from "@/lib/game/ball-colors";
@@ -152,7 +154,19 @@ export function OnlineMatchClient() {
     if (!ctx) return;
     let frameId = 0;
 
+    // パフォーマンスプロファイラー (F3でトグル)
+    const profiler = new GameProfiler();
+    const handleProfilerToggle = (event: KeyboardEvent) => {
+      if (event.key === "F3") {
+        event.preventDefault();
+        profiler.toggle();
+      }
+    };
+    window.addEventListener("keydown", handleProfilerToggle);
+
     const frame = () => {
+      profiler.beginFrame();
+
       const state = stateRef.current;
       if (state) {
         const rankLabel = user
@@ -172,17 +186,27 @@ export function OnlineMatchClient() {
           leftName = opponentLabel;
           rightName = selfName;
         }
+
+        profiler.beginRender();
         renderGame(ctx, state, {
           leftName,
           rightName,
           ballColor,
         });
+        profiler.endRender();
+
+        renderPerfOverlay(ctx, profiler);
       }
+
+      profiler.endFrame();
       frameId = requestAnimationFrame(frame);
     };
     frameId = requestAnimationFrame(frame);
 
-    return () => cancelAnimationFrame(frameId);
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("keydown", handleProfilerToggle);
+    };
   }, [ballColorByRankEnabled, user?.user_score]);
 
   useEffect(() => {
