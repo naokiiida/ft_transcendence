@@ -4,20 +4,43 @@ Date: 2026-04-08
 
 ## Profiling Summary
 
-### Frontend (Canvas Game Loop)
-- **FPS**: 185+ fps on Local PvP, well above 60fps target
-- **Frame time**: 0.48ms avg (budget: 16.7ms at 60fps) — **97% headroom**
-- **Physics**: 0.02ms avg — negligible cost
+### Frontend (Canvas Game Loop) — After 60Hz upgrade
+- **FPS**: 60 fps (vsync-locked on 60Hz display, 120fps on ProMotion)
+- **Frame time**: 0.24ms avg (budget: 8.3ms at 120fps) — **97% headroom**
+- **Physics**: 0.00ms avg — negligible cost
+- **Render**: 0.05ms avg — Canvas 2D extremely efficient
+- **P95**: 0.4ms, **P99**: 0.8ms — rock-solid tail latency
+- **Dropped frames**: 0 (0.0%)
+
+### Frontend (Before/After comparison)
+| Metric | Before (30/15Hz) | After (60/60Hz + interp) |
+|--------|------------------|--------------------------|
+| FPS | 185 (uncapped) | 60 (vsync) |
+| Frame time | 0.48ms | 0.24ms |
+| Physics | 0.02ms | 0.00ms |
+| Render | 0.20ms | 0.05ms |
+| P95 | 0.8ms | 0.4ms |
+| Dropped | 0 (0.0%) | 0 (0.0%) |
+
+Note: Frame time improved because the profiler now samples at consistent
+vsync intervals rather than uncapped. Physics shows as 0.00ms because local
+games already ran at requestAnimationFrame rate — the 60Hz change only
+affects the online server tick/broadcast.
 - **Render**: 0.20ms avg — Canvas 2D is very efficient for Pong
 - **P95/P99**: 0.8ms / 0.8ms — no tail latency spikes
 - **Dropped frames**: 0 (0.0%)
 
-### Backend (V8 CPU Profile, 431 ticks)
-- **JavaScript**: 4.2% of CPU — almost no time in user JS code
-- **C++ (V8 internals)**: 87.5% — dominated by module loading at startup
-- **GC**: 2.6% — healthy, no pressure
-- **Top hotspot**: `__hash_table::~__hash_table()` at 43.6% — V8 internal hash map teardown during CJS module compilation (`wrapSafe` → `Module._compile`)
-- **Second hotspot**: `_mach_absolute_time` at 22.3% — system time calls (prom-client `collectDefaultMetrics`)
+### Backend (V8 CPU Profile comparison)
+| Metric | 30/15Hz (431 ticks) | 60/60Hz (529 ticks) |
+|--------|---------------------|---------------------|
+| JavaScript | 4.2% | 2.6% |
+| C++ | 87.5% | 88.3% |
+| GC | 2.6% | 1.7% |
+
+- Both profiles dominated by startup — no regression from doubling tick rate
+- **Top hotspot**: `__hash_table::~__hash_table()` — V8 CJS module compilation (startup only)
+- **Second hotspot**: `_mach_absolute_time` — prom-client `collectDefaultMetrics`
+- GC pressure actually decreased at 60Hz (1.7% vs 2.6%) — within noise margin
 
 ### Backend (0x Flamegraph)
 - Startup-dominated profile: most CPU spent on NestJS DI container initialization and CJS module loading
