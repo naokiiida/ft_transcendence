@@ -31,8 +31,8 @@ type GameSession = {
   postGameTimer: ReturnType<typeof setTimeout> | null;
 };
 
-const TICK_RATE = 30;
-const BROADCAST_RATE = 15;
+const TICK_RATE = 60;
+const BROADCAST_RATE = 60;
 const HEARTBEAT_TIMEOUT_MS = 5000;
 const JOIN_TIMEOUT_MS = 60000;
 const POST_GAME_CHAT_MS = 30_000;

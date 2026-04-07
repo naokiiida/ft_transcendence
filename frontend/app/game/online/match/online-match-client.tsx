@@ -12,6 +12,7 @@ import { MessageSquare } from "lucide-react";
 import { renderGame } from "@/lib/game/renderer";
 import { renderPerfOverlay } from "@/lib/game/perf-overlay";
 import { GameProfiler } from "@/lib/game/profiler";
+import { lerpGameState } from "@/lib/game/interpolation";
 import type { GameState, InputState } from "@/lib/game/state";
 import { getRankForScore } from "@/lib/game/rank";
 import { getBallColorForRank } from "@/lib/game/ball-colors";
@@ -75,6 +76,8 @@ export function OnlineMatchClient() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const stateRef = useRef<GameState | null>(null);
+  const prevStateRef = useRef<GameState | null>(null);
+  const stateTimestampRef = useRef(0);
   const inputRef = useRef<InputState>({ up: false, down: false });
   const seqRef = useRef(0);
   const [status, setStatus] = useState<
@@ -164,11 +167,22 @@ export function OnlineMatchClient() {
     };
     window.addEventListener("keydown", handleProfilerToggle);
 
+    const SERVER_INTERVAL_MS = 1000 / 60; // 60Hz server broadcast
+
     const frame = () => {
       profiler.beginFrame();
 
-      const state = stateRef.current;
-      if (state) {
+      const nextState = stateRef.current;
+      const prevState = prevStateRef.current;
+      if (nextState) {
+        // 補間: サーバー状態間を線形補間して120fps描画を実現
+        let renderState = nextState;
+        if (prevState && stateTimestampRef.current > 0) {
+          const elapsed = performance.now() - stateTimestampRef.current;
+          const t = elapsed / SERVER_INTERVAL_MS;
+          renderState = lerpGameState(prevState, nextState, t);
+        }
+
         const rankLabel = user
           ? getRankForScore(user.user_score).label
           : "Bronze";
@@ -188,7 +202,7 @@ export function OnlineMatchClient() {
         }
 
         profiler.beginRender();
-        renderGame(ctx, state, {
+        renderGame(ctx, renderState, {
           leftName,
           rightName,
           ballColor,
@@ -249,7 +263,9 @@ export function OnlineMatchClient() {
       }
 
       if (msg.type === "state") {
+        prevStateRef.current = stateRef.current;
         stateRef.current = msg.state;
+        stateTimestampRef.current = performance.now();
         updateStatus("playing");
         return;
       }
