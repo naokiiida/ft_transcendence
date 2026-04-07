@@ -51,3 +51,8 @@ storybook-static
 
 # Lock files (npm only)
 pnpm-lock.yaml
+
+# Profiling output
+backend/flamegraph/
+backend/profiles/
+isolate-*.log

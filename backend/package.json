@@ -29,7 +29,10 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "profile:flamegraph": "npm run build && bash scripts/flamegraph.sh",
+    "profile:v8": "npm run build && bash scripts/v8-profile.sh",
+    "profile:inspect": "npm run build && node --inspect dist/main.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
