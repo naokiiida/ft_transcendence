@@ -15,5 +15,5 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
 RUN mkdir -p /app/data/avatars
-EXPOSE 3000
-CMD ["node", "dist/main"]
+EXPOSE 3001
+CMD ["sh", "-c", "node dist/main.js 2>/dev/null || node dist/src/main.js"]
