@@ -32,7 +32,8 @@
     "db:studio": "drizzle-kit studio",
     "profile:flamegraph": "npm run build && bash scripts/flamegraph.sh",
     "profile:v8": "npm run build && bash scripts/v8-profile.sh",
-    "profile:inspect": "npm run build && node --inspect dist/main.js"
+    "profile:inspect": "npm run build && node --inspect dist/main.js",
+    "stress-test": "npx ts-node scripts/stress-test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

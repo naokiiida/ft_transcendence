@@ -1,0 +1,34 @@
+# ============================================
+# Resource-constrained overlay for stress testing
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.stress.yml --env-file .env.local up --build
+#
+# Simulates:
+#   - Backend on 0.5 CPU core + 256MB RAM (~$5/mo VPS)
+#   - Frontend on 0.25 CPU core + 128MB RAM (cheap edge server)
+#
+# Monitor:
+#   docker stats
+# ============================================
+
+services:
+  backend:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  frontend:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.10"
+          memory: 64M

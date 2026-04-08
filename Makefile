@@ -4,7 +4,7 @@ export DOCKER_SOCK ?= /run/user/$(shell id -u)/docker.sock
 .PHONY: help up up-frontend local down build build-no-cache logs \
 	frontend-install frontend-dev frontend-lint \
 	backend-install backend-dev backend-lint npm inpm \
-	clean
+	clean stress-up stress-down
 
 help:
 	@echo "Targets:"
@@ -84,4 +84,15 @@ clean:
 	docker compose --profile production --profile docs down -v --remove-orphans
 	rm -rf data/backend
 	@echo "Cleaned: volumes removed, data/backend deleted."
+
+# --- Stress Testing (resource-constrained Docker) ---
+stress-up:
+	@test -f .env.local || (echo "Error: .env.local not found." && exit 1)
+	docker compose -f docker-compose.yml -f docker-compose.stress.yml --env-file .env.local up --build -d
+	@echo "Stress env running. Monitor with: docker stats"
+	@echo "Frontend: http://localhost:3000  Backend: http://localhost:3001"
+	@echo "Chrome CPU throttle: DevTools > Performance > CPU 6x slowdown"
+
+stress-down:
+	docker compose -f docker-compose.yml -f docker-compose.stress.yml down --remove-orphans
 
